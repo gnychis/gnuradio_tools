@@ -1,0 +1,298 @@
+Index: gnuradio-core/src/lib/filter/Makefile.am
+===================================================================
+--- gnuradio-core/src/lib/filter/Makefile.am	(revision 7555)
++++ gnuradio-core/src/lib/filter/Makefile.am	(revision 7588)
+@@ -174,6 +174,7 @@
+ 	gr_fractional_interpolator_cc.cc \
+ 	gr_hilbert_fc.cc		\
+ 	gr_iir_filter_ffd.cc		\
++	gr_matched_filter_ccc.cc	\
+ 	gr_sincos.c			\
+ 	gr_single_pole_iir_filter_ff.cc	\
+ 	gr_single_pole_avg_filter_ff.cc	\
+@@ -237,6 +238,7 @@
+ 	gr_hilbert_fc.h			\
+ 	gr_iir_filter_ffd.h		\
+ 	gr_rotator.h			\
++	gr_matched_filter_ccc.h	\
+ 	gr_sincos.h			\
+ 	gr_single_pole_avg.h		\
+ 	gr_single_pole_rec.h		\
+@@ -300,6 +302,7 @@
+ 	gr_goertzel_fc.i		\
+ 	gr_hilbert_fc.i			\
+ 	gr_iir_filter_ffd.i		\
++	gr_matched_filter_ccc.i	\
+ 	gr_single_pole_iir_filter_ff.i	\
+ 	gr_single_pole_avg_filter_ff.i	\
+ 	gr_single_pole_rec_filter_ff.i	\
+Index: gnuradio-core/src/lib/filter/gr_matched_filter_ccc.cc
+===================================================================
+--- gnuradio-core/src/lib/filter/gr_matched_filter_ccc.cc	(revision 0)
++++ gnuradio-core/src/lib/filter/gr_matched_filter_ccc.cc	(revision 7588)
+@@ -0,0 +1,124 @@
++/* -*- c++ -*- */
++/*
++ * Copyright 2007 Free Software Foundation, Inc.
++ * 
++ * This file is part of GNU Radio
++ * 
++ * GNU Radio is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 3, or (at your option)
++ * any later version.
++ * 
++ * GNU Radio is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ * 
++ * You should have received a copy of the GNU General Public License
++ * along with GNU Radio; see the file COPYING.  If not, write to
++ * the Free Software Foundation, Inc., 51 Franklin Street,
++ * Boston, MA 02110-1301, USA.
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++
++#include <gr_matched_filter_ccc.h>
++#include <gr_fir_fff.h>
++#include <gr_fir_util.h>
++#include <gr_io_signature.h>
++#include <math.h>
++#include <assert.h>
++#include <stdexcept>
++#include <gr_firdes.h>
++
++#include <iostream>
++
++gr_matched_filter_ccc_sptr
++gr_make_matched_filter_ccc(const std::vector<gr_complex> &taps)
++{
++  return gr_matched_filter_ccc_sptr (new gr_matched_filter_ccc(taps));
++}
++
++gr_matched_filter_ccc::gr_matched_filter_ccc (const std::vector<gr_complex> &taps)
++  : gr_sync_block ("matched_filter_ccc", 
++      gr_make_io_signature (1, 1, sizeof(gr_complex)),
++      gr_make_io_signature (1, 1, sizeof(gr_complex))),
++    d_updated(false)
++{
++  split_complex((gr_complex *)&taps[0], taps.size(), d_new_real_taps, d_new_imag_taps);
++  d_fir_real = gr_fir_util::create_gr_fir_fff(d_new_real_taps);
++  d_fir_imag = gr_fir_util::create_gr_fir_fff(d_new_imag_taps);
++  set_history(d_fir_real->ntaps());
++}
++
++gr_matched_filter_ccc::~gr_matched_filter_ccc()
++{
++  delete d_fir_real;
++  delete d_fir_imag;
++}
++
++void
++gr_matched_filter_ccc::set_taps (const std::vector<gr_complex> &taps)
++{
++  split_complex((gr_complex *)&taps[0], taps.size(), d_new_real_taps, d_new_imag_taps);
++  d_updated = true;
++}
++
++// Split the complex vector in to two float vectors, one real and one imag
++void
++gr_matched_filter_ccc::split_complex(gr_complex *comp,
++                                      long nitems,
++                                      std::vector<float> &real,
++                                      std::vector<float> &imag)
++{
++  real.clear();
++  imag.clear();
++  for(int i=0; i < (int)nitems; i++) {
++    real.push_back(comp[i].real());
++    imag.push_back(comp[i].imag());
++  }
++}
++
++void
++gr_matched_filter_ccc::make_complex(gr_complex *comp,
++                                      long nitems,
++                                      const std::vector<float> &real,
++                                      const std::vector<float> &imag)
++{
++  for(int i=0; i < (int)nitems; i++) 
++    comp[i] = gr_complex(real[i], imag[i]);
++}
++
++int
++gr_matched_filter_ccc::work (int noutput_items,
++      gr_vector_const_void_star &input_items,
++      gr_vector_void_star &output_items)
++{
++  gr_complex *in = (gr_complex *) input_items[0];
++  gr_complex *out = (gr_complex *) output_items[0];
++
++  if(d_updated) {
++    d_fir_real->set_taps(d_new_real_taps);
++    d_fir_imag->set_taps(d_new_imag_taps);
++    set_history(d_fir_real->ntaps());
++    d_updated=false;
++    return 0;
++  }
++  
++  // Split the incoming real and imag
++  std::vector<float> in_real, in_imag;
++  split_complex(in, noutput_items+history(), in_real, in_imag);
++
++  // Perform the dot product on each component separately
++  std::vector<float> out_real(noutput_items);
++  std::vector<float> out_imag(noutput_items);
++  d_fir_real->filterN(&out_real[0], &in_real[0], noutput_items);
++  d_fir_imag->filterN(&out_imag[0], &in_imag[0], noutput_items);
++
++  // Recombine the real and imaginary
++  make_complex(out, noutput_items, out_real, out_imag);
++
++  return noutput_items;
++}
+Index: gnuradio-core/src/lib/filter/filter.i
+===================================================================
+--- gnuradio-core/src/lib/filter/filter.i	(revision 7555)
++++ gnuradio-core/src/lib/filter/filter.i	(revision 7588)
+@@ -32,6 +32,7 @@
+ #include <gr_fractional_interpolator_cc.h>
+ #include <gr_goertzel_fc.h>
+ #include <gr_cma_equalizer_cc.h>
++#include <gr_matched_filter_ccc.h>
+ %}
+ 
+ %include "gr_iir_filter_ffd.i"
+@@ -45,5 +46,6 @@
+ %include "gr_fractional_interpolator_cc.i"
+ %include "gr_goertzel_fc.i"
+ %include "gr_cma_equalizer_cc.i"
++%include "gr_matched_filter_ccc.i"
+ 
+ %include "filter_generated.i"
+Index: gnuradio-core/src/lib/filter/gr_matched_filter_ccc.h
+===================================================================
+--- gnuradio-core/src/lib/filter/gr_matched_filter_ccc.h	(revision 0)
++++ gnuradio-core/src/lib/filter/gr_matched_filter_ccc.h	(revision 7588)
+@@ -0,0 +1,75 @@
++/* -*- c++ -*- */
++/*
++ * Copyright 2007 Free Software Foundation, Inc.
++ * 
++ * This file is part of GNU Radio
++ * 
++ * GNU Radio is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 3, or (at your option)
++ * any later version.
++ * 
++ * GNU Radio is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ * 
++ * You should have received a copy of the GNU General Public License
++ * along with GNU Radio; see the file COPYING.  If not, write to
++ * the Free Software Foundation, Inc., 51 Franklin Street,
++ * Boston, MA 02110-1301, USA.
++ */
++
++#ifndef INCLUDED_GR_MATCHED_FILTER_CCC_H
++#define INCLUDED_GR_MATCHED_FILTER_CCC_H
++
++#include <gr_sync_block.h>
++#include <gr_io_signature.h>
++#include <gr_fir_fff.h>
++
++
++class gr_matched_filter_ccc;
++typedef boost::shared_ptr<gr_matched_filter_ccc> gr_matched_filter_ccc_sptr;
++
++gr_matched_filter_ccc_sptr
++gr_make_matched_filter_ccc (const std::vector<gr_complex> &taps);
++
++class gr_fir_ccc;
++
++/*!
++ * \brief Matched filter with gr_complex input, gr_complex output, and gr_complex taps.
++ * \ingroup filter;
++ */
++class gr_matched_filter_ccc : public gr_sync_block
++{
++ private:
++  friend gr_matched_filter_ccc_sptr gr_make_matched_filter_ccc (const std::vector<gr_complex> &taps);
++
++  gr_fir_fff *d_fir_real;
++  gr_fir_fff *d_fir_imag;
++  std::vector<float> d_new_real_taps;
++  std::vector<float> d_new_imag_taps;
++  bool d_updated;
++
++  gr_matched_filter_ccc(const std::vector<gr_complex> &taps);
++  void split_complex(gr_complex *comp, 
++                            long nitems,
++                            std::vector<float> &real,
++                            std::vector<float> &imag);
++
++  void make_complex(gr_complex *comp,
++                    long nitems,
++                    const std::vector<float> &real,
++                    const std::vector<float> &imag);
++ public:
++  ~gr_matched_filter_ccc ();
++  
++  void set_taps (const std::vector<gr_complex> &taps);
++
++  int work(int noutput_items,
++      gr_vector_const_void_star &input_items,
++      gr_vector_void_star &output_items);
++};
++
++
++#endif
+Index: gnuradio-core/src/lib/filter/gr_matched_filter_ccc.i
+===================================================================
+--- gnuradio-core/src/lib/filter/gr_matched_filter_ccc.i	(revision 0)
++++ gnuradio-core/src/lib/filter/gr_matched_filter_ccc.i	(revision 7588)
+@@ -0,0 +1,37 @@
++/* -*- c++ -*- */
++/*
++ * Copyright 2007 Free Software Foundation, Inc.
++ * 
++ * This file is part of GNU Radio
++ * 
++ * GNU Radio is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 3, or (at your option)
++ * any later version.
++ * 
++ * GNU Radio is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ * 
++ * You should have received a copy of the GNU General Public License
++ * along with GNU Radio; see the file COPYING.  If not, write to
++ * the Free Software Foundation, Inc., 51 Franklin Street,
++ * Boston, MA 02110-1301, USA.
++ */
++
++GR_SWIG_BLOCK_MAGIC(gr,matched_filter_ccc)
++
++gr_matched_filter_ccc_sptr
++gr_make_matched_filter_ccc (const std::vector<gr_complex> &taps);
++
++class gr_matched_filter_ccc : public gr_sync_block
++{
++ private:
++  gr_matched_filter_ccc (const std::vector<gr_complex> &taps);
++
++ public:
++  ~gr_matched_filter_ccc();
++
++  void set_taps(const std::vector<gr_complex> &taps);
++};
