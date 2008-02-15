@@ -56,7 +56,7 @@ def main (args):
         decim_rate = int (args[2])
         samples = int(float(args[3]) * 64e6 / float(decim_rate))
     else:
-        sys.stderr.write ("usage: capture_to_file file_name IF_freq_MHz decim_rate duration_seconds\n")
+        sys.stderr.write ("usage: capture_to_file file_name IF_freq_hz decim_rate duration_seconds\n")
         sys.exit (1)
 
     print "Capturing ", samples, " samples"
