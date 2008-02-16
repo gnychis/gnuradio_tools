@@ -19,16 +19,14 @@ int main(int argc, char *argv[]) {
     
   data_t curr;
   int16_t first,second;
-  float snum = 0;
 
   infile.read((char *)&first, sizeof(int16_t));
   infile.read((char *)&second, sizeof(int16_t));
 
   while(!infile.eof()) {
-    printf("%f %d %d\n", snum, first, second);
+    printf("%d %d\n", first, second);
     infile.read((char *)&first, sizeof(int16_t));
     infile.read((char *)&second, sizeof(int16_t));
-    snum+=.125;
   }
 
   infile.close();

@@ -33,21 +33,21 @@ from gnuradio.eng_option import eng_option
 def build_graph (input, raw, amp):
 
     # Initialize empty flow graph
-    fg = gr.flow_graph ()
+    fg = gr.top_block ()
 
     # Set up file source
     src = gr.file_source (1, input)
 
     # Set up GMSK modulator, 2 samples per symbol
-    mod = gmsk_mod(fg, 2)
+    mod = gmsk_mod(2)
 
     # Set up an amp
     amp = gr.multiply_const_cc(amp)
 
     # Connect the flow graph
     raw_dst = gr.file_sink (gr.sizeof_gr_complex, raw)
-    fg.connect(src, mod.head)
-    fg.connect(mod.tail, amp)
+    fg.connect(src, mod)
+    fg.connect(mod, amp)
     fg.connect(amp, raw_dst)
 
     return fg
