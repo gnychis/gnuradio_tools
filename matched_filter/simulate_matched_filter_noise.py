@@ -32,7 +32,7 @@ from gnuradio.eng_option import eng_option
 def build_graph (input, raw, snr, freq_offset, coeffs):
 
     # Initialize empty flow graph
-    fg = gr.flow_graph ()
+    fg = gr.top_block ()
 
     # Set up file source
     src = gr.file_source (1, input)

@@ -45,7 +45,7 @@ def init_usrp(usrp_dst, freq, amp):
 def build_graph (input, freq):
 
     # Initialize empty flow graph
-    fg = gr.flow_graph ()
+    fg = gr.top_block ()
 
     # Set up file source
     src = gr.file_source (1, input, True)
