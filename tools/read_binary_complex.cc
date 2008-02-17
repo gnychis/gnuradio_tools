@@ -18,15 +18,12 @@ int main(int argc, char *argv[]) {
     exit(-1);
     
   data_t curr;
-  int16_t first,second;
 
-  infile.read((char *)&first, sizeof(int16_t));
-  infile.read((char *)&second, sizeof(int16_t));
+  infile.read((char *)&curr, sizeof(data_t));
 
   while(!infile.eof()) {
-    printf("%d %d\n", first, second);
-    infile.read((char *)&first, sizeof(int16_t));
-    infile.read((char *)&second, sizeof(int16_t));
+    printf("%.10f %.10f\n", curr.real(), curr.imag());
+    infile.read((char *)&curr, sizeof(data_t));
   }
 
   infile.close();
