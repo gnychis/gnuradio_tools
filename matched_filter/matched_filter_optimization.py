@@ -25,24 +25,24 @@ import sys, array, numpy, math, time
 from gnuradio import gr
 from gnuradio.eng_option import eng_option
 
-# Rotate the complex number on the unit circle
+# Rotate the complex numbers 45deg on the unit circle
 def rotate(cnum):
   
-  # Q1 to (1,0)
+  # Q1 to (0,i)
   if(cnum.real>0 and cnum.imag>0):
-    return complex(1,0)
+    return complex(0,1)
 
-  # Q2 to (0,-i)
-  if(cnum.real>0 and cnum.imag<0):
+  # Q2 to (-1,0)
+  if(cnum.real<0 and cnum.imag>0):
+    return complex(-1,0)    
+
+  # Q3 to (0,-i)
+  if(cnum.real<0 and cnum.imag<0):
     return complex(0,-1)
 
-  # Q3 to (-1,0)
-  if(cnum.real<0 and cnum.imag<0):
-    return complex(-1,0)
-
-  # Q4 to (-1,0)
-  if(cnum.real<0 and cnum.imag>0):
-    return complex(0,1)    
+  # Q4 to (1,0)
+  if(cnum.real>0 and cnum.imag<0):
+    return complex(1,0)
 
   # Must already be on an edge
   return cnum
