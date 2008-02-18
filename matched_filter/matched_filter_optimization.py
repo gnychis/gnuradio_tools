@@ -25,6 +25,28 @@ import sys, array, numpy, math, time
 from gnuradio import gr
 from gnuradio.eng_option import eng_option
 
+# Rotate the complex number on the unit circle
+def rotate(cnum):
+  
+  # Q1 to (1,0)
+  if(cnum.real>0 and cnum.imag>0):
+    return complex(1,0)
+
+  # Q2 to (0,-i)
+  if(cnum.real>0 and cnum.imag<0):
+    return complex(0,-1)
+
+  # Q3 to (-1,0)
+  if(cnum.real<0 and cnum.imag<0):
+    return complex(-1,0)
+
+  # Q4 to (-1,0)
+  if(cnum.real<0 and cnum.imag>0):
+    return complex(0,1)    
+
+  # Must already be on an edge
+  return cnum
+
 def build_graph (input, output, coeffs):
 
     # Initialize empty flow graph
@@ -39,6 +61,12 @@ def build_graph (input, output, coeffs):
     for line in dfile:
       data.append(complex(*map(float,line.strip().strip("()").split(" "))).conjugate())
     dfile.close()
+
+    # Rotate the coefficients for optimization
+    for i in range(0, len(data)):
+      data[i] = rotate(data[i])
+
+    # Time reverse the data and pass
     data.reverse()
     mfilter = gr.fir_filter_ccc(1, data)
 
