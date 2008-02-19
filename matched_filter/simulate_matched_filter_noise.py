@@ -29,7 +29,7 @@ from gnuradio import modulation_utils
 from gmsk     import gmsk_mod
 from gnuradio.eng_option import eng_option
 
-def build_graph (input, raw, snr, freq_offset, coeffs):
+def build_graph (input, raw, snr, freq_offset, coeffs, mag):
 
     # Initialize empty flow graph
     fg = gr.top_block ()
@@ -38,7 +38,7 @@ def build_graph (input, raw, snr, freq_offset, coeffs):
     src = gr.file_source (1, input)
 
     # Set up GMSK modulator, 2 samples per symbol
-    mod = gmsk_mod(fg, 2)
+    mod = gmsk_mod(2)
 
     # Amplify the signal
     tx_amp = 1
@@ -71,15 +71,18 @@ def build_graph (input, raw, snr, freq_offset, coeffs):
     data.reverse()
     mfilter = gr.fir_filter_ccc(1, data)
 
-    # Compute magnitude
-    magnitude = gr.complex_to_mag(1)
 
     # Connect the flow graph
     raw_dst = gr.file_sink (gr.sizeof_float, raw)
-    fg.connect(src, mod.head)
-    fg.connect(mod.tail, (mixer, 0))
+    fg.connect(src, mod)
+    fg.connect(mod, (mixer, 0))
     fg.connect(mixer, (adder, 0))
-    fg.connect(adder, mfilter, magnitude, raw_dst)
+
+    if mag:
+      magnitude = gr.complex_to_mag(1)
+      fg.connect(adder, mfilter, magnitude, raw_dst)
+    else:
+      fg.connect(adder, mfilter, raw_dst)
 
     print "SNR(db): " + str(snr)
     print "Frequency Offset: " + str(freq_offset)
@@ -88,17 +91,20 @@ def build_graph (input, raw, snr, freq_offset, coeffs):
 
 def main (args):
     nargs = len (args)
-    if nargs == 5:
+    mag = False
+    if nargs >= 5:
         input = args[0]
         raw = args[1]
         snr = int(args[2])
         freq_offset = int(args[3])
         coeffs = args[4]
+        if nargs == 6:
+          mag = True
     else:
-        sys.stderr.write ("usage: matched_filter_noise.py input raw_out SNR(db) freq_offset coeffs\n")
+        sys.stderr.write ("usage: matched_filter_noise.py input raw_out SNR(db) freq_offset coeffs mag?\n")
         sys.exit (1)
 
-    fg = build_graph (input, raw, snr, freq_offset, coeffs)
+    fg = build_graph (input, raw, snr, freq_offset, coeffs, mag)
     fg.run()
 
 if __name__ == '__main__':

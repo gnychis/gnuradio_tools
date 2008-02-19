@@ -25,7 +25,7 @@ import sys, array, numpy, math, time
 from gnuradio import gr
 from gnuradio.eng_option import eng_option
 
-def build_graph (input, output, coeffs):
+def build_graph (input, output, coeffs, mag):
 
     # Initialize empty flow graph
     fg = gr.top_block ()
@@ -42,26 +42,31 @@ def build_graph (input, output, coeffs):
     data.reverse()
     mfilter = gr.fir_filter_ccc(1, data)
 
-    # Compute magnitude
-    magnitude = gr.complex_to_mag(1)
-
-    # Connect the flow graph
-    dst = gr.file_sink (gr.sizeof_float, output)
-    fg.connect(src, mfilter, magnitude, dst)
+    # If the output is magnitude, it is float, else its complex
+    if mag:
+      magnitude = gr.complex_to_mag(1)
+      dst = gr.file_sink (gr.sizeof_float, output)
+      fg.connect(src, mfilter, magnitude, dst)
+    else:
+      dst = gr.file_sink (gr.sizeof_gr_complex, output)
+      fg.connect(src, mfilter, dst)
 
     return fg
 
 def main (args):
     nargs = len (args)
-    if nargs == 3:
+    mag = False
+    if nargs >= 3:
         input = args[0]
         output = args[1]
         coeffs = args[2]
+        if nargs == 4:
+          mag = True
     else:
-        sys.stderr.write ("usage: ./matched_filter.py input output coeffs\n")
+        sys.stderr.write ("usage: ./matched_filter.py input output coeffs mag?\n")
         sys.exit (1)
 
-    fg = build_graph (input, output, coeffs)
+    fg = build_graph (input, output, coeffs, mag)
     fg.run()
 
 if __name__ == '__main__':
