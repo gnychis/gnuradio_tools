@@ -73,15 +73,16 @@ def build_graph (input, raw, snr, freq_offset, coeffs, mag):
 
 
     # Connect the flow graph
-    raw_dst = gr.file_sink (gr.sizeof_float, raw)
     fg.connect(src, mod)
     fg.connect(mod, (mixer, 0))
     fg.connect(mixer, (adder, 0))
 
     if mag:
+      raw_dst = gr.file_sink (gr.sizeof_float, raw)
       magnitude = gr.complex_to_mag(1)
       fg.connect(adder, mfilter, magnitude, raw_dst)
     else:
+      raw_dst = gr.file_sink (gr.sizeof_gr_complex, raw)
       fg.connect(adder, mfilter, raw_dst)
 
     print "SNR(db): " + str(snr)
