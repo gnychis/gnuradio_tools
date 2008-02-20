@@ -21,7 +21,7 @@
 
 include $(top_srcdir)/Makefile.common
 
-# Install this stuff so that it ends up as the gnuradio.howto module
+# Install this stuff so that it ends up as the gnuradio.mfilteropt module
 # This usually ends up at:
 #   ${prefix}/lib/python${python_version}/site-packages/gnuradio
 
@@ -42,44 +42,42 @@ NON_LOCAL_IFILES =			\
 
 
 LOCAL_IFILES = 				\
-	$(top_srcdir)/src/lib/howto.i				
+	$(top_srcdir)/src/lib/mfilteropt.i				
 
 # These files are built by SWIG.  The first is the C++ glue.
-# The second is the python wrapper that loads the _howto shared library
+# The second is the python wrapper that loads the _mfilteropt shared library
 # and knows how to call our extensions.
 
 BUILT_SOURCES = 			\
-	howto.cc			\
-	howto.py				
+	mfilteropt.cc			\
+	mfilteropt.py				
 
-# This gets howto.py installed in the right place
+# This gets mfilteropt.py installed in the right place
 ourpython_PYTHON =			\
-	howto.py
+	mfilteropt.py
 
-ourlib_LTLIBRARIES = _howto.la
+ourlib_LTLIBRARIES = _mfilteropt.la
 
 # These are the source files that go into the shared library
-_howto_la_SOURCES = 			\
-	howto.cc			\
-	howto_square_ff.cc		\
-	howto_square2_ff.cc		
+_mfilteropt_la_SOURCES = 			\
+	mfilteropt.cc			\
+	mfilteropt_ccc.cc		\
 
 # magic flags
-_howto_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
+_mfilteropt_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
 
 # link the library against some comon swig runtime code and the 
 # c++ standard library
-_howto_la_LIBADD = 			\
+_mfilteropt_la_LIBADD = 			\
 	$(PYTHON_LDFLAGS)		\
 	-lstdc++			
 
-howto.cc howto.py: $(LOCAL_IFILES) $(ALL_IFILES)
-	$(SWIG) $(SWIGPYTHONARGS) -module howto -o howto.cc $(LOCAL_IFILES)
+mfilteropt.cc mfilteropt.py: $(LOCAL_IFILES) $(ALL_IFILES)
+	$(SWIG) $(SWIGPYTHONARGS) -module mfilteropt -o mfilteropt.cc $(LOCAL_IFILES)
 
 # These headers get installed in ${prefix}/include/gnuradio
 grinclude_HEADERS =			\
-	howto_square_ff.h		\
-	howto_square2_ff.h		
+	mfilteropt_ccc.h
 
 
 # These swig headers get installed in ${prefix}/include/gnuradio/swig
