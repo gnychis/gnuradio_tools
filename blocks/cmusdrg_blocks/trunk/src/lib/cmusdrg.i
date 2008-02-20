@@ -7,8 +7,7 @@
 
 %{
 #include "gnuradio_swig_bug_workaround.h"	// mandatory bug fix
-#include "howto_square_ff.h"
-#include "howto_square2_ff.h"
+#include "mfilteropt_ccc.h"
 #include <stdexcept>
 %}
 
@@ -19,26 +18,14 @@
  * Second arg is the name of the class minus the prefix.
  *
  * This does some behind-the-scenes magic so we can
- * access howto_square_ff from python as howto.square_ff
+ * access mfilteropt_ccc from python as cmusdrg.mfilteropt_ccc
  */
-GR_SWIG_BLOCK_MAGIC(howto,square_ff);
+GR_SWIG_BLOCK_MAGIC(cmusdrg,mfilteropt_ccc);
 
-howto_square_ff_sptr howto_make_square_ff ();
+mfilteropt_ccc_sptr mfilteropt_make_ccc ();
 
-class howto_square_ff : public gr_block
+class mfilteropt_ccc : public gr_block
 {
 private:
-  howto_square_ff ();
-};
-
-// ----------------------------------------------------------------
-
-GR_SWIG_BLOCK_MAGIC(howto,square2_ff);
-
-howto_square2_ff_sptr howto_make_square2_ff ();
-
-class howto_square2_ff : public gr_sync_block
-{
-private:
-  howto_square2_ff ();
+  mfilteropt_ccc ();
 };
