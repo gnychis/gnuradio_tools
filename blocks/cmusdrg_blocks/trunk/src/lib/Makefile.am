@@ -60,8 +60,8 @@ ourlib_LTLIBRARIES = _cmusdrg.la
 
 # These are the source files that go into the shared library
 _cmusdrg_la_SOURCES = 			\
-	cmusdrg.cc			\
-	cmusdrg_mfilteropt_ccc.cc	
+	cmusdrg.cc			
+#	cmusdrg_mfilteropt_ccc.cc	
 
 # magic flags
 _cmusdrg_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
@@ -76,8 +76,8 @@ cmusdrg.cc cmusdrg.py: $(LOCAL_IFILES) $(ALL_IFILES)
 	$(SWIG) $(SWIGPYTHONARGS) -module cmusdrg -o cmusdrg.cc $(LOCAL_IFILES)
 
 # These headers get installed in ${prefix}/include/gnuradio
-grinclude_HEADERS =			\
-	cmusdrg_mfilteropt_ccc.h
+grinclude_HEADERS =			
+#	cmusdrg_mfilteropt_ccc.h
 
 
 # These swig headers get installed in ${prefix}/include/gnuradio/swig
