@@ -21,7 +21,7 @@
 
 include $(top_srcdir)/Makefile.common
 
-# Install this stuff so that it ends up as the gnuradio.mfilteropt module
+# Install this stuff so that it ends up as the gnuradio.cmusdrg module
 # This usually ends up at:
 #   ${prefix}/lib/python${python_version}/site-packages/gnuradio
 
@@ -42,38 +42,38 @@ NON_LOCAL_IFILES =			\
 
 
 LOCAL_IFILES = 				\
-	$(top_srcdir)/src/lib/mfilteropt.i				
+	$(top_srcdir)/src/lib/cmusdrg.i				
 
 # These files are built by SWIG.  The first is the C++ glue.
-# The second is the python wrapper that loads the _mfilteropt shared library
+# The second is the python wrapper that loads the _cmusdrg shared library
 # and knows how to call our extensions.
 
 BUILT_SOURCES = 			\
-	mfilteropt.cc			\
-	mfilteropt.py				
+	cmusdrg.cc			\
+	cmusdrg.py				
 
-# This gets mfilteropt.py installed in the right place
+# This gets cmusdrg.py installed in the right place
 ourpython_PYTHON =			\
-	mfilteropt.py
+	cmusdrg.py
 
-ourlib_LTLIBRARIES = _mfilteropt.la
+ourlib_LTLIBRARIES = _cmusdrg.la
 
 # These are the source files that go into the shared library
-_mfilteropt_la_SOURCES = 			\
-	mfilteropt.cc			\
+_cmusdrg_la_SOURCES = 			\
+	cmusdrg.cc			\
 	mfilteropt_ccc.cc	
 
 # magic flags
-_mfilteropt_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
+_cmusdrg_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
 
 # link the library against some comon swig runtime code and the 
 # c++ standard library
-_mfilteropt_la_LIBADD = 			\
+_cmusdrg_la_LIBADD = 			\
 	$(PYTHON_LDFLAGS)		\
 	-lstdc++			
 
-mfilteropt.cc mfilteropt.py: $(LOCAL_IFILES) $(ALL_IFILES)
-	$(SWIG) $(SWIGPYTHONARGS) -module mfilteropt -o mfilteropt.cc $(LOCAL_IFILES)
+cmusdrg.cc cmusdrg.py: $(LOCAL_IFILES) $(ALL_IFILES)
+	$(SWIG) $(SWIGPYTHONARGS) -module cmusdrg -o cmusdrg.cc $(LOCAL_IFILES)
 
 # These headers get installed in ${prefix}/include/gnuradio
 grinclude_HEADERS =			\
