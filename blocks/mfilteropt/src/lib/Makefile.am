@@ -61,7 +61,7 @@ ourlib_LTLIBRARIES = _mfilteropt.la
 # These are the source files that go into the shared library
 _mfilteropt_la_SOURCES = 			\
 	mfilteropt.cc			\
-	mfilteropt_ccc.cc		\
+	mfilteropt_ccc.cc	
 
 # magic flags
 _mfilteropt_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
