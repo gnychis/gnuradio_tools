@@ -92,7 +92,6 @@ AC_SUBST(STD_DEFINES_AND_INCLUDES)
 AC_CONFIG_FILES([\
 	  Makefile \
 	  config/Makefile \
-	  doc/Makefile \
 	  src/Makefile \
 	  src/lib/Makefile \
 	  src/python/Makefile \
