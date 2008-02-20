@@ -21,10 +21,10 @@ dnl
 
 AC_INIT
 AC_PREREQ(2.57)
-AC_CONFIG_SRCDIR([src/lib/mfilteropt.i])
+AC_CONFIG_SRCDIR([src/lib/cmusdrg.i])
 AM_CONFIG_HEADER(config.h)
 AC_CANONICAL_TARGET([])
-AM_INIT_AUTOMAKE(cmu-sdrg-mfilteropt,3.1.svn)
+AM_INIT_AUTOMAKE(cmu-sdrg-cmusdrg,3.1.svn)
 
 GR_X86_64
 dnl LF_CONFIGURE_CC
