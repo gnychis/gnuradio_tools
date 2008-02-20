@@ -22,7 +22,7 @@
  */
 GR_SWIG_BLOCK_MAGIC(cmusdrg,mfilteropt_ccc);
 
-mfilteropt_ccc_sptr mfilteropt_make_ccc ();
+mfilteropt_ccc_sptr cmusdrg_make_mfilteropt_ccc ();
 
 class mfilteropt_ccc : public gr_block
 {
