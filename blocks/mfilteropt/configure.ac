@@ -21,10 +21,10 @@ dnl
 
 AC_INIT
 AC_PREREQ(2.57)
-AC_CONFIG_SRCDIR([src/lib/howto.i])
+AC_CONFIG_SRCDIR([src/lib/mfilteropt.i])
 AM_CONFIG_HEADER(config.h)
 AC_CANONICAL_TARGET([])
-AM_INIT_AUTOMAKE(gr-howto-write-a-block,3.1.svn)
+AM_INIT_AUTOMAKE(cmu-sdrg-mfilteropt,3.1.svn)
 
 GR_X86_64
 dnl LF_CONFIGURE_CC
