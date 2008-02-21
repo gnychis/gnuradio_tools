@@ -38,11 +38,11 @@ deg_offset=math.atan(out.imag/out.real)*(180/math.pi)
 deg_offset_opt=math.atan(out_opt.imag/out_opt.real)*(180/math.pi)
 
 print "Normal Coefficients:"
-print "    Raw: " + str(out)
-print "    Magnitude: " + str(math.sqrt(out.real*out.real+out.imag*out.imag))
+#print "    Raw: " + str(out)
+print "    Correlation: " + str(math.sqrt(out.real*out.real+out.imag*out.imag))
 print "    Offset: " + str(deg_offset)
 print ""
 print "Optimized Coefficients:"
-print "    Raw: " + str(out_opt)
-print "    Magnitude: " + str(math.sqrt(out_opt.real*out_opt.real+out_opt.imag*out_opt.imag))
+#print "    Raw: " + str(out_opt)
+print "    Correlation: " + str(math.sqrt(out_opt.real*out_opt.real+out_opt.imag*out_opt.imag))
 print "    Offset: " + str(deg_offset_opt)
