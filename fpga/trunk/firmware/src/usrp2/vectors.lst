@@ -1,0 +1,181 @@
+                              1 	.include "../common/vectors.a51"
+                              1 ;;; -*- asm -*-
+                              2 ;;;
+                              3 ;;; Copyright 2003 Free Software Foundation, Inc.
+                              4 ;;; 
+                              5 ;;; This file is part of GNU Radio
+                              6 ;;; 
+                              7 ;;; GNU Radio is free software; you can redistribute it and/or modify
+                              8 ;;; it under the terms of the GNU General Public License as published by
+                              9 ;;; the Free Software Foundation; either version 3, or (at your option)
+                             10 ;;; any later version.
+                             11 ;;; 
+                             12 ;;; GNU Radio is distributed in the hope that it will be useful,
+                             13 ;;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+                             14 ;;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+                             15 ;;; GNU General Public License for more details.
+                             16 ;;; 
+                             17 ;;; You should have received a copy of the GNU General Public License
+                             18 ;;; along with GNU Radio; see the file COPYING.  If not, write to
+                             19 ;;; the Free Software Foundation, Inc., 51 Franklin Street,
+                             20 ;;; Boston, MA 02110-1301, USA.
+                             21 ;;; 
+                             22 
+                             23 ;;; Interrupt vectors.
+                             24 
+                             25 ;;; N.B. This object module must come first in the list of modules
+                             26 
+                             27 	.module vectors
+                             28 
+                             29 ;;; ----------------------------------------------------------------
+                             30 ;;;		  standard FX2 interrupt vectors
+                             31 ;;; ----------------------------------------------------------------
+                             32 
+                             33 	.area CSEG (CODE)
+                             34 	.area GSINIT (CODE)
+                             35 	.area CSEG (CODE)
+   0000                      36 __standard_interrupt_vector::
+   0000                      37 __reset_vector::
+   0000 02s00r00             38 	ljmp	s_GSINIT
+                             39 	
+                             40 	;; 13 8-byte entries.  We point them all at __isr_nop
+   0003 02s00r6B             41 	ljmp	__isr_nop	; 3 bytes
+   0006                      42 	.ds	5		; + 5 = 8 bytes for vector slot
+   000B 02s00r6B             43 	ljmp	__isr_nop
+   000E                      44 	.ds	5
+   0013 02s00r6B             45 	ljmp	__isr_nop
+   0016                      46 	.ds	5
+   001B 02s00r6B             47 	ljmp	__isr_nop
+   001E                      48 	.ds	5
+   0023 02s00r6B             49 	ljmp	__isr_nop
+   0026                      50 	.ds	5
+   002B 02s00r6B             51 	ljmp	__isr_nop
+   002E                      52 	.ds	5
+   0033 02s00r6B             53 	ljmp	__isr_nop
+   0036                      54 	.ds	5
+   003B 02s00r6B             55 	ljmp	__isr_nop
+   003E                      56 	.ds	5
+   0043 02s00r6B             57 	ljmp	__isr_nop
+   0046                      58 	.ds	5
+   004B 02s00r6B             59 	ljmp	__isr_nop
+   004E                      60 	.ds	5
+   0053 02s00r6B             61 	ljmp	__isr_nop
+   0056                      62 	.ds	5
+   005B 02s00r6B             63 	ljmp	__isr_nop
+   005E                      64 	.ds	5
+   0063 02s00r6B             65 	ljmp	__isr_nop
+   0066                      66 	.ds	5
+                             67 
+   006B                      68 __isr_nop::
+   006B 32                   69 	reti
+                             70 
+                             71 ;;; ----------------------------------------------------------------
+                             72 ;;; the FIFO/GPIF autovector.  14 4-byte entries.
+                             73 ;;; must start on a 128 byte boundary.
+                             74 ;;; ----------------------------------------------------------------
+                             75 	
+                    0080     76 	. = __reset_vector + 0x0080
+                             77 		
+   0080                      78 __fifo_gpif_autovector::
+   0080 02s00r6B             79 	ljmp	__isr_nop
+   0083 00                   80 	nop	
+   0084 02s00r6B             81 	ljmp	__isr_nop
+   0087 00                   82 	nop	
+   0088 02s00r6B             83 	ljmp	__isr_nop
+   008B 00                   84 	nop	
+   008C 02s00r6B             85 	ljmp	__isr_nop
+   008F 00                   86 	nop	
+   0090 02s00r6B             87 	ljmp	__isr_nop
+   0093 00                   88 	nop	
+   0094 02s00r6B             89 	ljmp	__isr_nop
+   0097 00                   90 	nop	
+   0098 02s00r6B             91 	ljmp	__isr_nop
+   009B 00                   92 	nop	
+   009C 02s00r6B             93 	ljmp	__isr_nop
+   009F 00                   94 	nop	
+   00A0 02s00r6B             95 	ljmp	__isr_nop
+   00A3 00                   96 	nop	
+   00A4 02s00r6B             97 	ljmp	__isr_nop
+   00A7 00                   98 	nop	
+   00A8 02s00r6B             99 	ljmp	__isr_nop
+   00AB 00                  100 	nop	
+   00AC 02s00r6B            101 	ljmp	__isr_nop
+   00AF 00                  102 	nop	
+   00B0 02s00r6B            103 	ljmp	__isr_nop
+   00B3 00                  104 	nop	
+   00B4 02s00r6B            105 	ljmp	__isr_nop
+   00B7 00                  106 	nop	
+                            107 
+                            108 	
+                            109 ;;; ----------------------------------------------------------------
+                            110 ;;; the USB autovector.  32 4-byte entries.
+                            111 ;;; must start on a 256 byte boundary.
+                            112 ;;; ----------------------------------------------------------------
+                            113 
+                    0100    114 	. = __reset_vector + 0x0100
+                            115 	
+   0100                     116 __usb_autovector::
+   0100 02s00r6B            117 	ljmp	__isr_nop
+   0103 00                  118 	nop
+   0104 02s00r6B            119 	ljmp	__isr_nop
+   0107 00                  120 	nop
+   0108 02s00r6B            121 	ljmp	__isr_nop
+   010B 00                  122 	nop
+   010C 02s00r6B            123 	ljmp	__isr_nop
+   010F 00                  124 	nop
+   0110 02s00r6B            125 	ljmp	__isr_nop
+   0113 00                  126 	nop
+   0114 02s00r6B            127 	ljmp	__isr_nop
+   0117 00                  128 	nop
+   0118 02s00r6B            129 	ljmp	__isr_nop
+   011B 00                  130 	nop
+   011C 02s00r6B            131 	ljmp	__isr_nop
+   011F 00                  132 	nop
+   0120 02s00r6B            133 	ljmp	__isr_nop
+   0123 00                  134 	nop
+   0124 02s00r6B            135 	ljmp	__isr_nop
+   0127 00                  136 	nop
+   0128 02s00r6B            137 	ljmp	__isr_nop
+   012B 00                  138 	nop
+   012C 02s00r6B            139 	ljmp	__isr_nop
+   012F 00                  140 	nop
+   0130 02s00r6B            141 	ljmp	__isr_nop
+   0133 00                  142 	nop
+   0134 02s00r6B            143 	ljmp	__isr_nop
+   0137 00                  144 	nop
+   0138 02s00r6B            145 	ljmp	__isr_nop
+   013B 00                  146 	nop
+   013C 02s00r6B            147 	ljmp	__isr_nop
+   013F 00                  148 	nop
+   0140 02s00r6B            149 	ljmp	__isr_nop
+   0143 00                  150 	nop
+   0144 02s00r6B            151 	ljmp	__isr_nop
+   0147 00                  152 	nop
+   0148 02s00r6B            153 	ljmp	__isr_nop
+   014B 00                  154 	nop
+   014C 02s00r6B            155 	ljmp	__isr_nop
+   014F 00                  156 	nop
+   0150 02s00r6B            157 	ljmp	__isr_nop
+   0153 00                  158 	nop
+   0154 02s00r6B            159 	ljmp	__isr_nop
+   0157 00                  160 	nop
+   0158 02s00r6B            161 	ljmp	__isr_nop
+   015B 00                  162 	nop
+   015C 02s00r6B            163 	ljmp	__isr_nop
+   015F 00                  164 	nop
+   0160 02s00r6B            165 	ljmp	__isr_nop
+   0163 00                  166 	nop
+   0164 02s00r6B            167 	ljmp	__isr_nop
+   0167 00                  168 	nop
+   0168 02s00r6B            169 	ljmp	__isr_nop
+   016B 00                  170 	nop
+   016C 02s00r6B            171 	ljmp	__isr_nop
+   016F 00                  172 	nop
+   0170 02s00r6B            173 	ljmp	__isr_nop
+   0173 00                  174 	nop
+   0174 02s00r6B            175 	ljmp	__isr_nop
+   0177 00                  176 	nop
+   0178 02s00r6B            177 	ljmp	__isr_nop
+   017B 00                  178 	nop
+   017C 02s00r6B            179 	ljmp	__isr_nop
+   017F 00                  180 	nop

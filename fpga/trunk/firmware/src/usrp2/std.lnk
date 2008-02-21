@@ -1,0 +1,32 @@
+-myuxi
+-Y
+-v 0x0800
+-w 0x1800
+-b HOME = 0x0000
+-b XSEG = 0x1800
+-b ISEG = 0x0080
+-b BSEG = 0x0000
+-b USBDESCSEG = 0xE000
+-k ../../lib
+-k /usr/bin/../share/sdcc/lib/small
+-k /usr/share/sdcc/lib/small
+-l libfx2.lib
+-l mcs51
+-l libsdcc
+-l libint
+-l liblong
+-l libfloat
+vectors.rel
+usrp_main.rel
+usrp_common.rel
+board_specific.rel
+fpga_load.rel
+fpga_rev2.rel
+init_gpif.rel
+usrp_gpif.rel
+usb_descriptors.rel
+spi.rel
+eeprom_io.rel
+_startup.rel
+
+-e
