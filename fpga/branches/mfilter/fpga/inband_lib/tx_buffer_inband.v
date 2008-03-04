@@ -22,7 +22,7 @@ module tx_buffer_inband
     //system stop
     output wire stop, output wire [15:0] stop_time);
 	
-   parameter NUM_CHAN	 =      2 ;
+   parameter NUM_CHAN	 =      2;
    /* Debug paramters */
    parameter STROBE_RATE_0 =   8'd1 ;
    parameter STROBE_RATE_1 =   8'd2 ;
@@ -107,7 +107,7 @@ module tx_buffer_inband
     .reset(reset), .txclk(txclk), .WR_channel(chan_WR),
     .WR_done_channel(chan_done), .ram_data(tx_data_bus));
 	
-   generate for (i = 0 ; i < NUM_CHAN; i = i + 1)
+   /*generate for (i = 0 ; i < NUM_CHAN; i = i + 1)
      begin : generate_channel_readers
        assign tx_underrun[i] = chan_underrun[i];
 
@@ -127,7 +127,7 @@ module tx_buffer_inband
         .tx_empty(chan_txempty[i]), .rssi(rssi[i]), .debug(debug[i]),
         .threshhold(threshhold), .rssi_wait(rssi_wait));	         
     end
-    endgenerate
+    endgenerate*/
 
 
    channel_ram tx_cmd_packet_fifo 
