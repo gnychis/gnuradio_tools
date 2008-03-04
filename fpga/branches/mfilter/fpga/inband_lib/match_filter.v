@@ -14,27 +14,26 @@ module match_filter
 
     reg [15:0] r [191:0]; //storing space -- real part
     reg [15:0] s [191:0]; //storing space -- imaginary part
-    reg [7:0]  count;     //number of sample stored
 
     //storing the sample: consider using a lock
     always @ (posedge clk)
         if (reset)
-            count <= 0;
-        else if (rxstrobe && count >= co_length)
+          begin
+            for( i = 0; i < 192; i = i + 1)
+              begin
+                r[i] <= 0;
+                s[i] <= 0;
+              end
+          end 
+        else if (rxstrobe)
           begin
             for( i = 0; i < 191; i = i + 1 ) 
               begin
-                r[i+1] <= r[i];
-                s[i+1] <= s[i];   
+                r[i+1] <= (i < (co_length - 8'd1)) ? r[i] : 0;
+                s[i+1] <= (i < (co_length - 8'd1)) ? s[i] : 0;   
               end
             r[0] <= real;
             s[0] <= img;
-          end
-        else if (rxstrobe && count < co_length)
-          begin
-            r[count] <= real;
-            s[count] <= img;
-            count <= count + 8'd1;
           end
 
     reg [4:0] state;
@@ -43,9 +42,11 @@ module match_filter
     always @ (posedge clk)
         if (reset)
             state <= 0;
-        else if (count < co_length || !co_valid || rxstrobe)
+        else if (count < co_length || !co_valid)
             state <= 0;
-        else if (state != 5'd9)
+        else if (rxstrobe)
+            state <= 5'd1;
+        else if (state < 5'd8)
             state <= state + 5'd1;
         else
             state <= 5'd0;
@@ -64,14 +65,14 @@ module match_filter
                 level1[i] <= 16'd0;
               end
           end
-        else if (state == 5'd2 || state == 5'd4 || state == 5'd6)
+        else if (state == 5'd1 || state == 5'd3 || state == 5'd5)
           begin
             for( i = 0; i < 64; i = i + 1)
               begin
-                assign rdata[i] = (state == 5'd2) ? (r[i]) : ((state == 5'd4) ? r[i+64] : r[i+128]); 
-                assign sdata[i] = (state == 5'd2) ? (s[i]) : ((state == 5'd4) ? s[i+64] : s[i+128]);                    
-                assign cdata[i] = (state == 5'd2) ? ({co[2*i], co[2*i+1]}) : 
-                               ((state == 5'd4) ? ({co[2*i+128], co[2*i+129]}) : ({co[2*i+256], co[2*i+257]}));
+                assign rdata[i] = (state == 5'd1) ? (r[i]) : ((state == 5'd3) ? r[i+64] : r[i+128]); 
+                assign sdata[i] = (state == 5'd1) ? (s[i]) : ((state == 5'd3) ? s[i+64] : s[i+128]);                    
+                assign cdata[i] = (state == 5'd1) ? ({co[2*i], co[2*i+1]}) : 
+                               ((state == 5'd3) ? ({co[2*i+128], co[2*i+129]}) : ({co[2*i+256], co[2*i+257]}));
                 if (cdata == 2'b00)
                     level1[i] <= rdata[i] + sdata[i];
                 else if (cdata == 2'b01)
@@ -94,7 +95,7 @@ module match_filter
                 level2[i] <= 31'd0;
               end
           end
-        else if (state == 5'd3 || state == 5'd5 || state == 5'd7)
+        else if (state == 5'd2 || state == 5'd4 || state == 5'd6)
           begin
             for( i = 0; i < 8; i = i + 1)
               begin
@@ -113,13 +114,13 @@ module match_filter
             level3[1] < = 0;
             level3[2] < = 0;
           end
-        else if (state == 5'd4)
+        else if (state == 5'd3)
           level3[0] < = level2[0] + level2[1] + level2[2] + level2[3] + 
                         level2[4] + level2[5] + level2[6] + level2[7];
-        else if (state == 5'd6)
+        else if (state == 5'd5)
           level3[1] < = level2[0] + level2[1] + level2[2] + level2[3] + 
                         level2[4] + level2[5] + level2[6] + level2[7];
-        else if (state == 5'd8)
+        else if (state == 5'd7)
           level3[2] < = level2[0] + level2[1] + level2[2] + level2[3] + 
                         level2[4] + level2[5] + level2[6] + level2[7];
    
@@ -134,7 +135,7 @@ module match_filter
             final_result <= 0;
             final_valid <= 0;
           end
-        else if (state == 5'd9)
+        else if (state == 5'd8)
           begin
             final_result <= level3[0] + level3[1] + level3[2];
             final_valid <= 1;
