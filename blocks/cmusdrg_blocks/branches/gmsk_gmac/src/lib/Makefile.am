@@ -62,7 +62,9 @@ ourlib_LTLIBRARIES = _cmusdrg.la
 _cmusdrg_la_SOURCES = 			\
 	cmusdrg.cc	\
 	gmac.cc	\
-	gmac_mbh.cc
+	gmsk.cc	\
+	gmac_mbh.cc	\
+	gmsk_mbh.cc
 
 # magic flags
 _cmusdrg_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
@@ -83,7 +85,8 @@ cmusdrg.cc cmusdrg.py: $(LOCAL_IFILES) $(ALL_IFILES)
 
 # These headers get installed in ${prefix}/include/gnuradio
 grinclude_HEADERS =			\
-	gmac.h
+	gmac.h	\
+	gmsk.h
 
 
 # These swig headers get installed in ${prefix}/include/gnuradio/swig
