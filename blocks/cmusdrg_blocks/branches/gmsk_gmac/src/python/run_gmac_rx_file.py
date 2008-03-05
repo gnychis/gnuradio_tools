@@ -1,16 +1,11 @@
 #!/usr/bin/env python
 from gnuradio import usrp
 import gnuradio.gr.gr_threading as _threading
-from gnuradio import dhalperi
+from gnuradio import cmusdrg
 import sys
 
-#############################################################################
-#
 # Ideally, this is a Python thread that will be used to give control to C++
 # while keeping the Python alive
-#
-######
-#
 class cpp_thread(_threading.Thread):
     def __init__(self, usrp_ref):
         _threading.Thread.__init__(self)
@@ -21,25 +16,13 @@ class cpp_thread(_threading.Thread):
         self.usrp_ref.start()
         while self.keep_running:
             self.usrp_ref.packet()
-#############################################################################
 
-#############################################################################
-#
 # DEBUG
-#
-#######
 def DEBUG(s):
     print s
     sys.stdout.flush()
 
-#############################################################################
-
-############################################################################
-#
-# Normal stuff -- setup USRP
-#
-######
-#
+#### Setup the USRP
 # Constants
 interp = 16
 freq = 2.425e9
@@ -63,13 +46,8 @@ if not u.tune(subdev._which, subdev, freq):
 subdev.set_enable(True)
 DEBUG("USRP is on!")
 sys.stdout.flush()
-############################################################################
 
-############################################################################
-#
-# Here is where life gets crazy!
-#
-######
+###### HACK
 #
 # First, get the current USRP
 usrp = u.get_usrp()
