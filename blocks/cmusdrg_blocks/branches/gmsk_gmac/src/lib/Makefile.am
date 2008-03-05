@@ -65,8 +65,8 @@ _cmusdrg_la_SOURCES = 			\
 	gmsk.cc	\
 	gmac_mbh.cc	\
 	gmsk_mbh.cc	\
-	test_gmac_tx_file.cc	\
-	test_gmac_rx_file.cc
+	gmac_tx_file.cc	\
+	gmac_rx_file.cc
 
 # magic flags
 _cmusdrg_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
@@ -102,3 +102,9 @@ MOSTLYCLEANFILES = $(BUILT_SOURCES) *.pyc
 dist-hook:
 	@for file in $(BUILT_SOURCES); do echo $(RM) $(distdir)/$$file; done
 	@for file in $(BUILT_SOURCES); do $(RM) $(distdir)/$$file; done
+
+#noinst_PROGRAMS = 	\
+#	run_gmac_rx_file
+
+#run_gmac_rx_file_SOURCES 	= run_gmac_rx_file.cc 
+#run_gmac_rx_file_LDADD   	= _cmusdrg.la

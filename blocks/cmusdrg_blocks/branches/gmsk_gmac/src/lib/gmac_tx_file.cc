@@ -36,6 +36,7 @@
 #include <string.h>
 #include <iostream>
 #include <fstream>
+#include <sys/time.h>
 
 #include <gmsk.h>
 #include <gmac.h>
@@ -43,7 +44,7 @@
 
 static bool verbose = false;
 
-class test_gmac_rx_file : public mb_mblock
+class gmac_tx_file : public mb_mblock
 {
   mb_port_sptr 	d_tx;
   mb_port_sptr  d_rx;
@@ -52,22 +53,24 @@ class test_gmac_rx_file : public mb_mblock
 
   enum state_t {
     INIT,
-    DATA_WAIT,
-    SEND_ACK,
+    TRANSMITTING,
+    ACK_WAIT,
   };
 
   state_t	d_state;
   long		d_nframes_xmitted;
   bool		d_done_sending;
 
-  std::ofstream d_ofile;
+  std::ifstream d_ifile;
 
   long d_local_addr;
   long d_dst_addr;
 
+  struct timeval d_start, d_end;
+
  public:
-  test_gmac_rx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg);
-  ~test_gmac_rx_file();
+  gmac_tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg);
+  ~gmac_tx_file();
   void handle_message(mb_message_sptr msg);
 
  protected:
@@ -75,13 +78,15 @@ class test_gmac_rx_file : public mb_mblock
   void close_usrp();
   void allocate_channel();
   void send_packets();
-  void enter_data_wait();
-  void build_and_send_ack(long dst);
+  void enter_transmitting();
+  void build_and_send_next_frame();
+  void handle_xmit_response(pmt_t invocation_handle);
   void handle_response_rx_pkt(pmt_t data);
   void enter_closing_channel();
+  void enter_ack_wait();
 };
 
-test_gmac_rx_file::test_gmac_rx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg)
+gmac_tx_file::gmac_tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(runtime, instance_name, user_arg),
     d_state(INIT), 
     d_nframes_xmitted(0),
@@ -90,11 +95,12 @@ test_gmac_rx_file::test_gmac_rx_file(mb_runtime *runtime, const std::string &ins
 
   pmt_t file = pmt_nth(0, user_arg);
   d_local_addr = pmt_to_long(pmt_nth(1, user_arg));
+  d_dst_addr = pmt_to_long(pmt_nth(2, user_arg));
   
   // Open a stream to the input file and ensure it's open
-  d_ofile.open(pmt_symbol_to_string(file).c_str(), std::ios::binary|std::ios::out);
+  d_ifile.open(pmt_symbol_to_string(file).c_str(), std::ios::binary|std::ios::in);
 
-  if(!d_ofile.is_open()) {
+  if(!d_ifile.is_open()) {
     std::cout << "Error opening input file\n";
     shutdown_all(PMT_F);
     return;
@@ -109,16 +115,16 @@ test_gmac_rx_file::test_gmac_rx_file(mb_runtime *runtime, const std::string &ins
   connect("self", "rx0", "GMAC", "rx0");
   connect("self", "cs", "GMAC", "cs");
 
-  std::cout << "[TEST_GMAC_RX_FILE] Waiting...\n";
 }
 
-test_gmac_rx_file::~test_gmac_rx_file()
+gmac_tx_file::~gmac_tx_file()
 {
-  d_ofile.close();
+
+  d_ifile.close();
 }
 
 void
-test_gmac_rx_file::handle_message(mb_message_sptr msg)
+gmac_tx_file::handle_message(mb_message_sptr msg)
 {
   pmt_t event = msg->signal();
   pmt_t data = msg->data();
@@ -128,10 +134,10 @@ test_gmac_rx_file::handle_message(mb_message_sptr msg)
   pmt_t status = PMT_F;
   pmt_t dict = PMT_NIL;
   std::string error_msg;
-  
+
   // Dispatch based on state
   switch(d_state) {
-
+    
     //------------------------------ INIT ---------------------------------//
     // When GMAC is done initializing, it will send a response
     case INIT:
@@ -140,8 +146,11 @@ test_gmac_rx_file::handle_message(mb_message_sptr msg)
         handle = pmt_nth(0, data);
         status = pmt_nth(1, data);
 
+        // Set start time to keep track of performance
+        gettimeofday(&d_start, NULL);
+
         if(pmt_eq(status, PMT_T)) {
-          enter_data_wait();
+          enter_transmitting();
           return;
         }
         else {
@@ -151,31 +160,18 @@ test_gmac_rx_file::handle_message(mb_message_sptr msg)
       }
       goto unhandled;
 
-    //-------------------------- DATA_WAIT ----------------------------//
+    //-------------------------- TRANSMITTING ----------------------------//
     // In the transmit state we count the number of underruns received and
     // ballpark the number with an expected count (something >1 for starters)
-    case DATA_WAIT:
+    case TRANSMITTING:
       
-      // Check that the transmits are OK
-      if (pmt_eq(event, s_response_rx_pkt)){
-        handle_response_rx_pkt(data);
-        return;
-      }
-      goto unhandled;
-
-    //----------------------- ACK WAIT ----------------------------------//
-    // In the state of waiting for an ACK, to re-enter the transmit state
-    case SEND_ACK:
-
       // Check that the transmits are OK
       if (pmt_eq(event, s_response_tx_pkt)){
         handle = pmt_nth(0, data);
         status = pmt_nth(1, data);
 
-        // If the ACK send was successful, lets go back to waiting for data
         if (pmt_eq(status, PMT_T)){
-          d_cs->send(s_cmd_rx_enable, pmt_list1(PMT_NIL));
-          enter_data_wait();
+          handle_xmit_response(handle);
           return;
         }
         else {
@@ -183,8 +179,19 @@ test_gmac_rx_file::handle_message(mb_message_sptr msg)
           goto bail;
         }
       }
+      goto unhandled;
 
-    goto unhandled;
+    //----------------------- ACK WAIT ----------------------------------//
+    // In the state of waiting for an ACK, to re-enter the transmit state
+    case ACK_WAIT:
+
+      // Check the incoming data
+      if (pmt_eq(event, s_response_rx_pkt)){
+        handle_response_rx_pkt(data);
+        return;
+      }
+
+      goto unhandled;
 
   }
 
@@ -197,33 +204,48 @@ test_gmac_rx_file::handle_message(mb_message_sptr msg)
 
  // Received an unhandled message for a specific state
  unhandled:
-  if(verbose && 0 && !pmt_eq(event, pmt_intern("%shutdown")))
-    std::cout << "[TEST_GMAC_RX_FILE] unhandled msg: " << msg
+  if(verbose && !pmt_eq(event, pmt_intern("%shutdown")))
+    std::cout << "[GMAC_TX_FILE] unhandled msg: " << msg
               << "in state "<< d_state << std::endl;
 }
 
-// Wait until we get incoming data...
 void
-test_gmac_rx_file::enter_data_wait()
+gmac_tx_file::enter_transmitting()
 {
-  d_state = DATA_WAIT;
+  d_state = TRANSMITTING;
+
+  d_cs->send(s_cmd_carrier_sense_deadline,
+             pmt_list2(PMT_NIL,
+                       pmt_from_long(50000000)));
+  
+  // Disable RX to save bandwidth and processing
+  d_cs->send(s_cmd_rx_disable, pmt_list1(PMT_NIL));
+
+  build_and_send_next_frame();
+
 }
 
 void
-test_gmac_rx_file::build_and_send_ack(long dst)
+gmac_tx_file::build_and_send_next_frame()
 {
   size_t ignore;
   long n_bytes;
-
-  d_state = SEND_ACK;
 
   // Before we send the frame, we stop the RX port since we are not interested
   // in decoding while transmitting, and full processing can go to TX
   d_cs->send(s_cmd_rx_disable, pmt_list1(PMT_NIL));
 
   // Let's read in as much as possible to fit in a frame
-  char data[1];
-  n_bytes=1;
+  char data[MAX_FRAME_SIZE-gmsk::max_frame_payload()];
+  d_ifile.read((char *)&data[0], sizeof(data));
+
+  // Use gcount() and test if end of stream was met
+  if(!d_ifile) {
+    n_bytes = d_ifile.gcount();
+    d_done_sending = true;
+  } else {
+    n_bytes = sizeof(data);
+  }
 
   // Make the PMT data, get a writable pointer to it, then copy our data in
   pmt_t uvec = pmt_make_u8vector(n_bytes, 0);
@@ -233,34 +255,67 @@ test_gmac_rx_file::build_and_send_ack(long dst)
   // Per packet properties
   pmt_t tx_properties = pmt_make_dict();
 
-  pmt_dict_set(tx_properties, pmt_intern("ack"), PMT_T);
-
   pmt_t timestamp = pmt_from_long(0xffffffff);	// NOW
   d_tx->send(s_cmd_tx_pkt,
-	     pmt_list5(PMT_NIL,   // invocation-handle
+	     pmt_list5(pmt_from_long(d_nframes_xmitted),   // invocation-handle
            pmt_from_long(d_local_addr),// src
-           pmt_from_long(dst),// destination
+           pmt_from_long(d_dst_addr),// destination
 		       uvec,				    // the samples
            tx_properties)); // per pkt properties
 
   d_nframes_xmitted++;
 
   if(verbose)
-    std::cout << "[TEST_GMAC_RX_FILE] Transmitted ACK from " << d_local_addr
-              << " to " << dst
-              << std::endl;
+    std::cout << "[GMAC_TX_FILE] Transmitted frame from " << d_local_addr
+              << " to " << d_dst_addr 
+              << " of size " << n_bytes << " bytes\n";
+
+  std::cout << ".";
+  fflush(stdout);
 }
 
 
 void
-test_gmac_rx_file::handle_response_rx_pkt(pmt_t data)
+gmac_tx_file::handle_xmit_response(pmt_t handle)
+{
+  if (d_done_sending && pmt_to_long(handle)==(d_nframes_xmitted-1)){
+    gettimeofday(&d_end, NULL);
+    std::cout << "Transfer time: " 
+              << (d_end.tv_sec-d_start.tv_sec)
+              << "."
+              << (d_end.tv_usec-d_start.tv_usec)
+              << std::endl;
+    fflush(stdout);
+    shutdown_all(PMT_T);
+  }
+
+  // We now want to enter the wait for ACK state
+  enter_ack_wait();
+
+}
+
+// Enter the state where we re-enable the RX chain and wait for an ACK to be
+// decoded.
+void
+gmac_tx_file::enter_ack_wait()
+{
+  d_state = ACK_WAIT;
+
+  d_cs->send(s_cmd_rx_enable, pmt_list1(PMT_NIL));
+
+  if(verbose)
+    std::cout << "[GMAC_TX_FILE] Entering ACK wait state\n";
+}
+
+void
+gmac_tx_file::handle_response_rx_pkt(pmt_t data)
 {
   pmt_t invocation_handle = pmt_nth(0, data);
   pmt_t payload = pmt_nth(1, data);
   pmt_t pkt_properties = pmt_nth(2, data);
 
   long lsrc=0, ldst=0;
-  bool bcrc;
+  bool back=false;
 
   if(pmt_is_dict(pkt_properties)) {
 
@@ -277,39 +332,37 @@ test_gmac_rx_file::handle_response_rx_pkt(pmt_t data)
       if(!pmt_eqv(dst, PMT_NIL))
         ldst = pmt_to_long(dst);
     }
-    if(pmt_t crc = pmt_dict_ref(pkt_properties,
-                                pmt_intern("crc"),
+
+    if(pmt_t ack = pmt_dict_ref(pkt_properties,
+                                pmt_intern("ack"),
                                 PMT_NIL)) {
-      if(pmt_eqv(crc, PMT_T))
-        bcrc = true;
+      if(pmt_eqv(ack, PMT_T))
+        back = true;
       else
-        bcrc = false;
+        back = false;
     }
   }
-
+  
   // Ensure frame is destined to us, if so we will ACK
   if(ldst != d_local_addr) {
     if(verbose)
-      std::cout << "[TEST_GMAC_RX_FILE] Received frame not destined to us\n";
+      std::cout << "[GMAC_TX_FILE] Received ACK not destined to us\n";
+    return;
+  }
+
+  if(!back) {
+    if(verbose)
+      std::cout << "[GMAC_TX_FILE] Received a frame that was NOT an ACK\n";
     return;
   }
   
   if(verbose)
-    std::cout << "[TEST_GMAC_RX_FILE] Received frame destined for us!\n";
+    std::cout << "[GMAC_TX_FILE] Received ACK destined for us!\n";
 
-  // Data was destined for us, let's dump it to the output file
-  size_t nbytes;
-  char *payload_data = (char *)pmt_u8vector_writeable_elements(payload, nbytes);
-  d_ofile.write((const char *)payload_data, nbytes);
-  d_ofile.flush();
-
-  // Now that we've determined it's for us, we ACK the source
-  if(bcrc)
-    build_and_send_ack(lsrc);
-
-  std::cout << ".";
-  fflush(stdout);
+  // Let's hop back to transmitting, if we're not done sending
+  if(!d_done_sending)
+    enter_transmitting();
 
 }
 
-REGISTER_MBLOCK_CLASS(test_gmac_rx_file);
+REGISTER_MBLOCK_CLASS(gmac_tx_file);

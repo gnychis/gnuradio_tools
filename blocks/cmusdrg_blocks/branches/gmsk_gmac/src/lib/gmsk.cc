@@ -333,7 +333,7 @@ void gmsk::mod(pmt_t data) {
       fir_hack[i] = d_gf_history[i];
 
   // Now, insert the rest starting after the history offset
-  for(int i=0; i<bts_output.size(); i++)
+  for(int i=0; i<(int)bts_output.size(); i++)
     fir_hack[i+gf_fir_history_size] = bts_output[i];
 
   // Now we pass the data on to the Gaussian filter
@@ -451,7 +451,7 @@ void gmsk::demod(pmt_t data)
       fm_fir_hack[i] = d_fm_history[i];
 
   // Insert the rest now
-  for(int i=0; i<cf_output.size(); i++)
+  for(int i=0; i<(int)cf_output.size(); i++)
     fm_fir_hack[i+fm_history_size] = cf_output[i];
 
   // Pass through the FM
@@ -736,7 +736,7 @@ void gmsk::framer(const std::vector<unsigned char> input)
         if(verbose)
           std::cout << "[GMSK] Pushing up demoded data\n";
 
-payload_exit:
+//payload_exit:
         // Return back to the search for header state
         d_payload_bits.clear();
         d_state = SYNC_SEARCH;
