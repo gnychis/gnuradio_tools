@@ -61,6 +61,7 @@ ourlib_LTLIBRARIES = _cmusdrg.la
 # These are the source files that go into the shared library
 _cmusdrg_la_SOURCES = 			\
 	cmusdrg.cc	\
+	cmusdrg_mblock_bootstrap.cc	\
 	gmac.cc	\
 	gmsk.cc	\
 	gmac_mbh.cc	\
@@ -87,13 +88,15 @@ cmusdrg.cc cmusdrg.py: $(LOCAL_IFILES) $(ALL_IFILES)
 
 # These headers get installed in ${prefix}/include/gnuradio
 grinclude_HEADERS =			\
+	cmusdrg_mblock_bootstrap.h	\
 	gmac.h	\
 	gmsk.h
 
 
 # These swig headers get installed in ${prefix}/include/gnuradio/swig
 swiginclude_HEADERS = 			\
-	$(LOCAL_IFILES)
+	$(LOCAL_IFILES)	\
+	cmusdrg_mblock_bootstrap.i
 
 
 MOSTLYCLEANFILES = $(BUILT_SOURCES) *.pyc
