@@ -25,12 +25,10 @@
 
 #include <mb_mblock.h>
 #include <mb_runtime.h>
-#include <mb_runtime_nop.h>		// QA only
 #include <mb_protocol_class.h>
 #include <mb_exception.h>
 #include <mb_msg_queue.h>
 #include <mb_message.h>
-#include <mb_mblock_impl.h>
 #include <mb_msg_accepter.h>
 #include <mb_class_registry.h>
 #include <pmt.h>
@@ -315,19 +313,3 @@ test_gmac_rx_file::handle_response_rx_pkt(pmt_t data)
 }
 
 REGISTER_MBLOCK_CLASS(test_gmac_rx_file);
-
-
-// ----------------------------------------------------------------
-
-int
-main (int argc, char **argv)
-{
-
-  mb_runtime_sptr rt = mb_make_runtime();
-  pmt_t result = PMT_NIL;
-
-  rt->run("test_gmac_rx_file", "test_gmac_rx_file", 
-      pmt_list2(pmt_intern(argv[1]),
-                pmt_from_long(atol(argv[2]))), 
-      &result);
-}

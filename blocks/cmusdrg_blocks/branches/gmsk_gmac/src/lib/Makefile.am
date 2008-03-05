@@ -64,7 +64,9 @@ _cmusdrg_la_SOURCES = 			\
 	gmac.cc	\
 	gmsk.cc	\
 	gmac_mbh.cc	\
-	gmsk_mbh.cc
+	gmsk_mbh.cc	\
+	test_gmac_tx_file.cc	\
+	test_gmac_rx_file.cc
 
 # magic flags
 _cmusdrg_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
