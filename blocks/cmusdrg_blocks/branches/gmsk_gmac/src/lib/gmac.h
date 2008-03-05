@@ -77,7 +77,7 @@ class gmac : public mb_mblock
 
  private:
   void define_ports();
-  void initialize_usrp();
+  void initialize_usrp(pmt_t usrp_ref);
   void initialize_gmac();
   void set_carrier_sense(bool toggle, long threshold, long deadline, pmt_t invocation);
   void allocate_channels();

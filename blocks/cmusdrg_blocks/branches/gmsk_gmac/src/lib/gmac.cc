@@ -31,7 +31,6 @@
 #include <mb_exception.h>
 #include <mb_msg_queue.h>
 #include <mb_message.h>
-#include <mb_mblock_impl.h>
 #include <mb_msg_accepter.h>
 #include <mb_class_registry.h>
 #include <pmt.h>
@@ -64,7 +63,7 @@ gmac::gmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   define_ports();
 
   // Initialize the connection to the USRP
-  initialize_usrp();
+  initialize_usrp(user_arg);
 
 }
 
@@ -394,7 +393,7 @@ void gmac::define_ports()
 // as the RBF to use, and the interpolation/decimation rate.  The MAC layer will
 // then pass these parameters to the block with a message to establish the
 // connection to the USRP.
-void gmac::initialize_usrp()
+void gmac::initialize_usrp(pmt_t usrp_ref)
 {
 
   if(verbose)
@@ -425,6 +424,11 @@ void gmac::initialize_usrp()
   pmt_dict_set(usrp_dict,
                pmt_intern("rf-freq"),
                pmt_from_long((long)10e6));
+
+  // FIXME: RFX2400 hack
+  pmt_dict_set(usrp_dict,
+               pmt_intern("usrp-reference"),
+               usrp_ref);
 
   // Default is to use USRP considered '0' (incase of multiple)
   d_which_usrp = pmt_from_long(0);
