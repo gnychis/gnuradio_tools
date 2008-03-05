@@ -50,8 +50,7 @@ LOCAL_IFILES = 				\
 
 BUILT_SOURCES = 			\
 	cmusdrg.cc			\
-	cmusdrg.py			\
-	gmac_mbh.cc
+	cmusdrg.py			
 
 # This gets cmusdrg.py installed in the right place
 ourpython_PYTHON =			\
@@ -59,17 +58,11 @@ ourpython_PYTHON =			\
 
 ourlib_LTLIBRARIES = _cmusdrg.la
 
-EXTRA_DIST =		\
-	gmac.mbh
-
 # These are the source files that go into the shared library
 _cmusdrg_la_SOURCES = 			\
 	cmusdrg.cc	\
 	gmac.cc	\
 	gmac_mbh.cc
-
-gmac_mbh.cc : gmac.mbh
-	$(COMPILE_MBH) $(srcdir)/gmac.mbh gmac_mbh.cc
 
 # magic flags
 _cmusdrg_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
