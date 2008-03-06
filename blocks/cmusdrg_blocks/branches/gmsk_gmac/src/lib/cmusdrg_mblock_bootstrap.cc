@@ -1,5 +1,5 @@
 #include <cmusdrg_mblock_bootstrap.h>
-#include <stdio.h>
+#include <iostream>
 
 cmusdrg_mblock_bootstrap::~cmusdrg_mblock_bootstrap()
 {
@@ -9,14 +9,18 @@ cmusdrg_mblock_bootstrap::~cmusdrg_mblock_bootstrap()
 cmusdrg_mblock_bootstrap_sptr
 cmusdrg_make_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx,
                               usrp_standard_rx_sptr usrp_rx,
-                              char *block_name)
+                              char *block_name,
+                              int argc,
+                              char *argv[])
 {
-  return cmusdrg_mblock_bootstrap_sptr(new cmusdrg_mblock_bootstrap(usrp_tx,usrp_rx,block_name));
+  return cmusdrg_mblock_bootstrap_sptr(new cmusdrg_mblock_bootstrap(usrp_tx,usrp_rx,block_name,argc,argv));
 }
 
 cmusdrg_mblock_bootstrap::cmusdrg_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx,
                                                     usrp_standard_rx_sptr usrp_rx,
-                                                    char *block_name)
+                                                    char *block_name,
+                                                    int argc,
+                                                    char *argv[])
 {
   d_usrp_tx = usrp_tx.get();
   d_usrp_rx = usrp_rx.get();
@@ -25,6 +29,13 @@ cmusdrg_mblock_bootstrap::cmusdrg_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx
   d_usrp_rx->start();
 
   d_block_name = std::string(block_name); 
+  
+  std::cout << "[MBLOCK_BOOTSTRAP] Initializing " << d_block_name << std::endl;
+
+  for(int i=0; i < argc; i++) {
+    d_argv.push_back(std::string(argv[i]));
+    std::cout << "... argv[" << i << "]: " << d_argv[i] << std::endl;
+  }
 }
 
 void cmusdrg_mblock_bootstrap::start()
@@ -32,7 +43,7 @@ void cmusdrg_mblock_bootstrap::start()
   mb_runtime_sptr rt = mb_make_runtime();
   pmt_t result = PMT_NIL;
 
-  pmt_t args = pmt_list2(pmt_make_any(d_usrp_tx), pmt_make_any(d_usrp_rx));
+  pmt_t args = pmt_list3(pmt_make_any(d_usrp_tx), pmt_make_any(d_usrp_rx), pmt_make_any(d_argv));
 
   // Do something intelligent about which mblock to start
   rt->run(d_block_name, d_block_name, args, &result);

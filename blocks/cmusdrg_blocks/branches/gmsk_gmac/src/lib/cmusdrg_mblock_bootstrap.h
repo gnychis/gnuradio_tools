@@ -8,6 +8,7 @@
 #include <usrp_standard.h>
 #include <gr_types.h>
 #include <string>
+#include <vector>
 
 class cmusdrg_mblock_bootstrap;
 typedef boost::shared_ptr<cmusdrg_mblock_bootstrap> cmusdrg_mblock_bootstrap_sptr;
@@ -18,17 +19,18 @@ typedef boost::shared_ptr<usrp_standard_tx> usrp_standard_tx_sptr;
 class usrp_standard_rx;
 typedef boost::shared_ptr<usrp_standard_rx> usrp_standard_rx_sptr;
 
-cmusdrg_mblock_bootstrap_sptr cmusdrg_make_mblock_bootstrap(usrp_standard_tx_sptr, usrp_standard_rx_sptr, char *);
+cmusdrg_mblock_bootstrap_sptr cmusdrg_make_mblock_bootstrap(usrp_standard_tx_sptr, usrp_standard_rx_sptr, char *, int, char *[]);
 
 class cmusdrg_mblock_bootstrap {
 
-    cmusdrg_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx, usrp_standard_rx_sptr usrp_rx, char *block_name);
+    cmusdrg_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx, usrp_standard_rx_sptr usrp_rx, char *block_name, int argc, char *argv[]);
 
     usrp_standard_tx* d_usrp_tx;
     usrp_standard_rx* d_usrp_rx;
     std::string d_block_name;
+    std::vector<std::string> d_argv;
 
-    friend cmusdrg_mblock_bootstrap_sptr cmusdrg_make_mblock_bootstrap(usrp_standard_tx_sptr, usrp_standard_rx_sptr, char *);
+    friend cmusdrg_mblock_bootstrap_sptr cmusdrg_make_mblock_bootstrap(usrp_standard_tx_sptr, usrp_standard_rx_sptr, char *, int argc, char *argv[]);
 
     public:
         void start();
@@ -51,4 +53,5 @@ class cmusdrg_mblock_bootstrap {
 #include <gmac.h>
 #include <gmac_symbols.h>
 /* GMAC */
+
 #endif 
