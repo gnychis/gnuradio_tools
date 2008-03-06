@@ -1,6 +1,8 @@
 #include <cmusdrg_mblock_bootstrap.h>
 #include <iostream>
 
+#define verbose 0
+
 cmusdrg_mblock_bootstrap::~cmusdrg_mblock_bootstrap()
 {
 
@@ -25,7 +27,8 @@ cmusdrg_mblock_bootstrap::cmusdrg_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx
 
   d_block_name = std::string(block_name); 
   
-  std::cout << "[MBLOCK_BOOTSTRAP] Initializing " << d_block_name << std::endl;
+  if(verbose)
+    std::cout << "[MBLOCK_BOOTSTRAP] Initializing " << d_block_name << std::endl;
 
   d_argv.assign(argv.begin(), argv.end());
 }

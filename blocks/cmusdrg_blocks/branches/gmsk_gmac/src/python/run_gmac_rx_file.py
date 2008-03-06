@@ -19,7 +19,7 @@ class cpp_thread(_threading.Thread):
 
 # DEBUG
 def DEBUG(s):
-    print s
+    #print s      # UNCOMMENT TO ENABLE debugging
     sys.stdout.flush()
 
 def setup_usrp(freq):
@@ -65,7 +65,6 @@ def setup_usrp(freq):
   # Power on
   subdev_tx.set_enable(True)
   subdev_rx.set_enable(True)
-  DEBUG("USRP is on!")
   sys.stdout.flush()
 
   return utx, urx
