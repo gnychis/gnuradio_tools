@@ -1,6 +1,6 @@
 Index: usrp/host/lib/inband/usrp_usb_interface.cc
 ===================================================================
---- usrp/host/lib/inband/usrp_usb_interface.cc	(revision 7947)
+--- usrp/host/lib/inband/usrp_usb_interface.cc	(revision 7949)
 +++ usrp/host/lib/inband/usrp_usb_interface.cc	(working copy)
 @@ -113,9 +113,12 @@
        if(!pmt_eqv(rf_freq, PMT_NIL)) 
@@ -88,7 +88,7 @@ Index: usrp/host/lib/inband/usrp_usb_interface.cc
  //  d_urx->_write_oe(0, 0xffff, 0xffff);
 Index: usrp/host/lib/inband/Makefile.am
 ===================================================================
---- usrp/host/lib/inband/Makefile.am	(revision 7947)
+--- usrp/host/lib/inband/Makefile.am	(revision 7949)
 +++ usrp/host/lib/inband/Makefile.am	(working copy)
 @@ -75,12 +75,7 @@
  	usrp_server.h			\
@@ -118,7 +118,7 @@ Index: usrp/host/lib/inband/Makefile.am
  
 Index: usrp/host/apps-inband/Makefile.am
 ===================================================================
---- usrp/host/apps-inband/Makefile.am	(revision 7947)
+--- usrp/host/apps-inband/Makefile.am	(revision 7949)
 +++ usrp/host/apps-inband/Makefile.am	(working copy)
 @@ -40,6 +40,10 @@
  	test_usrp_inband_underrun	\
@@ -131,9 +131,21 @@ Index: usrp/host/apps-inband/Makefile.am
  noinst_HEADERS =			\
  	ui_nco.h			\
  	ui_sincos.h	
+Index: gnuradio-core/src/lib/swig/gnuradio.i
+===================================================================
+--- gnuradio-core/src/lib/swig/gnuradio.i	(revision 7949)
++++ gnuradio-core/src/lib/swig/gnuradio.i	(working copy)
+@@ -59,6 +59,7 @@
+   %template()	  vector<int>;
+   %template()	  vector<float>;
+   %template()	  vector<double>;
++  %template()	  vector<char *>;
+ 
+   %template() 	  vector< std::complex<float> >;
+   %template()     vector< std::vector< unsigned char > >;
 Index: gr-usrp/src/usrp1.i
 ===================================================================
---- gr-usrp/src/usrp1.i	(revision 7947)
+--- gr-usrp/src/usrp1.i	(revision 7949)
 +++ gr-usrp/src/usrp1.i	(working copy)
 @@ -71,6 +71,8 @@
   public:
@@ -155,7 +167,7 @@ Index: gr-usrp/src/usrp1.i
    /*!
 Index: gr-usrp/src/usrp1_source_base.cc
 ===================================================================
---- gr-usrp/src/usrp1_source_base.cc	(revision 7947)
+--- gr-usrp/src/usrp1_source_base.cc	(revision 7949)
 +++ gr-usrp/src/usrp1_source_base.cc	(working copy)
 @@ -26,7 +26,6 @@
  
@@ -180,7 +192,7 @@ Index: gr-usrp/src/usrp1_source_base.cc
    delete d_usrp;
 Index: gr-usrp/src/Makefile.am
 ===================================================================
---- gr-usrp/src/Makefile.am	(revision 7947)
+--- gr-usrp/src/Makefile.am	(revision 7949)
 +++ gr-usrp/src/Makefile.am	(working copy)
 @@ -97,7 +97,8 @@
  	$(PYTHON_LDFLAGS)		\
@@ -194,7 +206,7 @@ Index: gr-usrp/src/Makefile.am
  _usrp1_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
 Index: gr-usrp/src/usrp1_source_base.h
 ===================================================================
---- gr-usrp/src/usrp1_source_base.h	(revision 7947)
+--- gr-usrp/src/usrp1_source_base.h	(revision 7949)
 +++ gr-usrp/src/usrp1_source_base.h	(working copy)
 @@ -24,9 +24,11 @@
  #define INCLUDED_USRP1_SOURCE_BASE_H
@@ -219,7 +231,7 @@ Index: gr-usrp/src/usrp1_source_base.h
    int work (int noutput_items,
 Index: gr-usrp/src/usrp1_sink_base.cc
 ===================================================================
---- gr-usrp/src/usrp1_sink_base.cc	(revision 7947)
+--- gr-usrp/src/usrp1_sink_base.cc	(revision 7949)
 +++ gr-usrp/src/usrp1_sink_base.cc	(working copy)
 @@ -26,7 +26,6 @@
  
@@ -244,7 +256,7 @@ Index: gr-usrp/src/usrp1_sink_base.cc
    delete d_usrp;
 Index: gr-usrp/src/usrp1_sink_base.h
 ===================================================================
---- gr-usrp/src/usrp1_sink_base.h	(revision 7947)
+--- gr-usrp/src/usrp1_sink_base.h	(revision 7949)
 +++ gr-usrp/src/usrp1_sink_base.h	(working copy)
 @@ -24,9 +24,11 @@
  #define INCLUDED_USRP1_SINK_BASE_H
