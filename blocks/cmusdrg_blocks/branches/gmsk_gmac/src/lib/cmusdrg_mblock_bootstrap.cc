@@ -23,9 +23,6 @@ cmusdrg_mblock_bootstrap::cmusdrg_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx
   d_usrp_tx = usrp_tx.get();
   d_usrp_rx = usrp_rx.get();
 
-  d_usrp_tx->start();
-  d_usrp_rx->start();
-
   d_block_name = std::string(block_name); 
   
   std::cout << "[MBLOCK_BOOTSTRAP] Initializing " << d_block_name << std::endl;
