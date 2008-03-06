@@ -1,53 +1,12 @@
-Index: usrp/host/lib/inband/usrp_server.cc
-===================================================================
---- usrp/host/lib/inband/usrp_server.cc	(revision 7520)
-+++ usrp/host/lib/inband/usrp_server.cc	(working copy)
-@@ -88,6 +88,17 @@
-       if(!pmt_eqv(decim_rx, PMT_NIL)) 
-         d_decim_rx = pmt_to_long(decim_rx);
-     }
-+
-+    /** DAN MOD HERE **/
-+    // Try and extract the USRP reference. Holy crap will I be lucky if I get
-+    // .. it down to here.
-+    pmt_t usrp_ref = pmt_dict_ref(d_usrp_dict,
-+                                  pmt_intern("usrp-reference"),
-+                                  PMT_NIL);
-+    if (!pmt_is_any(usrp_ref))
-+        throw std::invalid_argument("usrp-reference didn't make it into usrp_server");
-+    printf("Did I get here? Really? Holy smokes!\n");fflush(stdout);
-+    /** END DAN MOD **/
-   }
-   
-   // control & status port
-@@ -111,6 +122,10 @@
-                                mb_port::EXTERNAL));
-   }
- 
-+  /** DAN MOD HERE **/
-+  // Just a note that it looks like the usrp_ref will be passed to
-+  // .. usrp_usb_interface automatically. Sweet.
-+  /** END DAN MOD **/
-   define_component("usrp", "usrp_usb_interface", d_usrp_dict);
-   connect("self", "cs_usrp", "usrp", "cs");
- 
 Index: usrp/host/lib/inband/usrp_usb_interface.cc
 ===================================================================
---- usrp/host/lib/inband/usrp_usb_interface.cc	(revision 7520)
+--- usrp/host/lib/inband/usrp_usb_interface.cc	(revision 7947)
 +++ usrp/host/lib/inband/usrp_usb_interface.cc	(working copy)
-@@ -113,9 +113,20 @@
+@@ -113,9 +113,12 @@
        if(!pmt_eqv(rf_freq, PMT_NIL)) 
          d_rf_freq = pmt_to_long(rf_freq);
      }
 +
-+    /** DAN MOD HERE **/
-+    pmt_t usrp_ref = pmt_dict_ref(usrp_dict,
-+                                  pmt_intern("usrp-reference"),
-+                                  PMT_NIL);
-+    if (!pmt_is_any(usrp_ref))
-+        throw std::invalid_argument("usrp-reference did not make it into usrp-usb-interface");
-+    printf("Whee! usrp_usb_interface\n"); fflush(stdout);
-+    /** END DAN MOD **/
    }
    
    if (verbose) {
@@ -56,7 +15,7 @@ Index: usrp/host/lib/inband/usrp_usb_interface.cc
      std::cout << "[USRP_USB_INTERFACE] Setting USRP RBF to " 
                << d_rbf << std::endl;
      
-@@ -130,7 +141,8 @@
+@@ -130,7 +133,8 @@
  
      std::cout << "[USRP_USB_INTERFACE] Using RX interface: " 
                << rx_interface << "\n";
@@ -66,23 +25,25 @@ Index: usrp/host/lib/inband/usrp_usb_interface.cc
    }
  
    d_cs = define_port("cs", "usrp-interface-cs", true, mb_port::EXTERNAL);	
-@@ -147,7 +159,14 @@
+@@ -147,8 +151,15 @@
    d_ntx_chan = 2;
    d_nrx_chan = 2;
  
 -  d_utx = NULL;
-+  /** DAN MOD HERE **/
-+//  d_utx = NULL;
-+  pmt_t usrp_ref = pmt_dict_ref(usrp_dict,
-+                                pmt_intern("usrp-reference"),
+-  d_urx = NULL;
++  pmt_t usrp_tx_ref = pmt_dict_ref(usrp_dict,
++                                pmt_intern("usrp-tx-reference"),
 +                                PMT_NIL);
-+  d_utx = boost::any_cast<usrp_standard_tx*>(pmt_any_ref(usrp_ref));
-+  printf("Did weird anycast thing. Heh. Anycast.\n"); fflush(stdout);
-+  /** END DAN MOD **/
-   d_urx = NULL;
++  pmt_t usrp_rx_ref = pmt_dict_ref(usrp_dict,
++                                pmt_intern("usrp-rx-reference"),
++                                PMT_NIL);
++
++  d_utx = boost::any_cast<usrp_standard_tx*>(pmt_any_ref(usrp_tx_ref));
++  d_urx = boost::any_cast<usrp_standard_rx*>(pmt_any_ref(usrp_rx_ref));
    
  }
-@@ -286,7 +305,8 @@
+ 
+@@ -286,7 +297,8 @@
  
    // Open up a standard RX and TX for communication with the USRP
     
@@ -92,7 +53,7 @@ Index: usrp/host/lib/inband/usrp_usb_interface.cc
  				 d_interp_tx,
  				 1,		        // 1 channel
  				 -1,          // mux
-@@ -294,8 +314,8 @@
+@@ -294,8 +306,8 @@
  				 16,          // nblocks for async transfers
  				 d_rbf
  				 );
@@ -103,19 +64,31 @@ Index: usrp/host/lib/inband/usrp_usb_interface.cc
      if (verbose)
        std::cout << "[USRP_USB_INTERFACE] Failed to open TX\n";
      reply_data = pmt_list2(invocation_handle, PMT_F);
-@@ -319,7 +339,9 @@
+@@ -319,8 +331,10 @@
      return;
    }
  
 +*/
    d_utx->start();
+-
 +/** END DAN MOD **/
- 
++/*
    if (verbose)
      std::cout << "[USRP_USB_INTERFACE] Setup TX channel\n";
+ 
+@@ -362,7 +376,8 @@
+ 
+   if (verbose)
+     std::cout << "[USRP_USB_INTERFACE] Setup RX channel\n";
+-    
++*/
++
+ //  d_utx->_write_fpga_reg(FR_DEBUG_EN,0xf);
+ //  d_utx->_write_oe(0, 0xffff, 0xffff);
+ //  d_urx->_write_oe(0, 0xffff, 0xffff);
 Index: usrp/host/lib/inband/Makefile.am
 ===================================================================
---- usrp/host/lib/inband/Makefile.am	(revision 7520)
+--- usrp/host/lib/inband/Makefile.am	(revision 7947)
 +++ usrp/host/lib/inband/Makefile.am	(working copy)
 @@ -75,12 +75,7 @@
  	usrp_server.h			\
@@ -145,10 +118,10 @@ Index: usrp/host/lib/inband/Makefile.am
  
 Index: usrp/host/apps-inband/Makefile.am
 ===================================================================
---- usrp/host/apps-inband/Makefile.am	(revision 7520)
+--- usrp/host/apps-inband/Makefile.am	(revision 7947)
 +++ usrp/host/apps-inband/Makefile.am	(working copy)
-@@ -40,9 +40,11 @@
- 	test_gmac_tx			\
+@@ -40,6 +40,10 @@
+ 	test_usrp_inband_underrun	\
  	read_packets
  
 +grinclude_HEADERS =			\
@@ -156,14 +129,11 @@ Index: usrp/host/apps-inband/Makefile.am
 +	ui_sincos.h
 +
  noinst_HEADERS =			\
--	ui_nco.h			\
--	ui_sincos.h			\
- 	gmac.h				\
- 	gmac_symbols.h			
- 
+ 	ui_nco.h			\
+ 	ui_sincos.h	
 Index: gr-usrp/src/usrp1.i
 ===================================================================
---- gr-usrp/src/usrp1.i	(revision 7520)
+--- gr-usrp/src/usrp1.i	(revision 7947)
 +++ gr-usrp/src/usrp1.i	(working copy)
 @@ -71,6 +71,8 @@
   public:
@@ -174,9 +144,43 @@ Index: gr-usrp/src/usrp1.i
    /*!
     * \brief Set interpolator rate.  \p rate must be in [4, 1024] and a multiple of 4.
     *
+@@ -288,6 +290,8 @@
+ 				      int &bytes_read) = 0;
+  public:
+   ~usrp1_source_base ();
++  
++  usrp_standard_rx_sptr get_usrp() const;
+ 
+ 
+   /*!
+Index: gr-usrp/src/usrp1_source_base.cc
+===================================================================
+--- gr-usrp/src/usrp1_source_base.cc	(revision 7947)
++++ gr-usrp/src/usrp1_source_base.cc	(working copy)
+@@ -26,7 +26,6 @@
+ 
+ #include <usrp1_source_base.h>
+ #include <gr_io_signature.h>
+-#include <usrp_standard.h>
+ #include <assert.h>
+ 
+ static const int OUTPUT_MULTIPLE_BYTES = 4 * 1024;
+@@ -63,6 +62,12 @@
+   set_output_multiple (OUTPUT_MULTIPLE_BYTES / output_signature->sizeof_stream_item (0));
+ }
+ 
++usrp_standard_rx_sptr
++usrp1_source_base::get_usrp() const
++{
++  return usrp_standard_rx_sptr(d_usrp);
++}
++
+ usrp1_source_base::~usrp1_source_base ()
+ {
+   delete d_usrp;
 Index: gr-usrp/src/Makefile.am
 ===================================================================
---- gr-usrp/src/Makefile.am	(revision 7520)
+--- gr-usrp/src/Makefile.am	(revision 7947)
 +++ gr-usrp/src/Makefile.am	(working copy)
 @@ -97,7 +97,8 @@
  	$(PYTHON_LDFLAGS)		\
@@ -188,9 +192,34 @@ Index: gr-usrp/src/Makefile.am
  
  
  _usrp1_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
+Index: gr-usrp/src/usrp1_source_base.h
+===================================================================
+--- gr-usrp/src/usrp1_source_base.h	(revision 7947)
++++ gr-usrp/src/usrp1_source_base.h	(working copy)
+@@ -24,9 +24,11 @@
+ #define INCLUDED_USRP1_SOURCE_BASE_H
+ 
+ #include <gr_sync_block.h>
++#include <usrp_standard.h>
+ #include <stdexcept>
+ 
+ class usrp_standard_rx;
++typedef boost::shared_ptr<usrp_standard_rx> usrp_standard_rx_sptr;
+ 
+ /*!
+  * \brief abstract interface to Universal Software Radio Peripheral Rx path (Rev 1)
+@@ -86,6 +88,8 @@
+   //! magic value used on alternate register read interfaces
+   static const int READ_FAILED = -99999;
+ 
++  usrp_standard_rx_sptr get_usrp() const;
++
+   ~usrp1_source_base ();
+ 
+   int work (int noutput_items,
 Index: gr-usrp/src/usrp1_sink_base.cc
 ===================================================================
---- gr-usrp/src/usrp1_sink_base.cc	(revision 7520)
+--- gr-usrp/src/usrp1_sink_base.cc	(revision 7947)
 +++ gr-usrp/src/usrp1_sink_base.cc	(working copy)
 @@ -26,7 +26,6 @@
  
@@ -215,7 +244,7 @@ Index: gr-usrp/src/usrp1_sink_base.cc
    delete d_usrp;
 Index: gr-usrp/src/usrp1_sink_base.h
 ===================================================================
---- gr-usrp/src/usrp1_sink_base.h	(revision 7520)
+--- gr-usrp/src/usrp1_sink_base.h	(revision 7947)
 +++ gr-usrp/src/usrp1_sink_base.h	(working copy)
 @@ -24,9 +24,11 @@
  #define INCLUDED_USRP1_SINK_BASE_H
