@@ -50,7 +50,7 @@ LOCAL_IFILES = 				\
 
 BUILT_SOURCES = 			\
 	cmusdrg.cc			\
-	cmusdrg.py				
+	cmusdrg.py			
 
 # This gets cmusdrg.py installed in the right place
 ourpython_PYTHON =			\
@@ -60,8 +60,15 @@ ourlib_LTLIBRARIES = _cmusdrg.la
 
 # These are the source files that go into the shared library
 _cmusdrg_la_SOURCES = 			\
-	cmusdrg.cc			
-#	cmusdrg_mfilteropt_ccc.cc	
+	cmusdrg.cc	\
+	cmusdrg_mblock_bootstrap.cc	\
+	gmac.cc	\
+	gmsk.cc	\
+	gmac_mbh.cc	\
+	gmsk_mbh.cc	\
+	gmac_monitor.cc \
+	gmac_tx_file.cc	\
+	gmac_rx_file.cc
 
 # magic flags
 _cmusdrg_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
@@ -70,19 +77,27 @@ _cmusdrg_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
 # c++ standard library
 _cmusdrg_la_LIBADD = 			\
 	$(PYTHON_LDFLAGS)		\
-	-lstdc++			
+	$(USRP_LA)	\
+	$(GNURADIO_CORE_LA)	\
+	-lstdc++	\
+	-lusrp	\
+	-lusrp_inband	\
+	-lmblock
 
 cmusdrg.cc cmusdrg.py: $(LOCAL_IFILES) $(ALL_IFILES)
 	$(SWIG) $(SWIGPYTHONARGS) -module cmusdrg -o cmusdrg.cc $(LOCAL_IFILES)
 
 # These headers get installed in ${prefix}/include/gnuradio
-grinclude_HEADERS =			
-#	cmusdrg_mfilteropt_ccc.h
+grinclude_HEADERS =			\
+	cmusdrg_mblock_bootstrap.h	\
+	gmac.h	\
+	gmsk.h
 
 
 # These swig headers get installed in ${prefix}/include/gnuradio/swig
 swiginclude_HEADERS = 			\
-	$(LOCAL_IFILES)
+	$(LOCAL_IFILES)	\
+	cmusdrg_mblock_bootstrap.i
 
 
 MOSTLYCLEANFILES = $(BUILT_SOURCES) *.pyc
