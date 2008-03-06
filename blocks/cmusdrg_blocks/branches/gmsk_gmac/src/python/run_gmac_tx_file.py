@@ -4,19 +4,6 @@ import gnuradio.gr.gr_threading as _threading
 from gnuradio import cmusdrg
 import sys, time
 
-# Ideally, this is a Python thread that will be used to give control to C++
-# while keeping the Python alive
-class cpp_thread(_threading.Thread):
-    def __init__(self, mblock_bootstrap):
-        _threading.Thread.__init__(self)
-        self.mblock_bootstrap = mblock_bootstrap
-        self.keep_running = True
-
-    def run(self):
-        self.mblock_bootstrap.start()
-        while self.keep_running:
-            self.mblock_bootstrap.packet()
-
 # DEBUG
 def DEBUG(s):
     #print s      # UNCOMMENT TO ENABLE debugging
@@ -79,25 +66,7 @@ def run(freq, args):
 
   # Now make a mblock_bootstrap
   mblock_bootstrap = cmusdrg.mblock_bootstrap(usrp_tx, usrp_rx, "gmac_tx_file", args)
-  DEBUG("Got USRP_ref object")
-
-  # Now start a new thread for it
-  DEBUG("Creating mblock_bootstrap_thread")
-  mblock_bootstrap_thread = cpp_thread(mblock_bootstrap)
-
-  # Start the thread
-  DEBUG("Starting mblock_bootstrap_thread")
-  mblock_bootstrap_thread.start()
-  DEBUG("\t.. started")
-
-  try:
-      while True:
-          time.sleep(1);
-          pass
-  except KeyboardInterrupt:
-      mblock_bootstrap_thread.keep_running = False
-      DEBUG("Stopping")
-
+  mblock_bootstrap.start()
 
 def main (args):
   nargs = len(args)
