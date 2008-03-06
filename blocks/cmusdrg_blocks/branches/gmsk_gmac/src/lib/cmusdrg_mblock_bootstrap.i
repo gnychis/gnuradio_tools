@@ -4,13 +4,13 @@ class cmusdrg_mblock_bootstrap;
 typedef boost::shared_ptr<cmusdrg_mblock_bootstrap>  cmusdrg_mblock_bootstrap_sptr;
 %template(cmusdrg_mblock_bootstrap_sptr)  boost::shared_ptr<cmusdrg_mblock_bootstrap>;
 
-%rename(usrp_ref) cmusdrg_make_mblock_bootstrap;
+%rename(mblock_bootstrap) cmusdrg_make_mblock_bootstrap;
 
 cmusdrg_mblock_bootstrap_sptr
-cmusdrg_make_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx, usrp_standard_rx_sptr usrp_rx);
+cmusdrg_make_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx, usrp_standard_rx_sptr usrp_rx, char *block);
 
 class cmusdrg_mblock_bootstrap {
-    cmusdrg_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx, usrp_standard_rx_sptr usrp_rx);
+    cmusdrg_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx, usrp_standard_rx_sptr usrp_rx. char *block);
 
     public:
         void start();

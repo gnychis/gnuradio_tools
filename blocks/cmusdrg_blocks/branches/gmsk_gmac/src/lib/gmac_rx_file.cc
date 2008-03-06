@@ -100,7 +100,7 @@ gmac_rx_file::gmac_rx_file(mb_runtime *runtime, const std::string &instance_name
     return;
   }
   
-  define_component("GMAC", "gmac", PMT_NIL);
+  define_component("GMAC", "gmac", pmt_nth(0,user_arg)); // FIXME: RFX2400 Hack
   d_tx = define_port("tx0", "gmac-tx", false, mb_port::INTERNAL);
   d_rx = define_port("rx0", "gmac-rx", false, mb_port::INTERNAL);
   d_cs = define_port("cs", "gmac-cs", false, mb_port::INTERNAL);

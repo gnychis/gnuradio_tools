@@ -53,8 +53,8 @@ def setup_usrp(freq):
   DEBUG( "Using RX d'board %s" %(subdev_rx.side_and_name()))
 
   # Gain
-  subdev_tx.set_gain((subdev.gain_range()[0] + subdev.gain_range()[1]) / 2)
-  subdev_rx.set_gain((subdev.gain_range()[0] + subdev.gain_range()[1]) / 2)
+  subdev_tx.set_gain((subdev_tx.gain_range()[0] + subdev_tx.gain_range()[1]) / 2)
+  subdev_rx.set_gain((subdev_rx.gain_range()[0] + subdev_rx.gain_range()[1]) / 2)
 
   # Tune
   if not utx.tune(subdev_tx._which, subdev_tx, freq):
@@ -70,7 +70,7 @@ def setup_usrp(freq):
 
   return utx, urx
 
-def run(freq, filename, saddr, daddr):
+def run(freq, args):
 
   (utx, urx) = setup_usrp(freq)
 
@@ -79,7 +79,7 @@ def run(freq, filename, saddr, daddr):
   usrp_rx = urx.get_usrp()
 
   # Now make a mblock_bootstrap
-  mblock_bootstrap = cmusdrg.mblock_bootstrap(usrp_tx, usrp_rx, "gmac_rx_file")
+  mblock_bootstrap = cmusdrg.mblock_bootstrap(usrp_tx, usrp_rx, "gmac_rx_file", args)
   DEBUG("Got USRP_ref object")
 
   # Now start a new thread for it
@@ -111,7 +111,7 @@ def main (args):
     sys.stderr.write ("usage: ./run_gmac_rx_file.py if_freq output_file src_addr dst_addr\n")
     sys.exit (1)
 
-  run(freq, filename, saddr, daddr)
+  run(freq, sys.argv[2:])
 
 if __name__ == '__main__':
   main(sys.argv[1:])

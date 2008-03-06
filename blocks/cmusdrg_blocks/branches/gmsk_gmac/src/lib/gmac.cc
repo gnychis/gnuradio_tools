@@ -427,8 +427,11 @@ void gmac::initialize_usrp(pmt_t usrp_ref)
 
   // FIXME: RFX2400 hack
   pmt_dict_set(usrp_dict,
-               pmt_intern("usrp-reference"),
-               usrp_ref);
+               pmt_intern("usrp-tx-reference"),
+               pmt_nth(0,usrp_ref));
+  pmt_dict_set(usrp_dict,
+               pmt_intern("usrp-rx-reference"),
+               pmt_nth(1,usrp_ref));
 
   // Default is to use USRP considered '0' (incase of multiple)
   d_which_usrp = pmt_from_long(0);
