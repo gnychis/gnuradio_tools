@@ -105,9 +105,3 @@ MOSTLYCLEANFILES = $(BUILT_SOURCES) *.pyc
 dist-hook:
 	@for file in $(BUILT_SOURCES); do echo $(RM) $(distdir)/$$file; done
 	@for file in $(BUILT_SOURCES); do $(RM) $(distdir)/$$file; done
-
-#noinst_PROGRAMS = 	\
-#	run_gmac_rx_file
-
-#run_gmac_rx_file_SOURCES 	= run_gmac_rx_file.cc 
-#run_gmac_rx_file_LDADD   	= _cmusdrg.la
