@@ -31,9 +31,6 @@ cmusdrg_mblock_bootstrap::cmusdrg_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx
   std::cout << "[MBLOCK_BOOTSTRAP] Initializing " << d_block_name << std::endl;
 
   d_argv.assign(argv.begin(), argv.end());
-
-  for(int i=0; i<d_argv.size(); i++)
-    std::cout << "... d_argv[" << i << "]: " << d_argv[i] << std::endl;
 }
 
 void cmusdrg_mblock_bootstrap::start()

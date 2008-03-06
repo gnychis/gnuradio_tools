@@ -2,7 +2,7 @@
 from gnuradio import usrp
 import gnuradio.gr.gr_threading as _threading
 from gnuradio import cmusdrg
-import sys
+import sys, time
 
 # Ideally, this is a Python thread that will be used to give control to C++
 # while keeping the Python alive
@@ -93,7 +93,7 @@ def run(freq, args):
 
   try:
       while True:
-          time.slep(1);
+          time.sleep(1);
           pass
   except KeyboardInterrupt:
       mblock_bootstrap_thread.keep_running = False
