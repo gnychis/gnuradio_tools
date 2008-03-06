@@ -93,12 +93,21 @@ gmac_tx_file::gmac_tx_file(mb_runtime *runtime, const std::string &instance_name
     d_done_sending(false)
 { 
 
-  pmt_t file = pmt_nth(0, user_arg);
-  d_local_addr = pmt_to_long(pmt_nth(1, user_arg));
-  d_dst_addr = pmt_to_long(pmt_nth(2, user_arg));
+  pmt_t args = pmt_nth(1, user_arg);
+
+  std::vector<std::string> argv;
+  argv = boost::any_cast<std::vector<std::string> >(pmt_any_ref(args));
+
+  // Pull in file name
+  std::string file = argv[0];
+
+  // Addresses
+  std::istringstream ss_laddr(argv[1]), ss_daddr(argv[2]);
+  ss_laddr >> d_local_addr;
+  ss_daddr >> d_dst_addr;
   
   // Open a stream to the input file and ensure it's open
-  d_ifile.open(pmt_symbol_to_string(file).c_str(), std::ios::binary|std::ios::in);
+  d_ifile.open(file.c_str(), std::ios::binary|std::ios::in);
 
   if(!d_ifile.is_open()) {
     std::cout << "Error opening input file\n";
@@ -106,7 +115,7 @@ gmac_tx_file::gmac_tx_file(mb_runtime *runtime, const std::string &instance_name
     return;
   }
   
-  define_component("GMAC", "gmac", PMT_NIL);
+  define_component("GMAC", "gmac", pmt_nth(0,user_arg));  // FIXME: RFX2400 hack
   d_tx = define_port("tx0", "gmac-tx", false, mb_port::INTERNAL);
   d_rx = define_port("rx0", "gmac-rx", false, mb_port::INTERNAL);
   d_cs = define_port("cs", "gmac-cs", false, mb_port::INTERNAL);
@@ -114,6 +123,12 @@ gmac_tx_file::gmac_tx_file(mb_runtime *runtime, const std::string &instance_name
   connect("self", "tx0", "GMAC", "tx0");
   connect("self", "rx0", "GMAC", "rx0");
   connect("self", "cs", "GMAC", "cs");
+  
+  std::cout << "[GMAC_TX_FILE] Initialized ..."
+            << "\n    Filename: " << file
+            << "\n    Address: " << d_local_addr
+            << "\n    Destination:" << d_dst_addr
+            << "\n";
 
 }
 
