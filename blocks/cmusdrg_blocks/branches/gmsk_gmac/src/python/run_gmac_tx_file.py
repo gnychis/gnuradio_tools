@@ -29,8 +29,8 @@ def setup_usrp(freq):
   decim = 64
   
   # Make USRP instances to TX and RX
-  utx = usrp.sink_c(fpga_filename="std_inband.rbf")
-  urx = usrp.source_c(fpga_filename="std_inband.rbf")
+  utx = usrp.sink_c(fpga_filename="local_rssi5.rbf")
+  urx = usrp.source_c(fpga_filename="local_rssi5.rbf")
 
   # Set decim and interp rates
   utx.set_interp_rate(interp)
