@@ -88,11 +88,21 @@ gmac_rx_file::gmac_rx_file(mb_runtime *runtime, const std::string &instance_name
     d_done_sending(false)
 { 
 
-  pmt_t file = pmt_nth(0, user_arg);
-  d_local_addr = pmt_to_long(pmt_nth(1, user_arg));
-  
+  pmt_t args = pmt_nth(1, user_arg);
+
+  std::vector<std::string> argv;
+  argv = boost::any_cast<std::vector<std::string> >(pmt_any_ref(args));
+
+  // Pull in file name
+  std::string file = argv[0];
+
+  // Addresses
+  std::istringstream ss_laddr(argv[1]), ss_daddr(argv[2]);
+  ss_laddr >> d_local_addr;
+  ss_daddr >> d_dst_addr;
+
   // Open a stream to the input file and ensure it's open
-  d_ofile.open(pmt_symbol_to_string(file).c_str(), std::ios::binary|std::ios::out);
+  d_ofile.open(file.c_str(), std::ios::binary|std::ios::out);
 
   if(!d_ofile.is_open()) {
     std::cout << "Error opening input file\n";
@@ -109,7 +119,11 @@ gmac_rx_file::gmac_rx_file(mb_runtime *runtime, const std::string &instance_name
   connect("self", "rx0", "GMAC", "rx0");
   connect("self", "cs", "GMAC", "cs");
 
-  std::cout << "[GMAC_RX_FILE] Waiting...\n";
+  std::cout << "[GMAC_RX_FILE] Initialized ..."
+            << "\n    Filename: " << file
+            << "\n    Address: " << d_local_addr
+            << "\n";
+
 }
 
 gmac_rx_file::~gmac_rx_file()

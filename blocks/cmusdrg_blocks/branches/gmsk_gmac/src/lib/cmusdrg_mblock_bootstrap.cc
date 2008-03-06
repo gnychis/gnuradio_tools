@@ -38,7 +38,7 @@ void cmusdrg_mblock_bootstrap::start()
   mb_runtime_sptr rt = mb_make_runtime();
   pmt_t result = PMT_NIL;
 
-  pmt_t args = pmt_list3(pmt_make_any(d_usrp_tx), pmt_make_any(d_usrp_rx), pmt_make_any(d_argv));
+  pmt_t args = pmt_list2(pmt_list2(pmt_make_any(d_usrp_tx), pmt_make_any(d_usrp_rx)), pmt_make_any(d_argv));
 
   // Do something intelligent about which mblock to start
   rt->run(d_block_name, d_block_name, args, &result);
