@@ -79,7 +79,7 @@ def run(freq, args):
   usrp_rx = urx.get_usrp()
 
   # Now make a mblock_bootstrap
-  mblock_bootstrap = cmusdrg.mblock_bootstrap(usrp_tx, usrp_rx, "gmac_rx_file", len(args), args)
+  mblock_bootstrap = cmusdrg.mblock_bootstrap(usrp_tx, usrp_rx, "gmac_rx_file", args)
   DEBUG("Got USRP_ref object")
 
   # Now start a new thread for it

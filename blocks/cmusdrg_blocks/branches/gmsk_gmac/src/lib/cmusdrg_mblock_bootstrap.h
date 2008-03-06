@@ -19,18 +19,29 @@ typedef boost::shared_ptr<usrp_standard_tx> usrp_standard_tx_sptr;
 class usrp_standard_rx;
 typedef boost::shared_ptr<usrp_standard_rx> usrp_standard_rx_sptr;
 
-cmusdrg_mblock_bootstrap_sptr cmusdrg_make_mblock_bootstrap(usrp_standard_tx_sptr, usrp_standard_rx_sptr, char *, int, char *[]);
+cmusdrg_mblock_bootstrap_sptr 
+cmusdrg_make_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx, 
+                              usrp_standard_rx_sptr usrp_rx, 
+                              char *block_name, 
+                              const std::vector<std::string> &argv);
 
 class cmusdrg_mblock_bootstrap {
 
-    cmusdrg_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx, usrp_standard_rx_sptr usrp_rx, char *block_name, int argc, char *argv[]);
+    cmusdrg_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx, 
+                             usrp_standard_rx_sptr usrp_rx, 
+                             char *block_name, 
+                             const std::vector<std::string> &argv);
 
     usrp_standard_tx* d_usrp_tx;
     usrp_standard_rx* d_usrp_rx;
     std::string d_block_name;
     std::vector<std::string> d_argv;
 
-    friend cmusdrg_mblock_bootstrap_sptr cmusdrg_make_mblock_bootstrap(usrp_standard_tx_sptr, usrp_standard_rx_sptr, char *, int argc, char *argv[]);
+    friend cmusdrg_mblock_bootstrap_sptr 
+           cmusdrg_make_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx, 
+                                         usrp_standard_rx_sptr usrp_rx, 
+                                         char *block_name, 
+                                         const std::vector<std::string> &argv);
 
     public:
         void start();

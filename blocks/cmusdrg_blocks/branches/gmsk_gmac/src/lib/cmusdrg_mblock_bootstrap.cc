@@ -10,17 +10,15 @@ cmusdrg_mblock_bootstrap_sptr
 cmusdrg_make_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx,
                               usrp_standard_rx_sptr usrp_rx,
                               char *block_name,
-                              int argc,
-                              char *argv[])
+                              const std::vector<std::string> &argv)
 {
-  return cmusdrg_mblock_bootstrap_sptr(new cmusdrg_mblock_bootstrap(usrp_tx,usrp_rx,block_name,argc,argv));
+  return cmusdrg_mblock_bootstrap_sptr(new cmusdrg_mblock_bootstrap(usrp_tx,usrp_rx,block_name,argv));
 }
 
 cmusdrg_mblock_bootstrap::cmusdrg_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx,
                                                     usrp_standard_rx_sptr usrp_rx,
                                                     char *block_name,
-                                                    int argc,
-                                                    char *argv[])
+                                                    const std::vector<std::string> &argv)
 {
   d_usrp_tx = usrp_tx.get();
   d_usrp_rx = usrp_rx.get();
@@ -32,10 +30,10 @@ cmusdrg_mblock_bootstrap::cmusdrg_mblock_bootstrap(usrp_standard_tx_sptr usrp_tx
   
   std::cout << "[MBLOCK_BOOTSTRAP] Initializing " << d_block_name << std::endl;
 
-  for(int i=0; i < argc; i++) {
-    d_argv.push_back(std::string(argv[i]));
-    std::cout << "... argv[" << i << "]: " << d_argv[i] << std::endl;
-  }
+  d_argv.assign(argv.begin(), argv.end());
+
+  for(int i=0; i<d_argv.size(); i++)
+    std::cout << "... d_argv[" << i << "]: " << d_argv[i] << std::endl;
 }
 
 void cmusdrg_mblock_bootstrap::start()
