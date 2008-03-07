@@ -25,29 +25,6 @@
 
 #include <gmac.h>
 
-#include <mb_mblock.h>
-#include <mb_runtime.h>
-#include <mb_protocol_class.h>
-#include <mb_exception.h>
-#include <mb_msg_queue.h>
-#include <mb_message.h>
-#include <mb_msg_accepter.h>
-#include <mb_class_registry.h>
-#include <pmt.h>
-#include <stdio.h>
-#include <string.h>
-#include <iostream>
-#include <ui_nco.h>
-
-#include <symbols_usrp_server_cs.h>
-#include <symbols_usrp_channel.h>
-#include <symbols_usrp_low_level_cs.h>
-#include <symbols_usrp_tx.h>
-#include <symbols_usrp_rx.h>
-
-#include <gmac_symbols.h>
-#include <gmsk_symbols.h>
-
 static bool verbose = false;
 
 static pmt_t s_timeout = pmt_intern("%timeout");
@@ -77,6 +54,28 @@ gmac::gmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
 gmac::~gmac()
 {
 }
+
+// The MAC layer connects to 'usrp_server' which has a control/status channel,
+// a TX, and an RX port.  The MAC layer can then relay TX/RX data back and
+// forth to the application, or a physical layer once available.
+void gmac::define_ports()
+{
+  // ports we use to connect to gmsk
+  d_gmsk_cs = define_port("phy-cs", "gmsk-cs", false, mb_port::INTERNAL);
+
+  // Ports we use to connect to usrp_server
+  d_us_tx = define_port("us-tx0", "usrp-tx", false, mb_port::INTERNAL);
+  d_us_rx = define_port("us-rx0", "usrp-rx", false, mb_port::INTERNAL);
+  d_us_cs = define_port("us-cs", "usrp-server-cs", false, mb_port::INTERNAL);
+  
+  // Ports applications used to connect to us
+  d_tx = define_port("tx0", "gmac-tx", true, mb_port::EXTERNAL);
+  d_rx = define_port("rx0", "gmac-rx", true, mb_port::EXTERNAL);
+  d_cs = define_port("cs", "gmac-cs", true, mb_port::EXTERNAL);
+}
+
+// FIXME: lets have two handle_messages, one for the setup junk to be reused
+//        and the other strictly for GMAC.
 
 // The full functionality of GMAC is based on messages passed back and forth
 // between the application and a physical layer and/or usrp_server.  Each
@@ -110,7 +109,7 @@ void gmac::handle_message(mb_message_sptr msg)
     // switch states to allocating the channels for use.
     case OPENING_USRP:
 
-      if(pmt_eq(event, s_response_open)
+      if(pmt_eq(event, s_response_open)     // Response to a USRP open
           && pmt_eq(d_us_cs->port_symbol(), port_id)) {
 
         status = pmt_nth(1, data);          // PMT_T or PMT_F
@@ -118,12 +117,10 @@ void gmac::handle_message(mb_message_sptr msg)
         if(pmt_eq(status, PMT_T)) {         // on success, allocate channels!
           allocate_channels();
           return;
-        }
-        else {
+        } else {
           error_msg = "failed to open usrp:";
           goto bail;
         }
-
       }
 
       goto unhandled;   // all other messages not handled in this state
@@ -134,7 +131,7 @@ void gmac::handle_message(mb_message_sptr msg)
     // know to continue to the next state once both are set.
     case ALLOCATING_CHANNELS:
 
-      // ************* TX ALLOCATION RESPONSE ***************** //
+      //-------------- TX ALLOCATION RESPONSE ------------------//
       if(pmt_eq(event, s_response_allocate_channel)
           && pmt_eq(d_us_tx->port_symbol(), port_id)) 
       {
@@ -161,7 +158,7 @@ void gmac::handle_message(mb_message_sptr msg)
         }
       }
       
-      // ************* RX ALLOCATION RESPONSE ****************//
+      //-------------- RX ALLOCATION RESPONSE ----------------//
       if(pmt_eq(event, s_response_allocate_channel)
           && pmt_eq(d_us_rx->port_symbol(), port_id)) 
       {
@@ -191,196 +188,6 @@ void gmac::handle_message(mb_message_sptr msg)
 
       goto unhandled;
     
-    //----------------------------- INIT GMAC --------------------------------//
-    // In the INIT_GMAC state, now that the USRP is initialized we can do things
-    // like right the carrier sense threshold to the FPGA register.
-    case INIT_GMAC:
-      goto unhandled;
-
-    
-    //----------------------------- IDLE ------------------------------------//
-    // In the idle state the MAC is not quite 'idle', it is just not doing
-    // anything specific.  It is still being passive with data between the
-    // application and the lower layer.
-    case IDLE:
-      
-      //-------- TX PORT ----------------------------------------------------//
-      if(pmt_eq(d_tx->port_symbol(), port_id)) {
-
-        //-------- INCOMING PACKET ----------------------//
-        if(pmt_eq(event, s_cmd_tx_pkt)) {
-          // Pass it on to be framed and modulated
-          d_gmsk_cs->send(s_cmd_mod, data);
-          return;
-        }
-
-      }
-
-      //--------- USRP TX PORT ----------------------------------------------//
-      if(pmt_eq(d_us_tx->port_symbol(), port_id)) {
-
-        //-------- INCOMING PACKET RESPONSE -------------//
-        if(pmt_eq(event, s_response_xmit_raw_frame)) {
-          handle_response_xmit_raw_frame(data);
-          return;
-        }
-
-      }
-      
-      //--------- USRP RX PORT ----------------------------------------------//
-      if(pmt_eq(d_us_rx->port_symbol(), port_id)) {
-
-        //-------- INCOMING PACKET RESPONSE -------------//
-        if(pmt_eq(event, s_response_recv_raw_samples)) {
-          d_gmsk_cs->send(s_cmd_demod, data);
-          return;
-        }
-
-      }
-
-      //--------- CS PORT ---------------------------------------------------//
-      if(pmt_eq(d_cs->port_symbol(), port_id)) {
-
-        //------- SET LOCAL ADDRESS ---------------------//
-        if(pmt_eq(event, s_cmd_set_address)) {
-          handle_cmd_set_address(data);
-          return;
-        }
-        
-        //------- ENABLE CARRIER SENSE ------------------//
-        if(pmt_eq(event, s_cmd_carrier_sense_enable)) {
-          handle_cmd_carrier_sense_enable(data);
-          return;
-        }
-        
-        //------- CARRIER SENSE THRESHOLD ---------------//
-        if(pmt_eq(event, s_cmd_carrier_sense_threshold)) {
-          handle_cmd_carrier_sense_threshold(data);
-          return;
-        }
-
-        //------- CARRIER SENSE DEADLINE ----------------//
-        if(pmt_eq(event, s_cmd_carrier_sense_deadline)) {
-          handle_cmd_carrier_sense_deadline(data);
-          return;
-        }
-
-        //------- DISABLE CARRIER SENSE -----------------//
-        if(pmt_eq(event, s_cmd_carrier_sense_disable)) {
-          handle_cmd_carrier_sense_disable(data);
-          return;
-        }
-
-        //------- RX ENABLE -----------------------------//
-        if(pmt_eq(event, s_cmd_rx_enable)) {
-          handle_cmd_rx_enable(data);
-          return;
-        }
-
-        //------- RX DISABLE ----------------------------//
-        if(pmt_eq(event, s_cmd_rx_disable)) {
-          handle_cmd_rx_disable(data);
-          return;
-        }
-
-      }
-
-      //--------- GMSK PORT -------------------------------------------------//
-      if(pmt_eq(d_gmsk_cs->port_symbol(), port_id)) {
-        
-        //------- MODULATED DATA ------------------------//
-        if(pmt_eq(event, s_response_mod)) {
-          handle_cmd_tx_pkt(data);
-        }
-
-        //------- DEMODED FRAME -------------------------//
-        if(pmt_eq(event, s_response_demod)) {
-          handle_response_demod(data);
-        }
-      }
-      goto unhandled;
-
-
-    //---------------------------- ACK WAIT ----------------------------------//
-    // In this state, we are waiting for an ACK back before we pass up a
-    // "successfull transmission" message to the application.  If we do not get
-    // an ACK within a timeout, we retransmit.
-    case ACK_WAIT:
-
-      //--------- ACK TIMEOUT -----------------------------------------------//
-      // FAIL! We've hit an ACK timeout, time to panic and retransmit.
-      // I'm not taking the time to disable the RX port since we don't need any
-      // processing power to modulate, since we've cached the modulated data.
-      //
-      // The timer automatically resets, if we want to get smart we can keep
-      // track of how many times its fired before we tell the application the
-      // transmission has failed.
-      if(pmt_eq(event, s_timeout)) {
-        std::cout << "x";
-        fflush(stdout);
-        d_us_tx->send(s_cmd_xmit_raw_frame, d_last_frame);
-        return;
-      }
-      
-      //--------- USRP RX PORT ----------------------------------------------//
-      // RX needs to be enabled here to get samples in an attempt to decode the
-      // ACK, this is where it happens.
-      if(pmt_eq(d_us_rx->port_symbol(), port_id)) {
-
-        //-------- INCOMING PACKET RESPONSE -------------//
-        if(pmt_eq(event, s_response_recv_raw_samples)) {
-          d_gmsk_cs->send(s_cmd_demod, data);
-          return;
-        }
-      }
-
-      //--------- GMSK PORT -------------------------------------------------//
-      // We are waiting for a frame from GMSK, which would be an ACK!
-      if(pmt_eq(d_gmsk_cs->port_symbol(), port_id)) {
-        
-        //------- DEMODED FRAME -------------------------//
-        if(pmt_eq(event, s_response_demod)) {
-          handle_response_demod(data);
-        }
-      }
-      goto unhandled;
-
-    
-    //---------------------------- SEND ACK ----------------------------------//
-    // In this state, we only expect our modulated ACK data to get back from
-    // the PHY layer, and then we ship it to usrp_server, and wait for a
-    // response back before enabled RX again.
-    case SEND_ACK:
-
-      //--------- GMSK PORT -------------------------------------------------//
-      // We expect a response back with the modulated ACK, which with then
-      // treat as a raw tx packet to usrp_server for transmission.
-      if(pmt_eq(d_gmsk_cs->port_symbol(), port_id)) {
-        
-        //------- MODULATED DATA ------------------------//
-        if(pmt_eq(event, s_response_mod)) {
-          handle_cmd_tx_pkt(data);
-        }
-      }
-        
-      //--------- USRP TX PORT ----------------------------------------------//
-      // This is the response for the raw packet transmission, we can now
-      // re-enable the RX and retain to idle.
-      if(pmt_eq(d_us_tx->port_symbol(), port_id)) {
-
-        //-------- INCOMING PACKET RESPONSE -------------//
-        // We only hope it was successful, and we enable
-        // the RX port again
-        if(pmt_eq(event, s_response_xmit_raw_frame)) {
-          handle_cmd_rx_enable(PMT_NIL);
-          d_state = IDLE;
-          return;
-        }
-
-      }
-      goto unhandled;
-
-
     //------------------------ CLOSING CHANNELS -----------------------------//
     case CLOSING_CHANNELS:
 
@@ -440,8 +247,156 @@ void gmac::handle_message(mb_message_sptr msg)
     //-------------------------- CLOSING USRP -------------------------------//
     case CLOSING_USRP:
       goto unhandled;
+    
+    //----------------------------- INIT GMAC --------------------------------//
+    // In the INIT_GMAC state, now that the USRP is initialized we can do things
+    // like right the carrier sense threshold to the FPGA register.
+    case INIT_GMAC:
+      goto unhandled;
+
+    
+    //----------------------------- IDLE ------------------------------------//
+    // In the idle state the MAC is not quite 'idle', it is just not doing
+    // anything specific.  It is still being passive with data between the
+    // application and the lower layer.
+    case IDLE:
       
-  }
+      //---- Port: GMAC TX -------------- State: IDLE -----------------------//
+      if(pmt_eq(d_tx->port_symbol(), port_id)) {
+
+        if(pmt_eq(event, s_cmd_tx_pkt)) {
+          d_gmsk_cs->send(s_cmd_mod, data);           // Modulate the data
+        }
+        return;
+      }
+      
+      //---- Port: GMAC CS -------------- State: IDLE -----------------------//
+      if(pmt_eq(d_cs->port_symbol(), port_id)) {
+
+        if(pmt_eq(event, s_cmd_set_address)) {
+          handle_cmd_set_address(data);               // Set local address
+        }         
+        else if(pmt_eq(event, s_cmd_carrier_sense_enable)) {
+          handle_cmd_carrier_sense_enable(data);      // Enable carrier sense
+        }
+        else if(pmt_eq(event, s_cmd_carrier_sense_threshold)) {
+          handle_cmd_carrier_sense_threshold(data);   // Change CS threshold
+        } 
+        else if(pmt_eq(event, s_cmd_carrier_sense_deadline)) {
+          handle_cmd_carrier_sense_deadline(data);    // Change CS deadline
+        }
+        else if(pmt_eq(event, s_cmd_carrier_sense_disable)) {
+          handle_cmd_carrier_sense_disable(data);     // Disable CS
+        }
+        else if(pmt_eq(event, s_cmd_rx_enable)) {
+          handle_cmd_rx_enable(data);                 // Enable RX
+        }
+        else if(pmt_eq(event, s_cmd_rx_disable)) {
+          handle_cmd_rx_disable(data);                // D isable RX
+        }
+        return;
+      }
+
+      //---- Port: USRP TX -------------- State: IDLE -----------------------//
+      if(pmt_eq(d_us_tx->port_symbol(), port_id)) {
+
+        if(pmt_eq(event, s_response_xmit_raw_frame)) {
+          handle_response_xmit_raw_frame(data);       // Transmission successful
+        }
+        return;
+      }
+      
+      //---- Port: USRP RX -------------- State: IDLE -----------------------//
+      if(pmt_eq(d_us_rx->port_symbol(), port_id)) {
+
+        if(pmt_eq(event, s_response_recv_raw_samples)) {
+          d_gmsk_cs->send(s_cmd_demod, data);         // Demod incoming samples
+        }
+        return;
+      }
+
+      //---- Port: GMSK CS -------------- State: IDLE -----------------------//
+      if(pmt_eq(d_gmsk_cs->port_symbol(), port_id)) {
+        
+        if(pmt_eq(event, s_response_mod)) {
+          handle_cmd_tx_pkt(data);                    // Data done being mod'ed
+        }
+        else if(pmt_eq(event, s_response_demod)) {
+          handle_response_demod(data);                // Incoming frame!
+        }
+        return;
+      }
+      goto unhandled;
+
+
+    //---------------------------- ACK WAIT ----------------------------------//
+    // In this state, we are waiting for an ACK back before we pass up a
+    // "successfull transmission" message to the application.  If we do not get
+    // an ACK within a timeout, we retransmit.
+    case ACK_WAIT:
+
+      //--------- ACK TIMEOUT -----------------------------------------------//
+      // FAIL! We've hit an ACK timeout, time to panic and retransmit.
+      // I'm not taking the time to disable the RX port since we don't need any
+      // processing power to modulate, since we've cached the modulated data.
+      //
+      // The timer automatically resets, if we want to get smart we can keep
+      // track of how many times its fired before we tell the application the
+      // transmission has failed.
+      if(pmt_eq(event, s_timeout)) {
+        std::cout << "x";
+        fflush(stdout);
+        d_us_tx->send(s_cmd_xmit_raw_frame, d_last_frame);
+        return;
+      }
+      
+      //---- Port: USRP RX -------------- State: ACK_WAIT -------------------//
+      if(pmt_eq(d_us_rx->port_symbol(), port_id)) {
+
+        if(pmt_eq(event, s_response_recv_raw_samples)) {
+          d_gmsk_cs->send(s_cmd_demod, data);         // Demod incoming samples
+        }
+        return;
+      }
+
+      //---- Port: GMSK CS -------------- State: ACK_WAIT -------------------//
+      if(pmt_eq(d_gmsk_cs->port_symbol(), port_id)) {
+
+        if(pmt_eq(event, s_response_demod)) {
+          handle_response_demod(data);                // Incoming frame! ACK?
+        }
+        return;
+      }
+      goto unhandled;
+
+    
+    //---------------------------- SEND ACK ----------------------------------//
+    // In this state, we only expect our modulated ACK data to get back from
+    // the PHY layer, and then we ship it to usrp_server, and wait for a
+    // response back before enabled RX again.
+    case SEND_ACK:
+
+      //---- Port: GMSK CS -------------- State: SEND_ACK -------------------//
+      if(pmt_eq(d_gmsk_cs->port_symbol(), port_id)) {
+        
+        if(pmt_eq(event, s_response_mod)) {
+          handle_cmd_tx_pkt(data);                    // Incoming mod'ed ACK
+        }
+        return;
+      }
+        
+      //---- Port: USRP TX -------------- State: SEND_ACK -------------------//
+      if(pmt_eq(d_us_tx->port_symbol(), port_id)) {
+
+        if(pmt_eq(event, s_response_xmit_raw_frame)) {
+          handle_cmd_rx_enable(PMT_NIL);              // Response from ACK trans,
+          d_state = IDLE;                             // enable RX and enter idle
+        }
+        return;
+      }
+      goto unhandled;
+
+  } // End of switch()
   
  // An error occured, print it, and shutdown all m-blocks
  bail:
@@ -455,25 +410,6 @@ void gmac::handle_message(mb_message_sptr msg)
   if(0 && verbose && !pmt_eq(event, pmt_intern("%shutdown")))
     std::cout << "[GMAC] unhandled msg: " << msg
               << "in state "<< d_state << std::endl;
-}
-
-// The MAC layer connects to 'usrp_server' which has a control/status channel,
-// a TX, and an RX port.  The MAC layer can then relay TX/RX data back and
-// forth to the application, or a physical layer once available.
-void gmac::define_ports()
-{
-  // ports we use to connect to gmsk
-  d_gmsk_cs = define_port("phy-cs", "gmsk-cs", false, mb_port::INTERNAL);
-
-  // Ports we use to connect to usrp_server
-  d_us_tx = define_port("us-tx0", "usrp-tx", false, mb_port::INTERNAL);
-  d_us_rx = define_port("us-rx0", "usrp-rx", false, mb_port::INTERNAL);
-  d_us_cs = define_port("us-cs", "usrp-server-cs", false, mb_port::INTERNAL);
-  
-  // Ports applications used to connect to us
-  d_tx = define_port("tx0", "gmac-tx", true, mb_port::EXTERNAL);
-  d_rx = define_port("rx0", "gmac-rx", true, mb_port::EXTERNAL);
-  d_cs = define_port("cs", "gmac-cs", true, mb_port::EXTERNAL);
 }
 
 // To initialize the USRP we must pass several parameters to 'usrp_server' such
