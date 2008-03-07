@@ -623,4 +623,3 @@ void gmac::build_and_send_ack(long dst)
               << std::endl;
 }
 
-REGISTER_MBLOCK_CLASS(gmac);

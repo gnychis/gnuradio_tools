@@ -400,3 +400,5 @@ void mac::disable_rx()
   if(verbose)
     std::cout << "[MAC] RX is disabled\n";
 }
+
+REGISTER_MBLOCK_CLASS(mac);
