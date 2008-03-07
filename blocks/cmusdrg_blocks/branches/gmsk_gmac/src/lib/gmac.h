@@ -23,6 +23,27 @@
 #define INCLUDED_GMAC_H
 
 #include <mb_mblock.h>
+#include <mb_runtime.h>
+#include <mb_protocol_class.h>
+#include <mb_exception.h>
+#include <mb_msg_queue.h>
+#include <mb_message.h>
+#include <mb_msg_accepter.h>
+#include <mb_class_registry.h>
+#include <pmt.h>
+#include <stdio.h>
+#include <string.h>
+#include <iostream>
+#include <ui_nco.h>
+
+#include <symbols_usrp_server_cs.h>
+#include <symbols_usrp_channel.h>
+#include <symbols_usrp_low_level_cs.h>
+#include <symbols_usrp_tx.h>
+#include <symbols_usrp_rx.h>
+
+#include <gmac_symbols.h>
+#include <gmsk_symbols.h>
 
 class gmac;
 
