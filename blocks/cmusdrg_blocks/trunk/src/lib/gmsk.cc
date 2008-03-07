@@ -88,6 +88,7 @@ gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   d_omega_relative_limit(0.005),
   d_amplitude(12000),
   d_low_pass(false),
+  d_squelch(true),
   d_corr_thresh(12),
   d_fmdemod_last(0),
   d_disk_write(false),
@@ -410,13 +411,27 @@ void gmsk::demod(pmt_t data)
     d_filterq.pop();
   }
 
-  // Now take samples from the incoming data
-  for(int j=0; j<(int)c_samples.size()-swaiting; j++) 
-    c_samples[j+swaiting] = gr_complex(samples[j*2], samples[j*2+1]);
+  // Now take samples from the incoming data, do a little power squelching while
+  // we're at it
+  const long SQUELCH = 100;
+  long stored = 0;
+  for(int j=0; j<(int)c_samples.size()-swaiting; j++) {
+    if(d_squelch) {
+      if(sqrt(samples[j*2]*samples[j*2]+samples[j*2+1]*samples[j*2+1]) > SQUELCH) {
+        c_samples[stored+swaiting] = gr_complex(samples[j*2], samples[j*2+1]);
+        stored++;
+      }
+    } else {
+      c_samples[stored+swaiting] = gr_complex(samples[j*2], samples[j*2+1]);
+      stored++;
+    }
+  }
+
+  long c_tsamples = stored + swaiting;
 
   // Push the extra samples on to the queue (input has to be % 20)
-  long cf_nout = c_samples.size() - (c_samples.size() % 20);
-  for(int k=cf_nout; k<(int)c_samples.size(); k++)
+  long cf_nout = c_tsamples - (c_tsamples % 20);
+  for(int k=cf_nout; k<(int)c_tsamples; k++)
     d_filterq.push(c_samples[k]);
 
   // Need to bail if not enough samples for the filter
@@ -427,7 +442,7 @@ void gmsk::demod(pmt_t data)
   }
 
   t_samples += cf_nout;
-  
+
   // Go through lowpass chan filter
   std::vector<gr_complex>   cf_output(cf_nout);
   std::vector<const void*>  cf_pinput(1, &c_samples[0]);
@@ -629,6 +644,8 @@ void gmsk::framer(const std::vector<unsigned char> input)
           if(verbose)
             std::cout << "[GMSK] Found frame\n";
 
+          d_squelch=false;
+
           // Prepare the header queue
           d_hdr_bits.clear();
 
@@ -748,6 +765,8 @@ void gmsk::framer(const std::vector<unsigned char> input)
           std::cout << "[GMSK] Frame " << d_nframes_recvd++ << " timing: "
                     << (d_end.tv_sec-d_start.tv_sec)  << " sec and "
                     << (d_end.tv_usec-d_start.tv_usec) << " usec\n";
+
+        d_squelch=true;
 
         break;
 

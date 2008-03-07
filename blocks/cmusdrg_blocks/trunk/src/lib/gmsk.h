@@ -79,6 +79,7 @@ class gmsk : public mb_mblock
   long d_amplitude;
 
   bool d_low_pass;
+  bool d_squelch;
 
   long d_corr_thresh;
 
