@@ -88,6 +88,7 @@ gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   d_omega_relative_limit(0.005),
   d_amplitude(12000),
   d_low_pass(false),
+  d_squelch(true),
   d_corr_thresh(12),
   d_fmdemod_last(0),
   d_disk_write(false),
@@ -415,10 +416,14 @@ void gmsk::demod(pmt_t data)
   const long SQUELCH = 100;
   long stored = 0;
   for(int j=0; j<(int)c_samples.size()-swaiting; j++) {
-    if(sqrt(samples[j*2]*samples[j*2]+samples[j*2+1]*samples[j*2+1]) > SQUELCH) {
+    if(d_squelch) {
+      if(sqrt(samples[j*2]*samples[j*2]+samples[j*2+1]*samples[j*2+1]) > SQUELCH) {
+        c_samples[stored+swaiting] = gr_complex(samples[j*2], samples[j*2+1]);
+        stored++;
+      }
+    } else {
       c_samples[stored+swaiting] = gr_complex(samples[j*2], samples[j*2+1]);
       stored++;
-      //std::cout << "stored: " << (sqrt(samples[j*2]*samples[j*2]+samples[j*2+1]*samples[j*2+1])) << std::endl;
     }
   }
 
@@ -639,6 +644,8 @@ void gmsk::framer(const std::vector<unsigned char> input)
           if(verbose)
             std::cout << "[GMSK] Found frame\n";
 
+          d_squelch=false;
+
           // Prepare the header queue
           d_hdr_bits.clear();
 
@@ -758,6 +765,8 @@ void gmsk::framer(const std::vector<unsigned char> input)
           std::cout << "[GMSK] Frame " << d_nframes_recvd++ << " timing: "
                     << (d_end.tv_sec-d_start.tv_sec)  << " sec and "
                     << (d_end.tv_usec-d_start.tv_usec) << " usec\n";
+
+        d_squelch=true;
 
         break;
 
