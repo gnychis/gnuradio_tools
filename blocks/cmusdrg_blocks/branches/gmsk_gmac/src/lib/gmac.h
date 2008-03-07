@@ -58,6 +58,7 @@ class gmac : public mb_mblock
 
   pmt_t d_which_usrp;
 
+  pmt_t d_ack_timeout;
   pmt_t d_last_frame;
 
   bool d_carrier_sense;

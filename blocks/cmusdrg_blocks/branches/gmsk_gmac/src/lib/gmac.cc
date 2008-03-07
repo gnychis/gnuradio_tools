@@ -50,6 +50,8 @@
 
 static bool verbose = false;
 
+static pmt_t s_timeout = pmt_intern("%timeout");
+
 gmac::gmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(rt, instance_name, user_arg),
     d_us_rx_chan(PMT_NIL), d_us_tx_chan(PMT_NIL)
@@ -304,6 +306,21 @@ void gmac::handle_message(mb_message_sptr msg)
     // "successfull transmission" message to the application.  If we do not get
     // an ACK within a timeout, we retransmit.
     case ACK_WAIT:
+
+      //--------- ACK TIMEOUT -----------------------------------------------//
+      // FAIL! We've hit an ACK timeout, time to panic and retransmit.
+      // I'm not taking the time to disable the RX port since we don't need any
+      // processing power to modulate, since we've cached the modulated data.
+      //
+      // The timer automatically resets, if we want to get smart we can keep
+      // track of how many times its fired before we tell the application the
+      // transmission has failed.
+      if(pmt_eq(event, s_timeout)) {
+        std::cout << "x";
+        fflush(stdout);
+        d_us_tx->send(s_cmd_xmit_raw_frame, d_last_frame);
+        return;
+      }
       
       //--------- USRP RX PORT ----------------------------------------------//
       // RX needs to be enabled here to get samples in an attempt to decode the
@@ -763,7 +780,15 @@ void gmac::handle_response_xmit_raw_frame(pmt_t data)
   // Now we enter an ACK wait state before we send the response
   // that we've sucessfully transmitted.
   handle_cmd_rx_enable(PMT_NIL);
+  
+  // Schedule an ACK timeout to fire every timeout period. This should be user
+  // settable.  The first timeout is now+TIMEOUT_PERIOD
+  const double TIMEOUT_PERIOD = 0.1;  // in seconds
+  mb_time now = mb_time::time();
+  d_ack_timeout = schedule_periodic_timeout(now + TIMEOUT_PERIOD, mb_time(TIMEOUT_PERIOD), PMT_T);
+  
   d_state = ACK_WAIT;
+
 }
 
 // This method determines whether carrier sense should be enabled based on two
@@ -937,6 +962,7 @@ void gmac::handle_response_demod(pmt_t data)
   // If we were in the ACK_WAIT state and the frame is an ACK, then we
   // transmitted successfully! Let's tell the application to move on.
   if(d_state==ACK_WAIT && back==true) {
+    cancel_timeout(d_ack_timeout);
     invocation_handle = pmt_nth(0, d_last_frame);
     d_tx->send(s_response_tx_pkt,
                pmt_list2(invocation_handle,
