@@ -53,7 +53,6 @@ class gmac_rx_file : public mb_mblock
   enum state_t {
     INIT,
     DATA_WAIT,
-    SEND_ACK,
   };
 
   state_t	d_state;
@@ -63,7 +62,6 @@ class gmac_rx_file : public mb_mblock
   std::ofstream d_ofile;
 
   long d_local_addr;
-  long d_dst_addr;
 
  public:
   gmac_rx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg);
@@ -87,19 +85,19 @@ gmac_rx_file::gmac_rx_file(mb_runtime *runtime, const std::string &instance_name
     d_nframes_xmitted(0),
     d_done_sending(false)
 { 
-
+  
+  // Extract USRP information from python and the arguments to the python script
+  pmt_t usrp = pmt_nth(0, user_arg);
   pmt_t args = pmt_nth(1, user_arg);
-
   std::vector<std::string> argv;
   argv = boost::any_cast<std::vector<std::string> >(pmt_any_ref(args));
 
   // Pull in file name
   std::string file = argv[0];
 
-  // Addresses
-  std::istringstream ss_laddr(argv[1]), ss_daddr(argv[2]);
+  // Local node address
+  std::istringstream ss_laddr(argv[1]);
   ss_laddr >> d_local_addr;
-  ss_daddr >> d_dst_addr;
 
   // Open a stream to the input file and ensure it's open
   d_ofile.open(file.c_str(), std::ios::binary|std::ios::out);
@@ -109,8 +107,10 @@ gmac_rx_file::gmac_rx_file(mb_runtime *runtime, const std::string &instance_name
     shutdown_all(PMT_F);
     return;
   }
+
+  pmt_t gmac_data = pmt_list2(usrp, pmt_from_long(d_local_addr));
   
-  define_component("GMAC", "gmac", pmt_nth(0,user_arg)); // FIXME: RFX2400 Hack
+  define_component("GMAC", "gmac", gmac_data); 
   d_tx = define_port("tx0", "gmac-tx", false, mb_port::INTERNAL);
   d_rx = define_port("rx0", "gmac-rx", false, mb_port::INTERNAL);
   d_cs = define_port("cs", "gmac-cs", false, mb_port::INTERNAL);
@@ -177,27 +177,6 @@ gmac_rx_file::handle_message(mb_message_sptr msg)
       }
       goto unhandled;
 
-    //----------------------- ACK WAIT ----------------------------------//
-    // In the state of waiting for an ACK, to re-enter the transmit state
-    case SEND_ACK:
-
-      // Check that the transmits are OK
-      if (pmt_eq(event, s_response_tx_pkt)){
-        handle = pmt_nth(0, data);
-        status = pmt_nth(1, data);
-
-        // If the ACK send was successful, lets go back to waiting for data
-        if (pmt_eq(status, PMT_T)){
-          d_cs->send(s_cmd_rx_enable, pmt_list1(PMT_NIL));
-          enter_data_wait();
-          return;
-        }
-        else {
-          error_msg = "bad response-tx-pkt:";
-          goto bail;
-        }
-      }
-
     goto unhandled;
 
   }
@@ -224,102 +203,17 @@ gmac_rx_file::enter_data_wait()
 }
 
 void
-gmac_rx_file::build_and_send_ack(long dst)
-{
-  size_t ignore;
-  long n_bytes;
-
-  d_state = SEND_ACK;
-
-  // Before we send the frame, we stop the RX port since we are not interested
-  // in decoding while transmitting, and full processing can go to TX
-  d_cs->send(s_cmd_rx_disable, pmt_list1(PMT_NIL));
-
-  // Let's read in as much as possible to fit in a frame
-  char data[1];
-  n_bytes=1;
-
-  // Make the PMT data, get a writable pointer to it, then copy our data in
-  pmt_t uvec = pmt_make_u8vector(n_bytes, 0);
-  char *vdata = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
-  memcpy(vdata, data, n_bytes);
-
-  // Per packet properties
-  pmt_t tx_properties = pmt_make_dict();
-
-  pmt_dict_set(tx_properties, pmt_intern("ack"), PMT_T);
-
-  pmt_t timestamp = pmt_from_long(0xffffffff);	// NOW
-  d_tx->send(s_cmd_tx_pkt,
-	     pmt_list5(PMT_NIL,   // invocation-handle
-           pmt_from_long(d_local_addr),// src
-           pmt_from_long(dst),// destination
-		       uvec,				    // the samples
-           tx_properties)); // per pkt properties
-
-  d_nframes_xmitted++;
-
-  if(verbose)
-    std::cout << "[GMAC_RX_FILE] Transmitted ACK from " << d_local_addr
-              << " to " << dst
-              << std::endl;
-}
-
-
-void
 gmac_rx_file::handle_response_rx_pkt(pmt_t data)
 {
   pmt_t invocation_handle = pmt_nth(0, data);
   pmt_t payload = pmt_nth(1, data);
   pmt_t pkt_properties = pmt_nth(2, data);
 
-  long lsrc=0, ldst=0;
-  bool bcrc=false;
-
-  if(pmt_is_dict(pkt_properties)) {
-
-    if(pmt_t src = pmt_dict_ref(pkt_properties,
-                                pmt_intern("src"),
-                                PMT_NIL)) {
-      if(!pmt_eqv(src, PMT_NIL))
-        lsrc = pmt_to_long(src);
-    }
-    
-    if(pmt_t dst = pmt_dict_ref(pkt_properties,
-                                pmt_intern("dst"),
-                                PMT_NIL)) {
-      if(!pmt_eqv(dst, PMT_NIL))
-        ldst = pmt_to_long(dst);
-    }
-    if(pmt_t crc = pmt_dict_ref(pkt_properties,
-                                pmt_intern("crc"),
-                                PMT_NIL)) {
-      if(pmt_eqv(crc, PMT_T))
-        bcrc = true;
-      else
-        bcrc = false;
-    }
-  }
-
-  // Ensure frame is destined to us, if so we will ACK
-  if(ldst != d_local_addr) {
-    if(verbose)
-      std::cout << "[GMAC_RX_FILE] Received frame not destined to us\n";
-    return;
-  }
-  
-  if(verbose)
-    std::cout << "[GMAC_RX_FILE] Received frame destined for us!\n";
-
   // Data was destined for us, let's dump it to the output file
   size_t nbytes;
   char *payload_data = (char *)pmt_u8vector_writeable_elements(payload, nbytes);
   d_ofile.write((const char *)payload_data, nbytes);
   d_ofile.flush();
-
-  // Now that we've determined it's for us, we ACK the source
-  if(bcrc)
-    build_and_send_ack(lsrc);
 
   std::cout << ".";
   fflush(stdout);

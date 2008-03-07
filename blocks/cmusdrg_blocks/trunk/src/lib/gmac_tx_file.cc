@@ -54,7 +54,6 @@ class gmac_tx_file : public mb_mblock
   enum state_t {
     INIT,
     TRANSMITTING,
-    ACK_WAIT,
   };
 
   state_t	d_state;
@@ -77,13 +76,10 @@ class gmac_tx_file : public mb_mblock
   void open_usrp();
   void close_usrp();
   void allocate_channel();
-  void send_packets();
   void enter_transmitting();
   void build_and_send_next_frame();
   void handle_xmit_response(pmt_t invocation_handle);
-  void handle_response_rx_pkt(pmt_t data);
   void enter_closing_channel();
-  void enter_ack_wait();
 };
 
 gmac_tx_file::gmac_tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg)
@@ -93,8 +89,9 @@ gmac_tx_file::gmac_tx_file(mb_runtime *runtime, const std::string &instance_name
     d_done_sending(false)
 { 
 
+  // Extract USRP information from python and the arguments to the python script
+  pmt_t usrp = pmt_nth(0, user_arg);
   pmt_t args = pmt_nth(1, user_arg);
-
   std::vector<std::string> argv;
   argv = boost::any_cast<std::vector<std::string> >(pmt_any_ref(args));
 
@@ -115,7 +112,9 @@ gmac_tx_file::gmac_tx_file(mb_runtime *runtime, const std::string &instance_name
     return;
   }
   
-  define_component("GMAC", "gmac", pmt_nth(0,user_arg));  // FIXME: RFX2400 hack
+  pmt_t gmac_data = pmt_list2(usrp, pmt_from_long(d_local_addr));
+  
+  define_component("GMAC", "gmac", gmac_data);  // FIXME: RFX2400 hack
   d_tx = define_port("tx0", "gmac-tx", false, mb_port::INTERNAL);
   d_rx = define_port("rx0", "gmac-rx", false, mb_port::INTERNAL);
   d_cs = define_port("cs", "gmac-cs", false, mb_port::INTERNAL);
@@ -194,18 +193,6 @@ gmac_tx_file::handle_message(mb_message_sptr msg)
           goto bail;
         }
       }
-      goto unhandled;
-
-    //----------------------- ACK WAIT ----------------------------------//
-    // In the state of waiting for an ACK, to re-enter the transmit state
-    case ACK_WAIT:
-
-      // Check the incoming data
-      if (pmt_eq(event, s_response_rx_pkt)){
-        handle_response_rx_pkt(data);
-        return;
-      }
-
       goto unhandled;
 
   }
@@ -304,80 +291,8 @@ gmac_tx_file::handle_xmit_response(pmt_t handle)
     shutdown_all(PMT_T);
   }
 
-  // We now want to enter the wait for ACK state
-  enter_ack_wait();
-
-}
-
-// Enter the state where we re-enable the RX chain and wait for an ACK to be
-// decoded.
-void
-gmac_tx_file::enter_ack_wait()
-{
-  d_state = ACK_WAIT;
-
-  d_cs->send(s_cmd_rx_enable, pmt_list1(PMT_NIL));
-
-  if(verbose)
-    std::cout << "[GMAC_TX_FILE] Entering ACK wait state\n";
-}
-
-void
-gmac_tx_file::handle_response_rx_pkt(pmt_t data)
-{
-  pmt_t invocation_handle = pmt_nth(0, data);
-  pmt_t payload = pmt_nth(1, data);
-  pmt_t pkt_properties = pmt_nth(2, data);
-
-  long lsrc=0, ldst=0;
-  bool back=false;
-
-  if(pmt_is_dict(pkt_properties)) {
-
-    if(pmt_t src = pmt_dict_ref(pkt_properties,
-                                pmt_intern("src"),
-                                PMT_NIL)) {
-      if(!pmt_eqv(src, PMT_NIL))
-        lsrc = pmt_to_long(src);
-    }
-    
-    if(pmt_t dst = pmt_dict_ref(pkt_properties,
-                                pmt_intern("dst"),
-                                PMT_NIL)) {
-      if(!pmt_eqv(dst, PMT_NIL))
-        ldst = pmt_to_long(dst);
-    }
-
-    if(pmt_t ack = pmt_dict_ref(pkt_properties,
-                                pmt_intern("ack"),
-                                PMT_NIL)) {
-      if(pmt_eqv(ack, PMT_T))
-        back = true;
-      else
-        back = false;
-    }
-  }
-  
-  // Ensure frame is destined to us, if so we will ACK
-  if(ldst != d_local_addr) {
-    if(verbose)
-      std::cout << "[GMAC_TX_FILE] Received ACK not destined to us\n";
-    return;
-  }
-
-  if(!back) {
-    if(verbose)
-      std::cout << "[GMAC_TX_FILE] Received a frame that was NOT an ACK\n";
-    return;
-  }
-  
-  if(verbose)
-    std::cout << "[GMAC_TX_FILE] Received ACK destined for us!\n";
-
-  // Let's hop back to transmitting, if we're not done sending
-  if(!d_done_sending)
-    enter_transmitting();
-
+  // GMAC has taken care of waiting for the ACK
+  build_and_send_next_frame();  
 }
 
 REGISTER_MBLOCK_CLASS(gmac_tx_file);

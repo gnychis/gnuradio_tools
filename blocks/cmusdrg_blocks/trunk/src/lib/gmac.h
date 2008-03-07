@@ -36,6 +36,8 @@ class gmac : public mb_mblock
     OPENING_USRP,
     ALLOCATING_CHANNELS,
     INIT_GMAC,
+    ACK_WAIT,
+    SEND_ACK,
     IDLE,
     CLOSING_CHANNELS,
     CLOSING_USRP,
@@ -55,6 +57,9 @@ class gmac : public mb_mblock
   pmt_t d_us_rx_chan, d_us_tx_chan;
 
   pmt_t d_which_usrp;
+
+  pmt_t d_ack_timeout;
+  pmt_t d_last_frame;
 
   bool d_carrier_sense;
   long d_cs_thresh;
@@ -98,6 +103,7 @@ class gmac : public mb_mblock
   void handle_cmd_rx_enable(pmt_t data);
   void handle_cmd_rx_disable(pmt_t data);
   void handle_cmd_set_address(pmt_t data);
+  void build_and_send_ack(long dst);
  
 };
 
