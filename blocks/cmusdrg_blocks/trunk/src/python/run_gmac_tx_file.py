@@ -36,8 +36,8 @@ def setup_usrp(freq):
   # pick d'board
   subdev_tx = usrp.selected_subdev(utx, subdev_spec_tx)
   subdev_rx = usrp.selected_subdev(urx, subdev_spec_rx)
-  DEBUG( "Using TX d'board %s" %(subdev_tx.side_and_name()))
-  DEBUG( "Using RX d'board %s" %(subdev_rx.side_and_name()))
+  print "Using TX d'board %s" %(subdev_tx.side_and_name())
+  print "Using RX d'board %s" %(subdev_rx.side_and_name())
 
   # Gain
   subdev_tx.set_gain((subdev_tx.gain_range()[0] + subdev_tx.gain_range()[1]) / 2)
