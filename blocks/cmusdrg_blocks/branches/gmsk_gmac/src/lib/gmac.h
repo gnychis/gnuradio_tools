@@ -45,39 +45,26 @@
 #include <gmac_symbols.h>
 #include <gmsk_symbols.h>
 
+#include <mac.h>
+
 class gmac;
 
-class gmac : public mb_mblock
+class gmac : public mac
 {
 
-  // The state is used to determine how to handle incoming messages and of
-  // course, the state of the MAC protocol.
-  enum state_t {
-    INIT,
-    OPENING_USRP,
-    ALLOCATING_CHANNELS,
+  enum gmac_state_t {
     INIT_GMAC,
     ACK_WAIT,
     SEND_ACK,
     IDLE,
-    CLOSING_CHANNELS,
-    CLOSING_USRP,
   };
-  state_t	d_state;
+  gmac_state_t	d_state;
 
   // Ports used for applications to connect to this block
   mb_port_sptr		  d_tx, d_rx, d_cs;
 
-  // Ports to connect to usrp_server (us)
-  mb_port_sptr      d_us_tx, d_us_rx, d_us_cs;
-  
   // Ports to connect to gmsk (us)
   mb_port_sptr      d_gmsk_cs;
-
-  // The channel numbers assigned for use
-  pmt_t d_us_rx_chan, d_us_tx_chan;
-
-  pmt_t d_which_usrp;
 
   pmt_t d_ack_timeout;
   pmt_t d_last_frame;
@@ -86,33 +73,21 @@ class gmac : public mb_mblock
   long d_cs_thresh;
   long d_cs_deadline;
 
-  bool d_rx_enabled;
-
   // Local user address
   long d_local_address;
-
-  enum FPGA_REGISTERS {
-    REG_CS_THRESH = 51,
-    REG_CS_DEADLINE = 52
-  };
   
+ protected:
+  void handle_mac_message(mb_message_sptr msg);   // overriding MAC method
+  void usrp_initialized();                        // overriding MAC method
+
  public:
   gmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg);
   ~gmac();
-  void handle_message(mb_message_sptr msg);
 
  private:
-  void define_ports();
-  void initialize_usrp(pmt_t usrp_ref);
+  void define_mac_ports();
   void initialize_gmac();
   void set_carrier_sense(bool toggle, long threshold, long deadline, pmt_t invocation);
-  void allocate_channels();
-  void enter_receiving();
-  void exit_receiving();
-  void enter_idle();
-  void close_channels();
-  void open_usrp();
-  void close_usrp();
   void handle_cmd_tx_pkt(pmt_t data);
   void handle_response_xmit_raw_frame(pmt_t data);
   void handle_response_demod(pmt_t data);

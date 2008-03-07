@@ -25,7 +25,7 @@
 
 #include <mac.h>
 
-static bool verbose = false;
+static bool verbose = true;
 
 mac::mac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(rt, instance_name, user_arg),
@@ -132,6 +132,7 @@ void mac::handle_usrp_message(mb_message_sptr msg)
           // If the RX has also been allocated already, we can continue
           if(!pmt_eqv(d_us_rx_chan, PMT_NIL)) {
             d_usrp_state=IDLE;
+            usrp_initialized();
           }
 
           return;
@@ -159,6 +160,7 @@ void mac::handle_usrp_message(mb_message_sptr msg)
           // If the TX has also been allocated already, we can continue
           if(!pmt_eqv(d_us_tx_chan, PMT_NIL)) {
             d_usrp_state=IDLE;
+            usrp_initialized();
           }
 
           return;
@@ -302,6 +304,11 @@ void mac::initialize_usrp(pmt_t usrp_ref)
   // Finally, enter the OPENING_USRP state by sending a request to open the
   // USRP.
   open_usrp();
+}
+
+void mac::usrp_initialized()
+{
+
 }
 
 // The following sends a command to open the USRP, which will upload the

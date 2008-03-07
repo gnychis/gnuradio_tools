@@ -77,6 +77,9 @@ class mac : public mb_mblock
   };
   
   virtual void handle_mac_message(mb_message_sptr msg);   // MAC overridable
+  virtual void usrp_initialized();                        // MAC overridable
+  void enable_rx();
+  void disable_rx();
   
  public:
   mac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg);
@@ -90,10 +93,6 @@ class mac : public mb_mblock
   void define_usrp_ports();
   void initialize_usrp(pmt_t usrp_ref);
   void allocate_channels();
-  void enable_rx();
-  void disable_rx();
-  void enter_receiving();
-  void exit_receiving();
   void close_channels();
   void open_usrp();
   void close_usrp();
