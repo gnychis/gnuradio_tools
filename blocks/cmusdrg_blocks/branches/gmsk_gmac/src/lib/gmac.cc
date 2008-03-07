@@ -62,8 +62,13 @@ gmac::gmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   // Initialize the ports
   define_ports();
 
+  // Extract local address from user argument
+  // FIXME: just take the local IP address of some interface...
+  d_local_address = pmt_to_long(pmt_nth(1, user_arg));
+
   // Initialize the connection to the USRP
-  initialize_usrp(user_arg);
+  pmt_t usrp_data = pmt_nth(0, user_arg);
+  initialize_usrp(usrp_data);
 
 }
 
@@ -203,7 +208,6 @@ void gmac::handle_message(mb_message_sptr msg)
         //-------- INCOMING PACKET ----------------------//
         if(pmt_eq(event, s_cmd_tx_pkt)) {
           // Pass it on to be framed and modulated
-          //handle_cmd_tx_pkt(data);
           d_gmsk_cs->send(s_cmd_mod, data);
           return;
         }
@@ -293,6 +297,42 @@ void gmac::handle_message(mb_message_sptr msg)
         }
       }
       goto unhandled;
+
+    
+    //------------------------ CLOSING CHANNELS -----------------------------//
+    // In this state, we only expect our modulated ACK data to get back from
+    // the PHY layer, and then we ship it to usrp_server, and wait for a
+    // response back before enabled RX again.
+    case SEND_ACK:
+
+      //--------- GMSK PORT -------------------------------------------------//
+      // We expect a response back with the modulated ACK, which with then
+      // treat as a raw tx packet to usrp_server for transmission.
+      if(pmt_eq(d_gmsk_cs->port_symbol(), port_id)) {
+        
+        //------- MODULATED DATA ------------------------//
+        if(pmt_eq(event, s_response_mod)) {
+          handle_cmd_tx_pkt(data);
+        }
+      }
+        
+      //--------- USRP TX PORT ----------------------------------------------//
+      // This is the response for the raw packet transmission, we can now
+      // re-enable the RX and retain to idle.
+      if(pmt_eq(d_us_tx->port_symbol(), port_id)) {
+
+        //-------- INCOMING PACKET RESPONSE -------------//
+        // We only hope it was successful, and we enable
+        // the RX port again
+        if(pmt_eq(event, s_response_xmit_raw_frame)) {
+          handle_cmd_rx_enable(PMT_NIL);
+          d_state = IDLE;
+          return;
+        }
+
+      }
+      goto unhandled;
+
 
     //------------------------ CLOSING CHANNELS -----------------------------//
     case CLOSING_CHANNELS:
@@ -457,9 +497,6 @@ void gmac::initialize_gmac()
 
   // The initial state is the INIT state.
   d_state = INIT_GMAC;
-
-  // FIXME: local address needs to be enforced to be set
-  d_local_address = 0;
 
   // Set carrier sense to enabled by default with the specified threshold and
   // the deadline to 0 -- which is wait forever.
@@ -819,10 +856,87 @@ void gmac::handle_response_demod(pmt_t data)
   pmt_t invocation_handle = PMT_NIL;
   pmt_t payload = pmt_nth(0, data);
   pmt_t pkt_properties = pmt_nth(1, data);
+
+  // Let's do some checking on the demoded frame
+  long lsrc=0, ldst=0;
+  bool bcrc = false;
+
+  // Use the packet properties creating by the framing code in GMSK
+  if(pmt_is_dict(pkt_properties)) {
+
+    if(pmt_t src = pmt_dict_ref(pkt_properties,
+                                pmt_intern("src"),
+                                PMT_NIL)) {
+      if(!pmt_eqv(src, PMT_NIL))
+        lsrc = pmt_to_long(src);
+    }
+    
+    if(pmt_t dst = pmt_dict_ref(pkt_properties,
+                                pmt_intern("dst"),
+                                PMT_NIL)) {
+      if(!pmt_eqv(dst, PMT_NIL))
+        ldst = pmt_to_long(dst);
+    }
+    if(pmt_t crc = pmt_dict_ref(pkt_properties,
+                                pmt_intern("crc"),
+                                PMT_NIL)) {
+      if(pmt_eqv(crc, PMT_T))
+        bcrc = true;  // CRC on payload passed
+      else
+        bcrc = false; // CRC on payload failed
+    }
+  }
+
+  if(ldst != d_local_address)  // not for this address
+    return;
+  
+  if(bcrc)  // CRC passes, let's ACK the source
+    build_and_send_ack(lsrc);
+
   d_rx->send(s_response_rx_pkt, pmt_list3(invocation_handle, payload, pkt_properties));
 
   if(verbose)
     std::cout << "[GMAC] Passing up demoded frame\n";
+}
+
+void gmac::build_and_send_ack(long dst)
+{
+  size_t ignore;
+  long n_bytes;
+
+  // Before we send the frame, we stop the RX port since we are not interested
+  // in decoding while transmitting, and full processing can go to TX
+  handle_cmd_rx_disable(PMT_NIL);
+
+  char data[1];
+  n_bytes=1;
+
+  // Make the PMT data, get a writable pointer to it, then copy our data in
+  pmt_t uvec = pmt_make_u8vector(n_bytes, 0);
+  char *vdata = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
+  memcpy(vdata, data, n_bytes);
+
+  // Per packet properties
+  pmt_t tx_properties = pmt_make_dict();
+
+  // Specify that it's an ACK
+  pmt_dict_set(tx_properties, pmt_intern("ack"), PMT_T);
+
+  pmt_t timestamp = pmt_from_long(0xffffffff);	// NOW
+  pmt_t pdata = pmt_list5(PMT_NIL,
+                          pmt_from_long(d_local_address),
+                          pmt_from_long(dst),
+                          uvec,
+                          tx_properties);
+
+  d_gmsk_cs->send(s_cmd_mod, pdata);
+  
+  d_state = SEND_ACK;
+
+  if(verbose)
+    std::cout << "[GMAC] Transmitted ACK from " << d_local_address
+              << " to " << dst
+              << std::endl;
 }
 
 REGISTER_MBLOCK_CLASS(gmac);

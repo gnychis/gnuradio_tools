@@ -93,8 +93,9 @@ gmac_tx_file::gmac_tx_file(mb_runtime *runtime, const std::string &instance_name
     d_done_sending(false)
 { 
 
+  // Extract USRP information from python and the arguments to the python script
+  pmt_t usrp = pmt_nth(0, user_arg);
   pmt_t args = pmt_nth(1, user_arg);
-
   std::vector<std::string> argv;
   argv = boost::any_cast<std::vector<std::string> >(pmt_any_ref(args));
 
@@ -115,7 +116,9 @@ gmac_tx_file::gmac_tx_file(mb_runtime *runtime, const std::string &instance_name
     return;
   }
   
-  define_component("GMAC", "gmac", pmt_nth(0,user_arg));  // FIXME: RFX2400 hack
+  pmt_t gmac_data = pmt_list2(usrp, pmt_from_long(d_local_addr));
+  
+  define_component("GMAC", "gmac", gmac_data);  // FIXME: RFX2400 hack
   d_tx = define_port("tx0", "gmac-tx", false, mb_port::INTERNAL);
   d_rx = define_port("rx0", "gmac-rx", false, mb_port::INTERNAL);
   d_cs = define_port("cs", "gmac-cs", false, mb_port::INTERNAL);
