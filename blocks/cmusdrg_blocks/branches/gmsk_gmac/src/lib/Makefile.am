@@ -63,6 +63,7 @@ _cmusdrg_la_SOURCES = 			\
 	cmusdrg.cc	\
 	cmusdrg_mblock_bootstrap.cc	\
 	gmac.cc	\
+	mac.cc \
 	gmsk.cc	\
 	gmac_mbh.cc	\
 	gmsk_mbh.cc	\
@@ -91,6 +92,7 @@ cmusdrg.cc cmusdrg.py: $(LOCAL_IFILES) $(ALL_IFILES)
 grinclude_HEADERS =			\
 	cmusdrg_mblock_bootstrap.h	\
 	gmac.h	\
+	mac.h \
 	gmsk.h
 
 
