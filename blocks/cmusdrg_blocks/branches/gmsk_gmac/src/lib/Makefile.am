@@ -65,6 +65,7 @@ _cmusdrg_la_SOURCES = 			\
 	mac.cc \
 	gmac.cc	\
 	gmsk.cc	\
+	gmsk_framer.cc \
 	gmac_mbh.cc	\
 	gmsk_mbh.cc	\
 	gmac_monitor.cc \
@@ -93,7 +94,8 @@ grinclude_HEADERS =			\
 	cmusdrg_mblock_bootstrap.h	\
 	mac.h \
 	gmac.h	\
-	gmsk.h
+	gmsk.h	\
+	gmsk_framer.h
 
 
 # These swig headers get installed in ${prefix}/include/gnuradio/swig

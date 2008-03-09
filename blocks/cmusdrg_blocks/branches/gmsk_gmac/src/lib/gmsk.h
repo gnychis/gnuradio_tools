@@ -19,10 +19,30 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef INCLUDED_GMAC_H
-#define INCLUDED_GMAC_H
+#ifndef INCLUDED_GMSK_H
+#define INCLUDED_GMSK_H
 
 #include <mb_mblock.h>
+#include <mb_runtime.h>
+#include <mb_protocol_class.h>
+#include <mb_exception.h>
+#include <mb_msg_queue.h>
+#include <mb_message.h>
+#include <mb_msg_accepter.h>
+#include <mb_class_registry.h>
+#include <pmt.h>
+#include <stdio.h>
+#include <string.h>
+#include <iostream>
+#include <ui_nco.h>
+
+#include <symbols_usrp_server_cs.h>
+#include <symbols_usrp_channel.h>
+#include <symbols_usrp_low_level_cs.h>
+#include <symbols_usrp_tx.h>
+#include <symbols_usrp_rx.h>
+
+#include <gmsk_symbols.h>
 #include <gr_interp_fir_filter_fff.h>
 #include <gr_fir_fff.h>
 #include <gr_firdes.h>
@@ -33,24 +53,25 @@
 #include <gr_binary_slicer_fb.h>
 #include <gr_fft_filter_ccc.h>
 #include <gr_correlate_access_code_bb.h>
-#include <queue>
 #include <sys/time.h>
+#include <fstream>
+#include <malloc16.h>
+#include <cmath>
+#include <bitset>
+#include <queue>
+
+#include <boost/crc.hpp>
+#include <boost/cstdint.hpp>
+
+#include <gmsk_framer.h>
 
 static const int BITS_PER_BYTE = 8;
-static const int MAX_FRAME_SIZE = 1500;
 
 class gmsk;
 
 class gmsk : public mb_mblock
 {
-
-  typedef struct d_frame_hdr_t {
-    long src_addr;
-    long dst_addr;
-    long payload_len;
-    bool ack;
-    long crc;
-  } __attribute__((__packed__)) d_frame_hdr;
+  d_frame_hdr_t d_frame_hdr;
 
   enum state_t {
     SYNC_SEARCH,
