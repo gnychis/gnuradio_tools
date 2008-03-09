@@ -25,7 +25,7 @@
 
 #include <mac.h>
 
-static bool verbose = true;
+static bool verbose = false;
 
 mac::mac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(rt, instance_name, user_arg),
@@ -61,9 +61,9 @@ void mac::handle_message(mb_message_sptr msg)
 
   // Messages are split between low level USRP server messages, and messages
   // for the MAC to handle, which the user overrides.
-  if(pmt_eq(port_id, d_us_cs->port_symbol()) ||
+  if((pmt_eq(port_id, d_us_cs->port_symbol()) ||
      pmt_eq(port_id, d_us_tx->port_symbol()) ||
-     pmt_eq(port_id, d_us_rx->port_symbol()) && 
+     pmt_eq(port_id, d_us_rx->port_symbol())) && 
      d_usrp_state!=IDLE)      // When idle, the MAC needs the messages from RX/TX
     handle_usrp_message(msg);
   else

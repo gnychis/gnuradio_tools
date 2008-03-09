@@ -25,7 +25,7 @@
 
 #include <gmac.h>
 
-static bool verbose = true;
+static bool verbose = false;
 
 static pmt_t s_timeout = pmt_intern("%timeout");
 
@@ -114,8 +114,6 @@ void gmac::handle_mac_message(mb_message_sptr msg)
   pmt_t status = PMT_F;
   pmt_t dict = PMT_NIL;
   std::string error_msg;
-
-  std::cout << "got something\n";
 
   switch(d_state) {
     
@@ -590,8 +588,6 @@ void gmac::build_and_send_ack(long dst)
   size_t ignore;
   long n_bytes;
   
-  d_state = SEND_ACK;
-
   // Before we send the frame, we stop the RX port since we are not interested
   // in decoding while transmitting, and full processing can go to TX
   disable_rx();
@@ -623,6 +619,9 @@ void gmac::build_and_send_ack(long dst)
     std::cout << "[GMAC] Transmitted ACK from " << d_local_address
               << " to " << dst
               << std::endl;
+  
+  d_state = SEND_ACK;
+
 }
 
 REGISTER_MBLOCK_CLASS(gmac);
