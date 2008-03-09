@@ -162,20 +162,6 @@ Index: gnuradio-core/src/lib/swig/gnuradio.i
  
    %template() 	  vector< std::complex<float> >;
    %template()     vector< std::vector< unsigned char > >;
-Index: gnuradio-core/src/lib/general/gr_clock_recovery_mm_ff.cc
-===================================================================
---- gnuradio-core/src/lib/general/gr_clock_recovery_mm_ff.cc	(revision 7949)
-+++ gnuradio-core/src/lib/general/gr_clock_recovery_mm_ff.cc	(working copy)
-@@ -134,7 +134,7 @@
-     }
-   }
- 
--  consume_each (ii);
-+//  consume_each (ii);
- 
--  return noutput_items;
-+  return ii; //noutput_items;
- }
 Index: gr-usrp/src/usrp1.i
 ===================================================================
 --- gr-usrp/src/usrp1.i	(revision 7949)
@@ -310,17 +296,4 @@ Index: gr-usrp/src/usrp1_sink_base.h
 +  usrp_standard_tx_sptr get_usrp() const;
  
    ~usrp1_sink_base ();
- 
-Index: mblock/src/lib/mb_message.cc
-===================================================================
---- mblock/src/lib/mb_message.cc	(revision 7949)
-+++ mblock/src/lib/mb_message.cc	(working copy)
-@@ -27,7 +27,7 @@
- #include <pmt_pool.h>
- 
- static const int CACHE_LINE_SIZE = 64;	// good guess
--static const int MAX_MESSAGES =  1024;	// KLUDGE max number of messages in sys
-+static const int MAX_MESSAGES =  0;	// KLUDGE max number of messages in sys
- 					//   0 -> no limit
- #if MB_MESSAGE_LOCAL_ALLOCATOR
  
