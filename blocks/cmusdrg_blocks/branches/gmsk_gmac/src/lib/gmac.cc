@@ -49,9 +49,9 @@ void gmac::define_mac_ports()
   connect("self", "phy-cs", "GMSK", "cs0");
 
   // Define ports for the application to connect to us
-  d_tx = define_port("tx0", "gmac-tx", true, mb_port::EXTERNAL);
-  d_rx = define_port("rx0", "gmac-rx", true, mb_port::EXTERNAL);
-  d_cs = define_port("cs", "gmac-cs", true, mb_port::EXTERNAL);
+  d_tx = define_port("tx0", "gmac-tx", true, mb_port::EXTERNAL);  // Transmit
+  d_rx = define_port("rx0", "gmac-rx", true, mb_port::EXTERNAL);  // Receive
+  d_cs = define_port("cs", "gmac-cs", true, mb_port::EXTERNAL);   // Control/Status
 }
 
 // Invoked when the base 'mac' class finishes initializing the USRP
@@ -524,7 +524,8 @@ void gmac::build_and_send_ack(long dst)
   char data;
   long n_bytes=1;   // Negligable payload
   
-  disable_rx();
+  disable_rx();     // No need to receive while transmitting, not required,
+                    // only saves processing power.
 
   // Make the PMT data, get a writable pointer to it, then copy our data in
   pmt_t uvec = pmt_make_u8vector(n_bytes, 0);
@@ -542,9 +543,9 @@ void gmac::build_and_send_ack(long dst)
                           uvec,                           // With data.
                           tx_properties);                 // It's an ACK!
 
-  d_gmsk_cs->send(s_cmd_mod, pdata);
+  d_gmsk_cs->send(s_cmd_mod, pdata);    // Modulate the ACK
   
-  d_state = SEND_ACK;
+  d_state = SEND_ACK;                   // Switch MAC states
   
   if(verbose)
     std::cout << "[GMAC] Transmitted ACK from " << d_local_address
