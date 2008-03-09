@@ -115,6 +115,8 @@ void gmac::handle_mac_message(mb_message_sptr msg)
   pmt_t dict = PMT_NIL;
   std::string error_msg;
 
+  std::cout << "got something\n";
+
   switch(d_state) {
     
     //----------------------------- INIT GMAC --------------------------------//
@@ -587,6 +589,8 @@ void gmac::build_and_send_ack(long dst)
 {
   size_t ignore;
   long n_bytes;
+  
+  d_state = SEND_ACK;
 
   // Before we send the frame, we stop the RX port since we are not interested
   // in decoding while transmitting, and full processing can go to TX
@@ -615,11 +619,10 @@ void gmac::build_and_send_ack(long dst)
 
   d_gmsk_cs->send(s_cmd_mod, pdata);
   
-  d_state = SEND_ACK;
-
   if(verbose)
     std::cout << "[GMAC] Transmitted ACK from " << d_local_address
               << " to " << dst
               << std::endl;
 }
 
+REGISTER_MBLOCK_CLASS(gmac);

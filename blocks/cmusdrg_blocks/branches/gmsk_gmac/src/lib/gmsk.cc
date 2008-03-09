@@ -66,7 +66,7 @@
 #include <boost/crc.hpp>
 #include <boost/cstdint.hpp>
 
-static bool verbose = false;
+static bool verbose = true;
 static bool demod_debug = false;
   
 std::ofstream cf_ofile;

@@ -41,6 +41,10 @@ mac::mac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
 
 }
 
+mac::~mac()
+{
+}
+
 void mac::define_usrp_ports()
 {
   // Ports we use to connect to usrp_server
@@ -59,7 +63,8 @@ void mac::handle_message(mb_message_sptr msg)
   // for the MAC to handle, which the user overrides.
   if(pmt_eq(port_id, d_us_cs->port_symbol()) ||
      pmt_eq(port_id, d_us_tx->port_symbol()) ||
-     pmt_eq(port_id, d_us_rx->port_symbol()))
+     pmt_eq(port_id, d_us_rx->port_symbol()) && 
+     d_usrp_state!=IDLE)      // When idle, the MAC needs the messages from RX/TX
     handle_usrp_message(msg);
   else
     handle_mac_message(msg);
@@ -401,4 +406,3 @@ void mac::disable_rx()
     std::cout << "[MAC] RX is disabled\n";
 }
 
-REGISTER_MBLOCK_CLASS(mac);
