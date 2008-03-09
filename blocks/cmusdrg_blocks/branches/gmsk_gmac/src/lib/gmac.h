@@ -89,7 +89,6 @@ class gmac : public mac
   // GMAC initialization
   void define_mac_ports();
   void initialize_gmac();
-  void set_address(pmt_t data);
 
   // Crucial CSMA methods
   void transmit_pkt(pmt_t data);

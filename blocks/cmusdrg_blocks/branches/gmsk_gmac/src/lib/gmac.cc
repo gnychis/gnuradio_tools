@@ -121,10 +121,7 @@ void gmac::handle_mac_message(mb_message_sptr msg)
       //---- Port: GMAC CS -------------- State: IDLE -----------------------//
       if(pmt_eq(d_cs->port_symbol(), port_id)) {
 
-        if(pmt_eq(event, s_cmd_set_address)) {
-          set_address(data);                          // Set local address
-        }         
-        else if(pmt_eq(event, s_cmd_carrier_sense_enable)) {
+        if(pmt_eq(event, s_cmd_carrier_sense_enable)) {
           enable_carrier_sense(data);                 // Enable carrier sense
         }
         else if(pmt_eq(event, s_cmd_carrier_sense_threshold)) {
@@ -440,15 +437,6 @@ void gmac::set_carrier_sense_deadline(pmt_t data)
     l_deadline = pmt_to_long(deadline);
   
   set_carrier_sense(d_carrier_sense, d_cs_thresh, l_deadline, invocation_handle);
-}
-
-// Set the local address of the node
-void gmac::set_address(pmt_t data)
-{
-  pmt_t invocation_handle = pmt_nth(0, data);
-  long address = pmt_to_long(pmt_nth(1, data));
-
-  d_local_address = address;
 }
 
 // An incoming frame from the physical layer for us!  We check the packet
