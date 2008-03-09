@@ -117,7 +117,6 @@ class gmsk : public mb_mblock
 
   bool d_disk_write;
 
-  struct timeval d_start, d_end;
   d_frame_hdr_t d_cframe_hdr;
 
   long d_nframes_recvd;
@@ -136,7 +135,14 @@ class gmsk : public mb_mblock
   void convolve(float X[],float Y[], float Z[], int lenx, int leny);
   void demod(pmt_t data);
   void conv_to_binary(std::string code, std::vector<unsigned char> &output);
+
   void framer(const std::vector<unsigned char> input);
+  void framer_found_sync();
+  void framer_new_header_bit(unsigned char bit);
+  void framer_new_payload_bit(unsigned char bit);
+  void framer_have_header();
+  void framer_have_payload();
+  void framer_have_frame(pmt_t uvec);
 };
 
 #endif // INCLUDED_GMAC_H
