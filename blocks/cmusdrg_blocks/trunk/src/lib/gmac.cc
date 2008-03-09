@@ -30,24 +30,15 @@ static bool verbose = false;
 static pmt_t s_timeout = pmt_intern("%timeout");
 
 gmac::gmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
-  : mb_mblock(rt, instance_name, user_arg),
-    d_us_rx_chan(PMT_NIL), d_us_tx_chan(PMT_NIL)
+  : mac(rt, instance_name, user_arg)
 {
 
-  // When the MAC layer is initialized, we must connect to the USRP and setup
-  // channels.  We begin by defining ports to connect to the 'usrp_server' block
-  // and then initialize the USRP by opening it through the 'usrp_server.'
-
   // Initialize the ports
-  define_ports();
+  define_mac_ports();
 
   // Extract local address from user argument
   // FIXME: just take the local IP address of some interface...
   d_local_address = pmt_to_long(pmt_nth(1, user_arg));
-
-  // Initialize the connection to the USRP
-  pmt_t usrp_data = pmt_nth(0, user_arg);
-  initialize_usrp(usrp_data);
 
 }
 
@@ -58,21 +49,50 @@ gmac::~gmac()
 // The MAC layer connects to 'usrp_server' which has a control/status channel,
 // a TX, and an RX port.  The MAC layer can then relay TX/RX data back and
 // forth to the application, or a physical layer once available.
-void gmac::define_ports()
+void gmac::define_mac_ports()
 {
   // ports we use to connect to gmsk
+  define_component("GMSK", "gmsk", PMT_NIL);
   d_gmsk_cs = define_port("phy-cs", "gmsk-cs", false, mb_port::INTERNAL);
+  connect("self", "phy-cs", "GMSK", "cs0");
 
-  // Ports we use to connect to usrp_server
-  d_us_tx = define_port("us-tx0", "usrp-tx", false, mb_port::INTERNAL);
-  d_us_rx = define_port("us-rx0", "usrp-rx", false, mb_port::INTERNAL);
-  d_us_cs = define_port("us-cs", "usrp-server-cs", false, mb_port::INTERNAL);
-  
   // Ports applications used to connect to us
   d_tx = define_port("tx0", "gmac-tx", true, mb_port::EXTERNAL);
   d_rx = define_port("rx0", "gmac-rx", true, mb_port::EXTERNAL);
   d_cs = define_port("cs", "gmac-cs", true, mb_port::EXTERNAL);
 }
+
+// We override the method that is called when the USRP is done initializing and
+// use it to bootstrap our MAC
+void gmac::usrp_initialized()
+{
+  initialize_gmac();
+}
+
+// In the initialization state of the MAC layer we set default values for
+// several functionalities.
+void gmac::initialize_gmac()
+{
+
+  // The initial state is the INIT state.
+  d_state = INIT_GMAC;
+
+  // Set carrier sense to enabled by default with the specified threshold and
+  // the deadline to 0 -- which is wait forever.
+  set_carrier_sense(false, 25, 0, PMT_NIL);
+
+  // Can now notify the application that we are initialized
+  d_cs->send(s_response_gmac_initialized,
+             pmt_list2(PMT_NIL, PMT_T));
+
+  // The MAC enters an IDLE state where it waits for messages and dispatches
+  // based on them
+  d_state = IDLE;
+
+  if(verbose)
+    std::cout << "[GMAC] Initialized, and idle\n";
+}
+
 
 // FIXME: lets have two handle_messages, one for the setup junk to be reused
 //        and the other strictly for GMAC.
@@ -80,7 +100,7 @@ void gmac::define_ports()
 // The full functionality of GMAC is based on messages passed back and forth
 // between the application and a physical layer and/or usrp_server.  Each
 // message triggers additional events, states, and messages to be sent.
-void gmac::handle_message(mb_message_sptr msg)
+void gmac::handle_mac_message(mb_message_sptr msg)
 {
 
   // The MAC functionality is dispatched based on the event, which is the
@@ -96,157 +116,6 @@ void gmac::handle_message(mb_message_sptr msg)
   std::string error_msg;
 
   switch(d_state) {
-    
-    //---------------------------- INIT ------------------------------------//
-    // In the INIT state, there should be no messages across the ports. 
-    case INIT:
-      error_msg = "no messages should be passed during the INIT state:"; 
-      goto unhandled;
-
-    //-------------------------- OPENING USRP -------------------------------//
-    // In this state we expect a response from usrp_server over the CS channel
-    // as to whether or not the opening of the USRP was successful.  If so, we
-    // switch states to allocating the channels for use.
-    case OPENING_USRP:
-
-      if(pmt_eq(event, s_response_open)     // Response to a USRP open
-          && pmt_eq(d_us_cs->port_symbol(), port_id)) {
-
-        status = pmt_nth(1, data);          // PMT_T or PMT_F
-
-        if(pmt_eq(status, PMT_T)) {         // on success, allocate channels!
-          allocate_channels();
-          return;
-        } else {
-          error_msg = "failed to open usrp:";
-          goto bail;
-        }
-      }
-
-      goto unhandled;   // all other messages not handled in this state
-
-    //------------------------ ALLOCATING CHANNELS --------------------------//
-    // When allocating channels, we need to wait for 2 responses from USRP
-    // server: one for TX and one for RX.  Both are initialized to NIL so we
-    // know to continue to the next state once both are set.
-    case ALLOCATING_CHANNELS:
-
-      //-------------- TX ALLOCATION RESPONSE ------------------//
-      if(pmt_eq(event, s_response_allocate_channel)
-          && pmt_eq(d_us_tx->port_symbol(), port_id)) 
-      {
-        status = pmt_nth(1, data);
-        
-        if(pmt_eq(status, PMT_T)) {   // extract channel on success
-          d_us_tx_chan = pmt_nth(2, data);
-
-          if(verbose)
-            std::cout << "[GMAC] Received TX allocation"
-                      << " on channel " << d_us_tx_chan << std::endl;
-
-          // If the RX has also been allocated already, we can continue
-          if(!pmt_eqv(d_us_rx_chan, PMT_NIL)) {
-            enter_receiving();
-            initialize_gmac();
-          }
-
-          return;
-        }
-        else {  // TX allocation failed
-          error_msg = "failed to allocate TX channel:";
-          goto bail;
-        }
-      }
-      
-      //-------------- RX ALLOCATION RESPONSE ----------------//
-      if(pmt_eq(event, s_response_allocate_channel)
-          && pmt_eq(d_us_rx->port_symbol(), port_id)) 
-      {
-        status = pmt_nth(1, data);
-        
-        if(pmt_eq(status, PMT_T)) {
-          
-          d_us_rx_chan = pmt_nth(2, data);
-
-          if(verbose)
-            std::cout << "[GMAC] Received RX allocation"
-                      << " on channel " << d_us_rx_chan << std::endl;
-
-          // If the TX has also been allocated already, we can continue
-          if(!pmt_eqv(d_us_tx_chan, PMT_NIL)) {
-            enter_receiving();
-            initialize_gmac();
-          }
-
-          return;
-        }
-        else {  // RX allocation failed
-          error_msg = "failed to allocate RX channel:";
-          goto bail;
-        }
-      }
-
-      goto unhandled;
-    
-    //------------------------ CLOSING CHANNELS -----------------------------//
-    case CLOSING_CHANNELS:
-
-      if (pmt_eq(event, s_response_deallocate_channel)
-          && pmt_eq(d_us_tx->port_symbol(), port_id))
-      {
-        status = pmt_nth(1, data);
-
-        if(pmt_eq(status, PMT_T)) {
-          d_us_tx_chan = PMT_NIL;
-
-          if(verbose)
-            std::cout << "[GMAC] Received TX deallocation\n";
-
-          // If the RX is also deallocated, we can close the USRP
-          if(pmt_eq(d_us_rx_chan, PMT_NIL)) 
-            close_usrp();
-
-          return;
-
-        } else {
-
-          error_msg = "failed to deallocate TX channel:";
-          goto bail;
-
-        }
-      }
-
-      if (pmt_eq(event, s_response_deallocate_channel)
-          && pmt_eq(d_us_rx->port_symbol(), port_id))
-      {
-        status = pmt_nth(1, data);
-
-        // If successful, set the port to NIL
-        if(pmt_eq(status, PMT_T)) {
-          d_us_rx_chan = PMT_NIL;
-
-          if(verbose)
-            std::cout << "[GMAC] Received RX deallocation\n";
-
-          // If the TX is also deallocated, we can close the USRP
-          if(pmt_eq(d_us_tx_chan, PMT_NIL)) 
-            close_usrp();
-
-          return;
-
-        } else {
-          
-          error_msg = "failed to deallocate RX channel:";
-          goto bail;
-
-        }
-      }
-
-      goto unhandled;
-
-    //-------------------------- CLOSING USRP -------------------------------//
-    case CLOSING_USRP:
-      goto unhandled;
     
     //----------------------------- INIT GMAC --------------------------------//
     // In the INIT_GMAC state, now that the USRP is initialized we can do things
@@ -289,10 +158,10 @@ void gmac::handle_message(mb_message_sptr msg)
           handle_cmd_carrier_sense_disable(data);     // Disable CS
         }
         else if(pmt_eq(event, s_cmd_rx_enable)) {
-          handle_cmd_rx_enable(data);                 // Enable RX
+          enable_rx();                                // Enable RX
         }
         else if(pmt_eq(event, s_cmd_rx_disable)) {
-          handle_cmd_rx_disable(data);                // D isable RX
+          disable_rx();                               // Disable RX
         }
         return;
       }
@@ -389,7 +258,7 @@ void gmac::handle_message(mb_message_sptr msg)
       if(pmt_eq(d_us_tx->port_symbol(), port_id)) {
 
         if(pmt_eq(event, s_response_xmit_raw_frame)) {
-          handle_cmd_rx_enable(PMT_NIL);              // Response from ACK trans,
+          enable_rx();                                // Response from ACK trans,
           d_state = IDLE;                             // enable RX and enter idle
         }
         return;
@@ -410,88 +279,6 @@ void gmac::handle_message(mb_message_sptr msg)
   if(0 && verbose && !pmt_eq(event, pmt_intern("%shutdown")))
     std::cout << "[GMAC] unhandled msg: " << msg
               << "in state "<< d_state << std::endl;
-}
-
-// To initialize the USRP we must pass several parameters to 'usrp_server' such
-// as the RBF to use, and the interpolation/decimation rate.  The MAC layer will
-// then pass these parameters to the block with a message to establish the
-// connection to the USRP.
-void gmac::initialize_usrp(pmt_t usrp_ref)
-{
-
-  if(verbose)
-    std::cout << "[GMAC] Initializing USRP\n";
-
-  // The initialization parameters are passed to usrp_server via a PMT
-  // dictionary.
-  pmt_t usrp_dict = pmt_make_dict();
-
-  // Specify the RBF to use
-  pmt_dict_set(usrp_dict,
-               pmt_intern("rbf"),
-               pmt_intern("local_rssi5.rbf"));
-
-  pmt_dict_set(usrp_dict,
-               pmt_intern("interp-tx"),
-               pmt_from_long(128));
-
-  pmt_dict_set(usrp_dict,
-               pmt_intern("decim-rx"),
-               pmt_from_long(64));
-
-  pmt_dict_set(usrp_dict,
-               pmt_intern("fake-usrp"),
-               PMT_F);
-  
-  // Center frequency
-  pmt_dict_set(usrp_dict,
-               pmt_intern("rf-freq"),
-               pmt_from_long((long)10e6));
-
-  // FIXME: RFX2400 hack
-  pmt_dict_set(usrp_dict,
-               pmt_intern("usrp-tx-reference"),
-               pmt_nth(0,usrp_ref));
-  pmt_dict_set(usrp_dict,
-               pmt_intern("usrp-rx-reference"),
-               pmt_nth(1,usrp_ref));
-
-  // Default is to use USRP considered '0' (incase of multiple)
-  d_which_usrp = pmt_from_long(0);
-  
-  define_component("USRP-SERVER", "usrp_server", usrp_dict);
-  define_component("GMSK", "gmsk", PMT_NIL);
-  
-  connect("self", "phy-cs", "GMSK", "cs0");
-  connect("self", "us-tx0", "USRP-SERVER", "tx0");
-  connect("self", "us-rx0", "USRP-SERVER", "rx0");
-  connect("self", "us-cs", "USRP-SERVER", "cs");
-
-  // Finally, enter the OPENING_USRP state by sending a request to open the
-  // USRP.
-  open_usrp();
-
-}
-
-// In the initialization state of the MAC layer we set default values for
-// several functionalities.
-void gmac::initialize_gmac()
-{
-
-  // The initial state is the INIT state.
-  d_state = INIT_GMAC;
-
-  // Set carrier sense to enabled by default with the specified threshold and
-  // the deadline to 0 -- which is wait forever.
-  set_carrier_sense(false, 25, 0, PMT_NIL);
-
-  // Can now notify the application that we are initialized
-  d_cs->send(s_response_gmac_initialized,
-             pmt_list2(PMT_NIL, PMT_T));
-
-  // The MAC enters an IDLE state where it waits for messages and dispatches
-  // based on them
-  enter_idle();
 }
 
 // Method for setting the carrier sense and an associated threshold which is
@@ -537,130 +324,6 @@ void gmac::set_carrier_sense(bool toggle, long threshold, long deadline, pmt_t i
     std::cout << "[GMAC] Setting carrier sense to " << toggle << std::endl;
 }
 
-// The following sends a command to open the USRP, which will upload the
-// specified RBF when creating the instance of the USRP server and set all other
-// relevant parameters.
-void gmac::open_usrp()
-{
-  d_state = OPENING_USRP;
-
-  d_us_cs->send(s_cmd_open, pmt_list2(PMT_NIL, d_which_usrp));
-  
-  if(verbose)
-    std::cout << "[GMAC] Opening USRP " 
-              << d_which_usrp << std::endl;
-}
-
-// Before sending the close to the USRP we wait a couple seconds to let any data
-// through the USB exit, else a bug in the driver will kick an error and cause
-// an abnormal termination.
-void gmac::close_usrp()
-{
-  d_state = CLOSING_USRP;
-
-  sleep(2);
-
-  d_us_cs->send(s_cmd_close, pmt_list1(PMT_NIL));
-}
-
-// RX and TX channels must be allocated so that the USRP server can
-// properly share bandwidth across multiple USRPs.  No commands will be
-// successful to the USRP through the USRP server on the TX or RX channels until
-// a bandwidth allocation has been received.
-void gmac::allocate_channels()
-{
-  d_state = ALLOCATING_CHANNELS;
-  
-  if(verbose)
-    std::cout << "[GMAC] Sending channel allocation requests\n";
-
-  long capacity = (long) 16e6;
-  d_us_tx->send(s_cmd_allocate_channel, pmt_list2(PMT_T, pmt_from_long(capacity)));
-  d_us_rx->send(s_cmd_allocate_channel, pmt_list2(PMT_T, pmt_from_long(capacity)));
-
-}
-
-// Before closing the USRP connection, we deallocate our channels so that the
-// capacity can be reused.
-void gmac::close_channels()
-{
-  d_state = CLOSING_CHANNELS;
-
-  d_us_tx->send(s_cmd_deallocate_channel, pmt_list2(PMT_NIL, d_us_tx_chan));
-  d_us_rx->send(s_cmd_deallocate_channel, pmt_list2(PMT_NIL, d_us_rx_chan));
-
-  if(verbose)
-    std::cout << "[GMAC] Closing channels...\n";
-}
-
-// Handle an incoming command to start receiving
-void gmac::handle_cmd_rx_enable(pmt_t data)
-{
-  pmt_t invocation_handle = pmt_nth(0, data);
-
-  // If we are already receiving, return an error
-  if(d_rx_enabled) {
-    d_cs->send(s_response_rx_enable,
-               pmt_list2(invocation_handle, PMT_F));
-    return;
-  }
-
-  enter_receiving();
-
-  d_cs->send(s_response_rx_enable,
-             pmt_list2(invocation_handle, PMT_T));
-}
-
-// Handle an incoming command to stop receiving
-void gmac::handle_cmd_rx_disable(pmt_t data)
-{
-  pmt_t invocation_handle = pmt_nth(0, data);
-
-  // If the RX is already disabled, return an error
-  if(!d_rx_enabled) {
-    d_cs->send(s_response_rx_disable,
-               pmt_list2(invocation_handle, PMT_F));
-    return;
-  }
-
-  exit_receiving();
-
-  d_cs->send(s_response_rx_disable,
-             pmt_list2(invocation_handle, PMT_T));
-}
-
-// Used to enter the receiving state
-void gmac::enter_receiving()
-{
-  d_us_rx->send(s_cmd_start_recv_raw_samples,
-             pmt_list2(PMT_F,
-                       d_us_rx_chan));
-
-  d_rx_enabled = true;
-
-  if(verbose)
-    std::cout << "[GMAC] Started RX sample stream\n";
-}
-
-// Used to exit thet receiving state, useful to spare computation when
-// transmitting
-void gmac::exit_receiving()
-{
-  d_us_rx->send(s_cmd_stop_recv_raw_samples,
-              pmt_list2(PMT_F,
-                        d_us_rx_chan));
-                        
-  d_rx_enabled = false;
-  
-  if(verbose)
-    std::cout << "[GMAC] Stopped RX sample stream\n";
-}
-
-// A simple idle state, nothing more to it.
-void gmac::enter_idle()
-{
-  d_state = IDLE;
-}
 
 // Handles the transmission of a pkt from the application.  The invocation
 // handle is passed on but a response is not given back to the application until
@@ -715,7 +378,7 @@ void gmac::handle_response_xmit_raw_frame(pmt_t data)
 
   // Now we enter an ACK wait state before we send the response
   // that we've sucessfully transmitted.
-  handle_cmd_rx_enable(PMT_NIL);
+  enable_rx();
   
   // Schedule an ACK timeout to fire every timeout period. This should be user
   // settable.  The first timeout is now+TIMEOUT_PERIOD
@@ -903,7 +566,7 @@ void gmac::handle_response_demod(pmt_t data)
     d_tx->send(s_response_tx_pkt,
                pmt_list2(invocation_handle,
                          PMT_T));
-    handle_cmd_rx_disable(PMT_NIL);
+    disable_rx();
     d_state = IDLE;
     return;
   }
@@ -924,10 +587,10 @@ void gmac::build_and_send_ack(long dst)
 {
   size_t ignore;
   long n_bytes;
-
+  
   // Before we send the frame, we stop the RX port since we are not interested
   // in decoding while transmitting, and full processing can go to TX
-  handle_cmd_rx_disable(PMT_NIL);
+  disable_rx();
 
   char data[1];
   n_bytes=1;
@@ -952,12 +615,13 @@ void gmac::build_and_send_ack(long dst)
 
   d_gmsk_cs->send(s_cmd_mod, pdata);
   
-  d_state = SEND_ACK;
-
   if(verbose)
     std::cout << "[GMAC] Transmitted ACK from " << d_local_address
               << " to " << dst
               << std::endl;
+  
+  d_state = SEND_ACK;
+
 }
 
 REGISTER_MBLOCK_CLASS(gmac);

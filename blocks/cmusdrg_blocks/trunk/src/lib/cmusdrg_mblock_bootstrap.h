@@ -62,6 +62,7 @@ class cmusdrg_mblock_bootstrap {
 
 /* GMAC */
 #include <gmac.h>
+#include <mac.h>
 #include <gmac_symbols.h>
 /* GMAC */
 

@@ -62,6 +62,7 @@ ourlib_LTLIBRARIES = _cmusdrg.la
 _cmusdrg_la_SOURCES = 			\
 	cmusdrg.cc	\
 	cmusdrg_mblock_bootstrap.cc	\
+	mac.cc \
 	gmac.cc	\
 	gmsk.cc	\
 	gmac_mbh.cc	\
@@ -90,6 +91,7 @@ cmusdrg.cc cmusdrg.py: $(LOCAL_IFILES) $(ALL_IFILES)
 # These headers get installed in ${prefix}/include/gnuradio
 grinclude_HEADERS =			\
 	cmusdrg_mblock_bootstrap.h	\
+	mac.h \
 	gmac.h	\
 	gmsk.h
 

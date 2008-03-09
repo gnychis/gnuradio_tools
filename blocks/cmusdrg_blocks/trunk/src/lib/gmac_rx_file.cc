@@ -200,6 +200,7 @@ void
 gmac_rx_file::enter_data_wait()
 {
   d_state = DATA_WAIT;
+  d_cs->send(s_cmd_rx_enable, pmt_list1(PMT_NIL));
 }
 
 void
