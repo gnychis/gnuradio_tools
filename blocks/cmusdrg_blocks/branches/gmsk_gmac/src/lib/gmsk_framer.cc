@@ -180,6 +180,7 @@ void gmsk::framer_have_frame(pmt_t uvec)
   pkt_properties = pmt_make_dict();
   size_t ignore;
   char *vdata = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
+  boost::crc_32_type bcrc;
   
   // Create a dictionary (hash like structure) with frame header information,
   // you can put as much as you want in here
@@ -189,12 +190,10 @@ void gmsk::framer_have_frame(pmt_t uvec)
   // If the frame is an ACK, we don't care about payload... lets just pass it up
   if(d_cframe_hdr.ack) {
     pmt_dict_set(pkt_properties, pmt_intern("ack"), PMT_T);
-    d_cs->send(s_response_demod, pmt_list2(uvec, pkt_properties));
-    return;
+    goto exit_framer_have_frame;
   }
 
   // Compute a CRC on the payload
-  boost::crc_32_type bcrc;
   bcrc.reset();
   bcrc.process_bytes(vdata, d_cframe_hdr.payload_len);
 
@@ -206,12 +205,10 @@ void gmsk::framer_have_frame(pmt_t uvec)
 
   pmt_dict_set(pkt_properties, pmt_intern("ack"), PMT_F);     // Not an ACK
 
+ exit_framer_have_frame:
   d_cs->send(s_response_demod, pmt_list2(uvec, pkt_properties));
-
   d_payload_bits.clear();   // Clear the payload bits
-
   d_squelch=true;           // Start to squelch again
-  
   d_state = SYNC_SEARCH;    // Go back to searching for the framing bits
 
   if(verbose)
