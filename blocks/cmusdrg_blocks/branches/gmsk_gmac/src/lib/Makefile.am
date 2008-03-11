@@ -68,7 +68,6 @@ _cmusdrg_la_SOURCES = 			\
 	gmsk_framer.cc \
 	gmac_mbh.cc	\
 	gmsk_mbh.cc	\
-	gmac_monitor.cc \
 	gmac_tx_file.cc	\
 	gmac_rx_file.cc
 
