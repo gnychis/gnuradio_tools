@@ -26,7 +26,7 @@
 #include <gmsk.h>
 #include <gmsk_framer.h>
 
-static bool verbose = true;
+static bool verbose = false;
 
 // The framer will use the special flag bit to detect the incoming frame.  To be
 // clean this should be a new block, but for performance reasons I'm keeping it
