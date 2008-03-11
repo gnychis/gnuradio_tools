@@ -68,6 +68,7 @@ class gmac : public mac
 
   pmt_t d_ack_timeout;
   pmt_t d_last_frame;
+  long d_last_frame_dst;
 
   bool d_carrier_sense;
   long d_cs_thresh;
@@ -85,21 +86,24 @@ class gmac : public mac
   ~gmac();
 
  private:
+  // GMAC initialization
   void define_mac_ports();
   void initialize_gmac();
-  void set_carrier_sense(bool toggle, long threshold, long deadline, pmt_t invocation);
-  void handle_cmd_tx_pkt(pmt_t data);
-  void handle_response_xmit_raw_frame(pmt_t data);
-  void handle_response_demod(pmt_t data);
-  bool carrier_sense_pkt(pmt_t pkt_properties);
-  void handle_cmd_carrier_sense_enable(pmt_t data);
-  void handle_cmd_carrier_sense_threshold(pmt_t data);
-  void handle_cmd_carrier_sense_disable(pmt_t data);
-  void handle_cmd_carrier_sense_deadline(pmt_t data);
-  void handle_cmd_rx_enable(pmt_t data);
-  void handle_cmd_rx_disable(pmt_t data);
-  void handle_cmd_set_address(pmt_t data);
+
+  // Crucial CSMA methods
+  void transmit_pkt(pmt_t data);
+  void packet_transmitted(pmt_t data);
+  void incoming_frame(pmt_t data);
   void build_and_send_ack(long dst);
+  void handle_ack(long src, long dst);
+  
+  // Carrier sense functionality
+  void disable_carrier_sense(pmt_t data);
+  void enable_carrier_sense(pmt_t data);
+  void set_carrier_sense(bool toggle, long threshold, long deadline, pmt_t invocation);
+  void set_carrier_sense_deadline(pmt_t data);
+  void set_carrier_sense_threshold(pmt_t data);
+  bool carrier_sense_pkt(pmt_t pkt_properties);
  
 };
 

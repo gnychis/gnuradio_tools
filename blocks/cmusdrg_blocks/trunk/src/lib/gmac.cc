@@ -30,89 +30,69 @@ static bool verbose = false;
 static pmt_t s_timeout = pmt_intern("%timeout");
 
 gmac::gmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
-  : mac(rt, instance_name, user_arg)
+  : mac(rt, instance_name, user_arg),
+  d_state(INIT_GMAC)
 {
-
-  // Initialize the ports
-  define_mac_ports();
-
-  // Extract local address from user argument
-  // FIXME: just take the local IP address of some interface...
+  define_mac_ports();   // Initialize ports for message passing
   d_local_address = pmt_to_long(pmt_nth(1, user_arg));
-
 }
 
 gmac::~gmac()
 {
 }
 
-// The MAC layer connects to 'usrp_server' which has a control/status channel,
-// a TX, and an RX port.  The MAC layer can then relay TX/RX data back and
-// forth to the application, or a physical layer once available.
 void gmac::define_mac_ports()
 {
-  // ports we use to connect to gmsk
+  // Connect to physical layer
   define_component("GMSK", "gmsk", PMT_NIL);
   d_gmsk_cs = define_port("phy-cs", "gmsk-cs", false, mb_port::INTERNAL);
   connect("self", "phy-cs", "GMSK", "cs0");
 
-  // Ports applications used to connect to us
-  d_tx = define_port("tx0", "gmac-tx", true, mb_port::EXTERNAL);
-  d_rx = define_port("rx0", "gmac-rx", true, mb_port::EXTERNAL);
-  d_cs = define_port("cs", "gmac-cs", true, mb_port::EXTERNAL);
+  // Define ports for the application to connect to us
+  d_tx = define_port("tx0", "gmac-tx", true, mb_port::EXTERNAL);  // Transmit
+  d_rx = define_port("rx0", "gmac-rx", true, mb_port::EXTERNAL);  // Receive
+  d_cs = define_port("cs", "gmac-cs", true, mb_port::EXTERNAL);   // Control/Status
 }
 
-// We override the method that is called when the USRP is done initializing and
-// use it to bootstrap our MAC
+// Invoked when the base 'mac' class finishes initializing the USRP
 void gmac::usrp_initialized()
 {
   initialize_gmac();
 }
 
-// In the initialization state of the MAC layer we set default values for
-// several functionalities.
 void gmac::initialize_gmac()
 {
+  set_carrier_sense(false, 25, 0, PMT_NIL);   // Initial carrier sense setting
 
-  // The initial state is the INIT state.
-  d_state = INIT_GMAC;
-
-  // Set carrier sense to enabled by default with the specified threshold and
-  // the deadline to 0 -- which is wait forever.
-  set_carrier_sense(false, 25, 0, PMT_NIL);
-
-  // Can now notify the application that we are initialized
-  d_cs->send(s_response_gmac_initialized,
-             pmt_list2(PMT_NIL, PMT_T));
-
-  // The MAC enters an IDLE state where it waits for messages and dispatches
-  // based on them
-  d_state = IDLE;
+  d_state = IDLE;   // State where we wait for messages to do something
+  
+  d_cs->send(s_response_gmac_initialized,   // Notify the application that
+             pmt_list2(PMT_NIL, PMT_T));    // the MAC is initialized
 
   if(verbose)
     std::cout << "[GMAC] Initialized, and idle\n";
 }
 
-
-// FIXME: lets have two handle_messages, one for the setup junk to be reused
-//        and the other strictly for GMAC.
-
-// The full functionality of GMAC is based on messages passed back and forth
-// between the application and a physical layer and/or usrp_server.  Each
-// message triggers additional events, states, and messages to be sent.
+// This is the crux of the MAC layer.  The general architecture is to have
+// states at which the MAC is in, and then handle messages from the application
+// and physical layer based on that state.  
+// 
+// Then, the incoming 'event' (type of message) in the state triggers some
+// functionality.  For example, if we are in the idle state and receive a 
+// s_cmd_tx_pkt event from the application (detected by the port ID), we send
+// the data to the physical layer to be modulated.
+//
+// Without the m-block to gr-block connection, all raw samples are forced
+// through the MAC layer.  So, in the idle state we receive raw incoming
+// samples, pass them to the physical layer for demodulation, and listen for
+// responses with frames.  Likewise, we send data to the modulator, get
+// modulated data back, and then we write it to the USRP.
 void gmac::handle_mac_message(mb_message_sptr msg)
 {
+  pmt_t event = msg->signal();      // type of message
+  pmt_t data = msg->data();         // the associated data
+  pmt_t port_id = msg->port_id();   // the port the msg was received on
 
-  // The MAC functionality is dispatched based on the event, which is the
-  // driving force of the MAC.  The event can be anything from incoming samples
-  // to a message to change the carrier sense threshold.
-  pmt_t event = msg->signal();
-  pmt_t data = msg->data();
-  pmt_t port_id = msg->port_id();
-
-  pmt_t handle = PMT_F;
-  pmt_t status = PMT_F;
-  pmt_t dict = PMT_NIL;
   std::string error_msg;
 
   switch(d_state) {
@@ -122,7 +102,6 @@ void gmac::handle_mac_message(mb_message_sptr msg)
     // like right the carrier sense threshold to the FPGA register.
     case INIT_GMAC:
       goto unhandled;
-
     
     //----------------------------- IDLE ------------------------------------//
     // In the idle state the MAC is not quite 'idle', it is just not doing
@@ -142,20 +121,17 @@ void gmac::handle_mac_message(mb_message_sptr msg)
       //---- Port: GMAC CS -------------- State: IDLE -----------------------//
       if(pmt_eq(d_cs->port_symbol(), port_id)) {
 
-        if(pmt_eq(event, s_cmd_set_address)) {
-          handle_cmd_set_address(data);               // Set local address
-        }         
-        else if(pmt_eq(event, s_cmd_carrier_sense_enable)) {
-          handle_cmd_carrier_sense_enable(data);      // Enable carrier sense
+        if(pmt_eq(event, s_cmd_carrier_sense_enable)) {
+          enable_carrier_sense(data);                 // Enable carrier sense
         }
         else if(pmt_eq(event, s_cmd_carrier_sense_threshold)) {
-          handle_cmd_carrier_sense_threshold(data);   // Change CS threshold
+          set_carrier_sense_threshold(data);          // Change CS threshold
         } 
         else if(pmt_eq(event, s_cmd_carrier_sense_deadline)) {
-          handle_cmd_carrier_sense_deadline(data);    // Change CS deadline
+          set_carrier_sense_deadline(data);           // Change CS deadline
         }
         else if(pmt_eq(event, s_cmd_carrier_sense_disable)) {
-          handle_cmd_carrier_sense_disable(data);     // Disable CS
+          disable_carrier_sense(data);                // Disable CS
         }
         else if(pmt_eq(event, s_cmd_rx_enable)) {
           enable_rx();                                // Enable RX
@@ -170,7 +146,7 @@ void gmac::handle_mac_message(mb_message_sptr msg)
       if(pmt_eq(d_us_tx->port_symbol(), port_id)) {
 
         if(pmt_eq(event, s_response_xmit_raw_frame)) {
-          handle_response_xmit_raw_frame(data);       // Transmission successful
+          packet_transmitted(data);                   // Transmission successful
         }
         return;
       }
@@ -188,10 +164,10 @@ void gmac::handle_mac_message(mb_message_sptr msg)
       if(pmt_eq(d_gmsk_cs->port_symbol(), port_id)) {
         
         if(pmt_eq(event, s_response_mod)) {
-          handle_cmd_tx_pkt(data);                    // Data done being mod'ed
+          transmit_pkt(data);                         // Data done being mod'ed
         }
         else if(pmt_eq(event, s_response_demod)) {
-          handle_response_demod(data);                // Incoming frame!
+          incoming_frame(data);                       // Incoming frame!
         }
         return;
       }
@@ -206,9 +182,6 @@ void gmac::handle_mac_message(mb_message_sptr msg)
 
       //--------- ACK TIMEOUT -----------------------------------------------//
       // FAIL! We've hit an ACK timeout, time to panic and retransmit.
-      // I'm not taking the time to disable the RX port since we don't need any
-      // processing power to modulate, since we've cached the modulated data.
-      //
       // The timer automatically resets, if we want to get smart we can keep
       // track of how many times its fired before we tell the application the
       // transmission has failed.
@@ -232,7 +205,7 @@ void gmac::handle_mac_message(mb_message_sptr msg)
       if(pmt_eq(d_gmsk_cs->port_symbol(), port_id)) {
 
         if(pmt_eq(event, s_response_demod)) {
-          handle_response_demod(data);                // Incoming frame! ACK?
+          incoming_frame(data);                       // Incoming frame! ACK?
         }
         return;
       }
@@ -249,7 +222,7 @@ void gmac::handle_mac_message(mb_message_sptr msg)
       if(pmt_eq(d_gmsk_cs->port_symbol(), port_id)) {
         
         if(pmt_eq(event, s_response_mod)) {
-          handle_cmd_tx_pkt(data);                    // Incoming mod'ed ACK
+          transmit_pkt(data);                         // Incoming mod'ed ACK
         }
         return;
       }
@@ -267,13 +240,6 @@ void gmac::handle_mac_message(mb_message_sptr msg)
 
   } // End of switch()
   
- // An error occured, print it, and shutdown all m-blocks
- bail:
-  std::cerr << error_msg << data
-      	    << "status = " << status << std::endl;
-  shutdown_all(PMT_F);
-  return;
-
  // Received an unhandled message for a specific state
  unhandled:
   if(0 && verbose && !pmt_eq(event, pmt_intern("%shutdown")))
@@ -281,108 +247,89 @@ void gmac::handle_mac_message(mb_message_sptr msg)
               << "in state "<< d_state << std::endl;
 }
 
-// Method for setting the carrier sense and an associated threshold which is
-// written to a register on the FPGA, which it will read if the CS flag is set
-// and perform carrier sense based on.
-//
-// We currently do not wait for the successful response for the write to
-// register command, we assume it will succeed else the MAC must
+// Method to handle setting carrier sense within the FPGA via register writes.
 void gmac::set_carrier_sense(bool toggle, long threshold, long deadline, pmt_t invocation)
 {
   d_carrier_sense = toggle;
 
-  // Only waste the bandwidth and processing of a C/S packet if needed
-  if(threshold != d_cs_thresh) {
-    d_us_tx->send(s_cmd_to_control_channel,    // C/S packet
-               pmt_list2(invocation,           // invoc handle
-                         pmt_list1(
-                              pmt_list2(s_op_write_reg, 
-                                        pmt_list2(
-                                        pmt_from_long(REG_CS_THRESH), 
-                                        pmt_from_long(threshold))))));
-    d_cs_thresh = threshold;
+  d_us_tx->send(s_cmd_to_control_channel, 
+             pmt_list2(invocation, 
+                       pmt_list1(
+                            pmt_list2(s_op_write_reg, 
+                                      pmt_list2(
+                                      pmt_from_long(REG_CS_THRESH), 
+                                      pmt_from_long(threshold))))));
 
-    if(verbose)
-      std::cout << "[GMAC] Changing CS threshold: " << d_cs_thresh << std::endl;
-  }
+  d_us_tx->send(s_cmd_to_control_channel, 
+             pmt_list2(invocation, 
+                       pmt_list1(
+                            pmt_list2(s_op_write_reg, 
+                                      pmt_list2(
+                                      pmt_from_long(REG_CS_DEADLINE), 
+                                      pmt_from_long(deadline))))));
 
-  if(deadline != d_cs_deadline) {
-    d_us_tx->send(s_cmd_to_control_channel,    // C/S packet
-               pmt_list2(invocation,           // invoc handle
-                         pmt_list1(
-                              pmt_list2(s_op_write_reg, 
-                                        pmt_list2(
-                                        pmt_from_long(REG_CS_DEADLINE), 
-                                        pmt_from_long(deadline))))));
-    d_cs_deadline = deadline;
-
-    if(verbose)
-      std::cout << "[GMAC] Changing CS deadline: " << d_cs_deadline << std::endl;
-  }
+  d_cs_thresh = threshold;    // Save our new threshold
+  d_cs_deadline = deadline;   // Keep the deadline
 
   if(verbose)
-    std::cout << "[GMAC] Setting carrier sense to " << toggle << std::endl;
+    std::cout << "[GMAC] Setting carrier sense to " << toggle 
+              << "\n ... threshold: " << d_cs_thresh
+              << "\n ... deadline:  " << d_cs_deadline
+              << std::endl;
 }
 
 
 // Handles the transmission of a pkt from the application.  The invocation
 // handle is passed on but a response is not given back to the application until
 // the response is passed from usrp_server.  This ensures that the MAC passes
-// back the success or failure.  Furthermore, the MAC could decide to retransmit
-// on a failure based on the result of the packet transmission.
-//
-// This should eventually be connected to a physically layer rather than
-// directly to usrp_server. (d_us_tx should be replaced with a different
-// connection)
-void gmac::handle_cmd_tx_pkt(pmt_t data)
+// back the success or failure. 
+void gmac::transmit_pkt(pmt_t data)
 {
   pmt_t invocation_handle = pmt_nth(0, data);
   pmt_t samples = pmt_nth(1, data);
   pmt_t pkt_properties = pmt_nth(2, data);
 
+  // A dictionary (a hash like structure) that is used to pass packet properties
+  // down the layers.
   pmt_t us_tx_properties = pmt_make_dict();
 
-  // Set the packet to be carrier sensed?
-  if(carrier_sense_pkt(pkt_properties))
-    pmt_dict_set(us_tx_properties,
-                 pmt_intern("carrier-sense"),
-                 PMT_T);
+  if(carrier_sense_pkt(pkt_properties))         // carrier sense the packet?
+    pmt_dict_set(us_tx_properties,              // set it in our dictionary
+                 pmt_intern("carrier-sense"),   // the 'hash'
+                 PMT_T);                        // true, but assumed false if no
+                                                // dictionary setting
 
-  pmt_t timestamp = pmt_from_long(0xffffffff);	// NOW
+  pmt_t timestamp = pmt_from_long(0xffffffff);	// 0xffffffff == transmit NOW!
 
-  // Construct the proper message for USRP server
-  pmt_t pdata = pmt_list5(invocation_handle,
-		                      d_us_tx_chan,
-		                      samples, 
-                          timestamp,
-                          us_tx_properties);
+  pmt_t pdata = pmt_list5(invocation_handle,    // Invocation handle is passed back.
+		                      d_us_tx_chan,         // Destined for our TX channel.
+		                      samples,              // The modulated data (samples).
+                          timestamp,            // The time to send the packet.
+                          us_tx_properties);    // Our per-packet properties.
 
-  d_us_tx->send(s_cmd_xmit_raw_frame, pdata);
+  d_us_tx->send(s_cmd_xmit_raw_frame, pdata);   // Finally, send!
 
-  // Save the modulated data incase of a need to retransmit, we don't need to
-  // re-modulate it
-  d_last_frame = pdata;
+  d_last_frame = pdata;   // Save incase of a re-transmission
 
   if(verbose && 0)
     std::cout << "[GMAC] Transmitted packet\n";
 }
 
-// Handles a response from the USRP server about the transmission of a frame,
-// whether it was successful or failed.  This should eventually be replaced with
-// a response from the PHY layer.  This is where a retransmit could be
-// implemented.
-void gmac::handle_response_xmit_raw_frame(pmt_t data)
+// Invoked when we get a response that a packet was written to the USRP USB bus,
+// we assume that it has been transmitted (or will be, within negligable time).
+//
+// The application is NOT informed that the packet was transmitted successfully
+// until an ACK is received, so we enter an ACK wait state.
+void gmac::packet_transmitted(pmt_t data)
 {
   pmt_t invocation_handle = pmt_nth(0, data);
   pmt_t status = pmt_nth(1, data);
 
-  // Now we enter an ACK wait state before we send the response
-  // that we've sucessfully transmitted.
-  enable_rx();
+  enable_rx();  // Need to listen for ACKs
   
   // Schedule an ACK timeout to fire every timeout period. This should be user
   // settable.  The first timeout is now+TIMEOUT_PERIOD
-  const double TIMEOUT_PERIOD = 0.1;  // in seconds
+  const double TIMEOUT_PERIOD = 0.15;  // in seconds
   mb_time now = mb_time::time();
   d_ack_timeout = schedule_periodic_timeout(now + TIMEOUT_PERIOD, mb_time(TIMEOUT_PERIOD), PMT_T);
   
@@ -425,9 +372,8 @@ bool gmac::carrier_sense_pkt(pmt_t pkt_properties)
 
 // This method is envoked by an incoming cmd-enable-carrier-sense signal on the
 // C/S port.  It can be used to re-adjust the threshold or simply enabled
-// carrier sense.  When a threshold is not provided, the MAC will use an
-// averaging algorithm to determine the threshold (in the future).
-void gmac::handle_cmd_carrier_sense_enable(pmt_t data)
+// carrier sense. 
+void gmac::enable_carrier_sense(pmt_t data)
 {
   pmt_t invocation_handle = pmt_nth(0, data);
   pmt_t threshold = pmt_nth(1, data);
@@ -451,10 +397,8 @@ void gmac::handle_cmd_carrier_sense_enable(pmt_t data)
 }
 
 // This method is called when an incoming disable carrier sense command is sent
-// over the control status channel.  It so far does not ellicit a response, this
-// needs to be added correctly.  It needs to wait for the response for the C/S
-// packet from usrp_server.
-void gmac::handle_cmd_carrier_sense_disable(pmt_t data) 
+// over the control status channel.  
+void gmac::disable_carrier_sense(pmt_t data) 
 {
   pmt_t invocation_handle = pmt_nth(0, data);
   
@@ -463,18 +407,13 @@ void gmac::handle_cmd_carrier_sense_disable(pmt_t data)
   set_carrier_sense(false, d_cs_thresh, d_cs_deadline, invocation_handle);
 }
 
-// When the app requests that the threshold changes, the state of the carrier
-// sense should not change.  If it was enabled, it should remain enabled.
-// Likewise if it was disabled.  The deadline value should also remain
-// unchanged.
-void gmac::handle_cmd_carrier_sense_threshold(pmt_t data)
+// Only change the carrier sense threshold, nothing else, including the state.
+void gmac::set_carrier_sense_threshold(pmt_t data)
 {
   pmt_t invocation_handle = pmt_nth(0, data);
   pmt_t threshold = pmt_nth(1, data);
   long l_threshold;
 
-  // FIXME: for now, if threshold is NIL, we do not change the threshold.
-  // This should be replaced with an averaging algorithm
   if(pmt_eqv(threshold, PMT_NIL))
     l_threshold = d_cs_thresh;
   else
@@ -483,9 +422,9 @@ void gmac::handle_cmd_carrier_sense_threshold(pmt_t data)
   set_carrier_sense(d_carrier_sense, l_threshold, d_cs_deadline, invocation_handle);
 }
 
-// Ability to change the deadline using a C/S packet.  The state of all other
-// carrier sense parameters should not change.
-void gmac::handle_cmd_carrier_sense_deadline(pmt_t data)
+// Change the carrier sense deadline, AKA the time to wait for the channel to
+// become idle before throwing it away.
+void gmac::set_carrier_sense_deadline(pmt_t data)
 {
   pmt_t invocation_handle = pmt_nth(0, data);
   pmt_t deadline = pmt_nth(1, data);
@@ -500,18 +439,9 @@ void gmac::handle_cmd_carrier_sense_deadline(pmt_t data)
   set_carrier_sense(d_carrier_sense, d_cs_thresh, l_deadline, invocation_handle);
 }
 
-// Set the local address of the node
-// FIXME: try to pick up the MAC address of the Ethernet for fun
-void gmac::handle_cmd_set_address(pmt_t data)
-{
-  pmt_t invocation_handle = pmt_nth(0, data);
-  long address = pmt_to_long(pmt_nth(1, data));
-
-  d_local_address = address;
-}
-
-// Pass up a demoded frame
-void gmac::handle_response_demod(pmt_t data)
+// An incoming frame from the physical layer for us!  We check the packet
+// properties to determine the sender and if it passed a CRC check, for example.
+void gmac::incoming_frame(pmt_t data)
 {
   pmt_t invocation_handle = PMT_NIL;
   pmt_t payload = pmt_nth(0, data);
@@ -519,62 +449,45 @@ void gmac::handle_response_demod(pmt_t data)
 
   // Let's do some checking on the demoded frame
   long lsrc=0, ldst=0;
-  bool bcrc = false;
-  bool back = false;
+  bool b_crc = false;
+  bool b_ack = false;
 
-  // Use the packet properties creating by the framing code in GMSK
-  if(pmt_is_dict(pkt_properties)) {
+  // Properties are set in the physical layer framing code
+  lsrc = pmt_to_long(pmt_dict_ref(pkt_properties,
+                                  pmt_intern("src"),
+                                  PMT_NIL));
 
-    if(pmt_t src = pmt_dict_ref(pkt_properties,
-                                pmt_intern("src"),
-                                PMT_NIL)) {
-      if(!pmt_eqv(src, PMT_NIL))
-        lsrc = pmt_to_long(src);
-    }
-    
-    if(pmt_t dst = pmt_dict_ref(pkt_properties,
-                                pmt_intern("dst"),
-                                PMT_NIL)) {
-      if(!pmt_eqv(dst, PMT_NIL))
-        ldst = pmt_to_long(dst);
-    }
+  ldst = pmt_to_long(pmt_dict_ref(pkt_properties,
+                                  pmt_intern("dst"),
+                                  PMT_NIL));
 
-    if(pmt_t crc = pmt_dict_ref(pkt_properties,
-                                pmt_intern("crc"),
-                                PMT_NIL)) {
-      if(pmt_eqv(crc, PMT_T))
-        bcrc = true;  // CRC on payload passed
-      else
-        bcrc = false; // CRC on payload failed
-    }
-
-    if(pmt_t ack = pmt_dict_ref(pkt_properties,
-                                pmt_intern("ack"),
-                                PMT_NIL)) {
-      if(pmt_eqv(ack, PMT_T))
-        back = true;
-      else
-        back = false;
-    }
+  if(pmt_t crc = pmt_dict_ref(pkt_properties,
+                              pmt_intern("crc"),
+                              PMT_NIL)) {
+    if(pmt_eqv(crc, PMT_T))
+      b_crc = true;   // payload passed CRC
+    else
+      b_crc = false;  // payload failed CRC
   }
 
-  // If we were in the ACK_WAIT state and the frame is an ACK, then we
-  // transmitted successfully! Let's tell the application to move on.
-  if(d_state==ACK_WAIT && back==true) {
-    cancel_timeout(d_ack_timeout);
-    invocation_handle = pmt_nth(0, d_last_frame);
-    d_tx->send(s_response_tx_pkt,
-               pmt_list2(invocation_handle,
-                         PMT_T));
-    disable_rx();
-    d_state = IDLE;
+  if(pmt_t ack = pmt_dict_ref(pkt_properties,
+                              pmt_intern("ack"),
+                              PMT_NIL)) {
+    if(pmt_eqv(ack, PMT_T))
+      b_ack = true;   // frame is an ACK
+    else
+      b_ack = false;  // frame is not an ACK
+  }
+
+  if(b_ack) {         // Handle ACKs in a special manner
+    handle_ack(lsrc, ldst);
     return;
   }
 
   if(ldst != d_local_address)  // not for this address
     return;
   
-  if(bcrc)  // CRC passes, let's ACK the source
+  if(b_crc)  // CRC passes, let's ACK the source
     build_and_send_ack(lsrc);
 
   d_rx->send(s_response_rx_pkt, pmt_list3(invocation_handle, payload, pkt_properties));
@@ -583,45 +496,61 @@ void gmac::handle_response_demod(pmt_t data)
     std::cout << "[GMAC] Passing up demoded frame\n";
 }
 
+// Special handling for ACK frames
+void gmac::handle_ack(long src, long dst)
+{
+  // GMAC does not care about frames if we're not in the ACK_WAIT state
+  if(d_state!=ACK_WAIT)
+    return;
+
+  cancel_timeout(d_ack_timeout);    // Cancel our ACK timeout
+
+  // Now that we have an ACK, we can notify the application of a successfully TX
+  pmt_t invocation_handle = pmt_nth(0, d_last_frame);
+  d_tx->send(s_response_tx_pkt,
+             pmt_list2(invocation_handle,
+                       PMT_T));
+
+  disable_rx();     // FIXME: spend more time thinking about this, I think its incorrect
+
+  d_state = IDLE;   // Back to the idle state!
+
+  return;
+}
+
 void gmac::build_and_send_ack(long dst)
 {
   size_t ignore;
-  long n_bytes;
+  char data;
+  long n_bytes=1;   // Negligable payload
   
-  // Before we send the frame, we stop the RX port since we are not interested
-  // in decoding while transmitting, and full processing can go to TX
-  disable_rx();
-
-  char data[1];
-  n_bytes=1;
+  disable_rx();     // No need to receive while transmitting, not required,
+                    // only saves processing power.
 
   // Make the PMT data, get a writable pointer to it, then copy our data in
   pmt_t uvec = pmt_make_u8vector(n_bytes, 0);
   char *vdata = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
-  memcpy(vdata, data, n_bytes);
+  memcpy(vdata, &data, n_bytes);
 
   // Per packet properties
   pmt_t tx_properties = pmt_make_dict();
 
-  // Specify that it's an ACK
-  pmt_dict_set(tx_properties, pmt_intern("ack"), PMT_T);
+  pmt_dict_set(tx_properties, pmt_intern("ack"), PMT_T);  // it's an ACK!
 
-  pmt_t timestamp = pmt_from_long(0xffffffff);	// NOW
-  pmt_t pdata = pmt_list5(PMT_NIL,
-                          pmt_from_long(d_local_address),
-                          pmt_from_long(dst),
-                          uvec,
-                          tx_properties);
+  pmt_t pdata = pmt_list5(PMT_NIL,                        // No invocation.
+                          pmt_from_long(d_local_address), // From us.
+                          pmt_from_long(dst),             // To them.
+                          uvec,                           // With data.
+                          tx_properties);                 // It's an ACK!
 
-  d_gmsk_cs->send(s_cmd_mod, pdata);
+  d_gmsk_cs->send(s_cmd_mod, pdata);    // Modulate the ACK
+  
+  d_state = SEND_ACK;                   // Switch MAC states
   
   if(verbose)
     std::cout << "[GMAC] Transmitted ACK from " << d_local_address
               << " to " << dst
               << std::endl;
-  
-  d_state = SEND_ACK;
-
 }
 
 REGISTER_MBLOCK_CLASS(gmac);

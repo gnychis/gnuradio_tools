@@ -25,47 +25,6 @@
 
 #include <gmsk.h>
 
-#include <mb_mblock.h>
-#include <mb_runtime.h>
-#include <mb_protocol_class.h>
-#include <mb_exception.h>
-#include <mb_msg_queue.h>
-#include <mb_message.h>
-#include <mb_msg_accepter.h>
-#include <mb_class_registry.h>
-#include <pmt.h>
-#include <stdio.h>
-#include <string.h>
-#include <iostream>
-#include <ui_nco.h>
-
-#include <symbols_usrp_server_cs.h>
-#include <symbols_usrp_channel.h>
-#include <symbols_usrp_low_level_cs.h>
-#include <symbols_usrp_tx.h>
-#include <symbols_usrp_rx.h>
-
-#include <gmsk_symbols.h>
-#include <gr_interp_fir_filter_fff.h>
-#include <gr_fir_fff.h>
-#include <gr_firdes.h>
-#include <gr_bytes_to_syms.h>
-#include <gr_frequency_modulator_fc.h>
-#include <gr_quadrature_demod_cf.h>
-#include <gr_clock_recovery_mm_ff.h>
-#include <gr_binary_slicer_fb.h>
-#include <gr_fft_filter_ccc.h>
-#include <gr_correlate_access_code_bb.h>
-#include <sys/time.h>
-#include <fstream>
-#include <malloc16.h>
-#include <cmath>
-#include <bitset>
-#include <queue>
-
-#include <boost/crc.hpp>
-#include <boost/cstdint.hpp>
-
 static bool verbose = false;
 static bool demod_debug = false;
   
@@ -191,10 +150,11 @@ gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
 
   d_slicer = gr_make_binary_slicer_fb();
 
-  // Setup the correlation block
-  d_access_code = "1010110011011101101001001110001011110010100011000010000011111100";
-  d_preamble = "1010010011110010";
-  d_postamble = "1010010011110010";
+  // Setup the correlation block (bit sequence finder).  Most of the constants
+  // are defined within gmsk_framer.h
+  d_preamble = PREAMBLE;                // Preamble to help synchronization
+  d_access_code = FRAMING_BITS;         // Framing bits to detect frame
+  d_postamble = POSTAMBLE;              // Post amble to pad end of frame
   d_corr = gr_make_correlate_access_code_bb(d_access_code, d_corr_thresh);
 
   if(verbose)
@@ -617,163 +577,6 @@ void gmsk::demod(pmt_t data)
   // Frame!
   framer(corr_output);
 
-}
-
-// The framer will use the special flag bit to detect the incoming frame.  To be
-// clean this should be a new block, but for performance reasons I'm keeping it
-// here.
-void gmsk::framer(const std::vector<unsigned char> input)
-{
-  int bit=0;
-
-  pmt_t uvec;
-  char *vdata;
-  pmt_t pkt_properties;
-  boost::crc_32_type bcrc;
-  unsigned char *frame_bp = (unsigned char *)&d_cframe_hdr;
-
-  if(verbose && 0)
-    std::cout << "[GMSK] Framer input: " << (input.size()/8) << std::endl;
-
-  while(bit < (int)input.size()) {
-    switch(d_state)
-    {
-      case SYNC_SEARCH:
-        if(input[bit] & 0x2) {  // Start of frame marker
-          d_state = WAIT_HEADER;
-          if(verbose)
-            std::cout << "[GMSK] Found frame\n";
-
-          d_squelch=false;
-
-          // Prepare the header queue
-          d_hdr_bits.clear();
-
-          memset(&d_start, '\0', sizeof(d_start));
-          gettimeofday(&d_start, NULL);
-
-          break;  // don't increment to the next bit
-        }
-        bit++;
-        break;
-
-      // Once we have the sync, keep storing bits until we have a header's worth
-      case WAIT_HEADER:
-        d_hdr_bits.push_back(input[bit]);
-
-        if(d_hdr_bits.size() == (sizeof(d_frame_hdr_t)*8)) {
-          d_state = HAVE_HEADER;
-          if(verbose)
-            std::cout << "[GMSK] Header's worth of bits\n";
-        }
-
-        bit++;
-        break;
-
-      // Once we have a header worth of bits, shift in
-      case HAVE_HEADER:
-        for(int hdr_byte=0; hdr_byte < (int)sizeof(d_frame_hdr_t); hdr_byte++) {
-          for(int byte_bit=0; byte_bit < 8; byte_bit++) {
-            frame_bp[hdr_byte] = (frame_bp[hdr_byte] << 1) | (d_hdr_bits[(8*hdr_byte)+byte_bit] & 0x1);
-          }
-        }
-        if(verbose)
-          std::cout << "[GMSK] Have header:"
-                    << "\n        src: " << d_cframe_hdr.src_addr
-                    << "\n        dst: " << d_cframe_hdr.dst_addr
-                    << "\n        payload_len: " << d_cframe_hdr.payload_len
-                    << "\n        crc: " << d_cframe_hdr.crc
-                    << "\n        ack: " << d_cframe_hdr.ack
-                    << std::endl;
-
-        if(d_cframe_hdr.payload_len>0 && (d_cframe_hdr.payload_len <= (MAX_FRAME_SIZE-max_frame_payload()))) {
-          d_state = WAIT_PAYLOAD;
-          if(verbose)
-            std::cout << "[GMSK] Waiting for payload...\n";
-          break;
-        } else {
-          d_state = SYNC_SEARCH;
-          if(verbose)
-            std::cout << "[GMSK] Improper payload, resetting state\n";
-        }
-
-        break;
-
-      case WAIT_PAYLOAD:
-        d_payload_bits.push_back(input[bit]);
-
-        if((int)d_payload_bits.size() == (d_cframe_hdr.payload_len * 8)) {
-          d_state = HAVE_PAYLOAD;
-          if(verbose)
-            std::cout << "[GMSK] Have payload\n";
-        }
-//        if(d_payload_bits.size() == (996*8))
-//          std::cout << (int)(input[bit] & 0x1) << std::endl;
-//        std::cout << d_payload_bits.size() << " ... " << (d_cframe_hdr.payload_len * 8) << std::endl;
-        bit++;
-        break;
-
-      case HAVE_PAYLOAD:
-        // Create a PMT vector to store data
-        size_t ignore;
-        uvec = pmt_make_u8vector(d_cframe_hdr.payload_len, 0);
-        vdata = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
-        
-        for(int hdr_byte=0; hdr_byte < (int)d_cframe_hdr.payload_len; hdr_byte++) {
-          for(int byte_bit=0; byte_bit < 8; byte_bit++) {
-            vdata[hdr_byte] = (vdata[hdr_byte] << 1) | (d_payload_bits[(8*hdr_byte)+byte_bit] & 0x1);
-          }
-        }
-        
-        pkt_properties = pmt_make_dict();
-
-        // FIXME: perform CRC check
-        bcrc.reset();
-        bcrc.process_bytes(vdata, d_cframe_hdr.payload_len);
-        if(d_cframe_hdr.crc != (int)bcrc.checksum() && !d_cframe_hdr.ack) {
-          if(verbose)
-            std::cout << "[GMSK] BAD CHECKSUM: " << bcrc.checksum() << " != " << d_cframe_hdr.crc 
-                      << " (size: " << d_cframe_hdr.payload_len << ")\n";
-          pmt_dict_set(pkt_properties, pmt_intern("crc"), PMT_F);
-          //goto payload_exit;  // skip passing the data up a layer
-        } else {
-          pmt_dict_set(pkt_properties, pmt_intern("crc"), PMT_T);
-          if(verbose)
-            std::cout << "[GMSK] GOOD CHECKSUM!\n";
-        }
-
-        // Create a packet properties for the frame information
-        pmt_dict_set(pkt_properties, pmt_intern("src"), pmt_from_long(d_cframe_hdr.src_addr));
-        pmt_dict_set(pkt_properties, pmt_intern("dst"), pmt_from_long(d_cframe_hdr.dst_addr));
-        if(d_cframe_hdr.ack)
-          pmt_dict_set(pkt_properties, pmt_intern("ack"), PMT_T);
-
-        d_cs->send(s_response_demod, pmt_list2(uvec, pkt_properties));
-
-        if(verbose)
-          std::cout << "[GMSK] Pushing up demoded data\n";
-
-//payload_exit:
-        // Return back to the search for header state
-        d_payload_bits.clear();
-        d_state = SYNC_SEARCH;
-
-        memset(&d_end, '\0', sizeof(d_end));
-        gettimeofday(&d_end, NULL);
-
-        if(verbose)
-          std::cout << "[GMSK] Frame " << d_nframes_recvd++ << " timing: "
-                    << (d_end.tv_sec-d_start.tv_sec)  << " sec and "
-                    << (d_end.tv_usec-d_start.tv_usec) << " usec\n";
-
-        d_squelch=true;
-
-        break;
-
-      default:
-        break;
-    }
-  }
 }
 
 // The MAC layer connects to 'usrp_server' which has a control/status channel,

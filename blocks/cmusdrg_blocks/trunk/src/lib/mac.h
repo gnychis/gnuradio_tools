@@ -51,14 +51,18 @@ class mac : public mb_mblock
   // The state is used to determine how to handle incoming messages and of
   // course, the state of the MAC protocol.
   enum usrp_state_t {
-    INIT,
     OPENING_USRP,
     ALLOCATING_CHANNELS,
-    IDLE,
-    CLOSING_CHANNELS,
+    CONNECTED,
+    DEALLOCATING_CHANNELS,
     CLOSING_USRP,
   };
   usrp_state_t	d_usrp_state;
+
+  enum channel_type {
+    RX_CHANNEL,
+    TX_CHANNEL,
+  };
 
   // Ports to connect to usrp_server (us)
   mb_port_sptr      d_us_tx, d_us_rx, d_us_cs;
@@ -92,11 +96,17 @@ class mac : public mb_mblock
  private:
   void define_usrp_ports();
   void initialize_usrp(pmt_t usrp_ref);
-  void allocate_channels();
-  void close_channels();
-  void open_usrp();
-  void close_usrp();
   void handle_usrp_message(mb_message_sptr msg);
+
+  void open_usrp();
+  void open_usrp_response(pmt_t data, bool success);
+  void close_usrp();
+  
+  void deallocate_channels();
+  void deallocate_channels_response(pmt_t data, channel_type chan, bool success);
+  
+  void allocate_channels();
+  void allocate_channels_response(pmt_t data, channel_type chan, bool success);
 };
 
 #endif // INCLUDED_MAC_H
