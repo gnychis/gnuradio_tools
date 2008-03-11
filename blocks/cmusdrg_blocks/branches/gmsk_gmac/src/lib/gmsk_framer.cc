@@ -26,7 +26,7 @@
 #include <gmsk.h>
 #include <gmsk_framer.h>
 
-static bool verbose = false;
+static bool verbose = true;
 
 // The framer will use the special flag bit to detect the incoming frame.  To be
 // clean this should be a new block, but for performance reasons I'm keeping it
@@ -140,7 +140,9 @@ void gmsk::framer_have_header()
   if(!(d_cframe_hdr.payload_len>0) || !(d_cframe_hdr.payload_len <= (MAX_FRAME_SIZE-max_frame_payload()))) {
     if(verbose)
       std::cout << "[GMSK] Improper payload detected\n";
+    d_squelch=true;           // start to squelch again
     d_state = SYNC_SEARCH;    // On failure, let's go back to looking for the framing bits
+    return;
   }
 
   if(verbose)
@@ -208,7 +210,7 @@ void gmsk::framer_have_frame(pmt_t uvec)
  exit_framer_have_frame:
   d_cs->send(s_response_demod, pmt_list2(uvec, pkt_properties));
   d_payload_bits.clear();   // Clear the payload bits
-  d_squelch=true;           // Start to squelch again
+  d_squelch=true;           // start to squelch again
   d_state = SYNC_SEARCH;    // Go back to searching for the framing bits
 
   if(verbose)
