@@ -106,41 +106,41 @@ module register_io
 	
 	always @(*)
         if (reset | ~enable[1])
-           begin
-             strobe <= 0;
-		     dataout <= 0;
-		   end
-		else
-		   begin
-	         if (enable[0])
-	           begin
-	             //read
-				if (addr <= 7'd43)
-					dataout <= bundle[addr];
-				else if (addr <= 7'd52 && addr > 7'd50)
-					dataout <= out[addr-7'd50];
-				else
-					dataout <= 32'hFFFFFFFF; 	
-	            strobe <= 0;
+          begin
+            strobe <= 0;
+		dataout <= 0;
+          end
+        else
+          begin
+	      if (enable[0])
+	        begin
+	          //read
+                if (addr <= 7'd43)
+                    dataout <= bundle[addr];
+                else if (addr <= 7'd52 && addr > 7'd50)
+                    dataout <= out[addr-7'd50];
+                else
+                    dataout <= 32'hFFFFFFFF; 	
+	          strobe <= 0;
               end
-             else
-               begin
-                 //write
-	             dataout <= dataout;
-                 strobe <= 1;
-				 data_wr <= datain;
-				 addr_wr <= addr;
-               end
+            else
+              begin
+                //write
+	          dataout <= dataout;
+                strobe <= 1;
+                data_wr <= datain;
+                addr_wr <= addr;
+              end
           end
 
-//register declarations
+    //register declarations
     /*setting_reg #(50) setting_reg0(.clock(clk),.reset(reset),
-    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(out[0]));*/
+    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(out[0]));
     setting_reg #(51) setting_reg1(.clock(clk),.reset(reset),
     .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(out[1]));
     setting_reg #(52) setting_reg2(.clock(clk),.reset(reset),
     .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(out[2]));
-    /*setting_reg #(53) setting_reg3(.clock(clk),.reset(reset),
+    setting_reg #(53) setting_reg3(.clock(clk),.reset(reset),
     .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(out[3]));
     setting_reg #(54) setting_reg4(.clock(clk),.reset(reset),
     .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(out[4]));

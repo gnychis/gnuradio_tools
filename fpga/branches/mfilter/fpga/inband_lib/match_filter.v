@@ -1,19 +1,55 @@
 module match_filter
    (input clk, input reset, input wire [15:0] real, input wire [15:0] img, input rxstrobe,
-    input wire [31:0] co_0, input wire [31:0] co_1, input wire [31:0] co_2, 
-    input wire [31:0] co_3, input wire [31:0] co_4, input wire [31:0] co_5,
-    input wire [31:0] co_6, input wire [31:0] co_7, input wire [31:0] co_8, 
-    input wire [31:0] co_9, input wire [31:0] co_10, input wire [31:0] co_11, 
-    input wire [7:0] co_length, input co_valid, input wire [31:0] threshhold, input ack,
+    input wire strobe_wr, input wire [6:0] addr_wr, input wire [31:0] data_wr, input ack,
     output wire [15:0] debugbus, output reg valid, output reg match)
-  
-    wire co[383:0];
-    assign co = {co_11, co_10, co_9, co_8, co_7, co_6, co_5, co_4, co_3, co_2, co_1, co_0};
-  
+
+
+    wire [383:0] co;
+
+    //registers used to store coefficient input
+    setting_reg #(50) setting_reg4(.clock(clk),.reset(reset),
+    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(co[383:352]));
+    setting_reg #(51) setting_reg4(.clock(clk),.reset(reset),
+    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(co[351:320]));
+    setting_reg #(52) setting_reg4(.clock(clk),.reset(reset),
+    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(co[319:288]));
+    setting_reg #(53) setting_reg4(.clock(clk),.reset(reset),
+    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(co[287:256]));
+    setting_reg #(54) setting_reg4(.clock(clk),.reset(reset),
+    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(co[255:224]));
+    setting_reg #(55) setting_reg4(.clock(clk),.reset(reset),
+    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(co[223:192]));
+    setting_reg #(56) setting_reg4(.clock(clk),.reset(reset),
+    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(co[191:160]));
+    setting_reg #(57) setting_reg4(.clock(clk),.reset(reset),
+    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(co[159:128]));
+    setting_reg #(58) setting_reg4(.clock(clk),.reset(reset),
+    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(co[127:96]));
+    setting_reg #(59) setting_reg4(.clock(clk),.reset(reset),
+    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(co[95:64]));
+    setting_reg #(60) setting_reg4(.clock(clk),.reset(reset),
+    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(co[63:32])); 
+    setting_reg #(61) setting_reg4(.clock(clk),.reset(reset),
+    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(co[31:0]));
+
+    wire [7:0] co_length;
+    wire co_valid;
+    wire [22:0] threshhold;
+    wire [31:0] info; 
+
+    //information registers
+    setting_reg #(62) setting_reg4(.clock(clk),.reset(reset),
+    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(info));
+ 
+    assign co_length  = info[31:24];
+    assign co_valid   = info[23];
+    assign threshhold = info[22:0];  
+
     integer i;
 
     reg [15:0] r [191:0]; //storing space -- real part
     reg [15:0] s [191:0]; //storing space -- imaginary part
+    reg [7:0] count;
 
     //storing the sample: consider using a lock
     always @ (posedge clk)
@@ -27,13 +63,14 @@ module match_filter
           end 
         else if (rxstrobe)
           begin
-            for( i = 0; i < 191; i = i + 1 ) 
+            for( i = 1; i < 192; i = i + 1 ) 
               begin
-                r[i+1] <= (i < (co_length - 8'd1)) ? r[i] : 0;
-                s[i+1] <= (i < (co_length - 8'd1)) ? s[i] : 0;   
+                r[i] <= (i < co_length) ? r[i-1] : 0;
+                s[i] <= (i < co_length) ? s[i-1] : 0;   
               end
             r[0] <= real;
             s[0] <= img;
+            count <= (count < co_length) ? (count + 8'd1) : co_length;
           end
 
     reg [4:0] state;
@@ -78,7 +115,7 @@ module match_filter
                 else if (cdata == 2'b01)
                     level1[i] <= rdata[i] - sdata[i];
                 else if (cdata == 2'b10)
-                    level1[i] <= -rdata[i] - sdata[i];
+                    level1[i] <= - rdata[i] - sdata[i];
                 else
                     level1[i] <= sdata[i] - rdata[i];
               end

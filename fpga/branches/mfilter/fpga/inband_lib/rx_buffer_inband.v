@@ -50,13 +50,13 @@ module rx_buffer_inband
         else
             read_count <= #1 RD ? read_count : 9'b0;
        
-	// Time counter
-	reg [31:0] adctime;
-	always @(posedge rxclk)
-		if (reset)
-			adctime <= 0;
-		else if (rxstrobe)
-			adctime <= adctime + 1;
+    // Time counter
+    reg [31:0] adctime;
+    always @(posedge rxclk)
+        if (reset)
+            adctime <= 0;
+        else if (rxstrobe)
+            adctime <= adctime + 1;
      
   // USB side fifo
   wire [11:0] rdusedw;
@@ -200,6 +200,14 @@ module rx_buffer_inband
   assign chan_empty[NUM_CHAN] = cmd_empty | rx_WR_enabled;
   assign chan_fifodata = dataout[rd_select];
   assign chan_usedw = usedw[rd_select];
-  assign debugbus = {4'd0, rxclk, rxstrobe, rx_full[0], rx_full[1], sel, wr};
+  //assign debugbus = {4'd0, rxclk, rxstrobe, rx_full[0], rx_full[1], sel, wr};
+
+  reg valid;
+  reg match;
+
+  match_filter mf
+   (.clk(rxclk), .reset(reset), .real(ch_0), .img(ch_1), .rxstrobe(rxstrobe),
+    .strobe_wr(serial_strobe), .addr_wr(serial_addr), .data_wr(serial_data),
+    .ack(1'b0), .debugbus(debugbus), .valid(valid), .match(match));
 
 endmodule
