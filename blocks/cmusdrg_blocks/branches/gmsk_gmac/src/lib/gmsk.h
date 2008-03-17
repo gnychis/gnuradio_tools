@@ -103,6 +103,7 @@ class gmsk : public mb_mblock
   bool d_squelch;
 
   long d_corr_thresh;
+  unsigned long d_last_timestamp;
 
   gr_complex d_fmdemod_last;
 

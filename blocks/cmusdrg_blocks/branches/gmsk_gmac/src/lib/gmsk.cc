@@ -358,6 +358,7 @@ void gmsk::demod(pmt_t data)
   
   const void *mod_data = pmt_uniform_vector_elements(pmt_nth(2, data), n_bytes);
   int16_t *samples = (int16_t *)mod_data;
+  d_last_timestamp = (unsigned long)pmt_to_long(pmt_nth(3, data));
   
   if(demod_debug)
     std::cout << "[GMSK] Demodulating (" << n_bytes/4 << ")...";
