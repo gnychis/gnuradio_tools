@@ -34,7 +34,6 @@ static bool verbose = false;
 void gmsk::framer(const std::vector<unsigned char> input)
 {
   int bit=0;
-  std::cout << "[GMSK_FRAMER] bits: " << (int)input.size() << std::endl;
 
   while(bit < (int)input.size()) {
     switch(d_state)
