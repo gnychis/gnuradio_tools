@@ -30,7 +30,8 @@ static bool verbose = false;
 mac::mac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(rt, instance_name, user_arg),
     d_usrp_state(OPENING_USRP),
-    d_us_rx_chan(PMT_NIL), d_us_tx_chan(PMT_NIL)
+    d_us_rx_chan(PMT_NIL), d_us_tx_chan(PMT_NIL),
+    d_usrp_decim(64), d_usrp_interp(128)
 {
   define_usrp_ports();    // Initialize the ports to connect to the USRP
 
@@ -183,8 +184,8 @@ void mac::initialize_usrp(pmt_t usrp_ref)
   // Specify important parameters like the RBF and frequency
   pmt_dict_set(usrp_dict, pmt_intern("rbf"), pmt_intern("local_rssi5.rbf"));
   pmt_dict_set(usrp_dict, pmt_intern("rf-freq"), pmt_from_long((long)10e6));
-  pmt_dict_set(usrp_dict, pmt_intern("interp-tx"), pmt_from_long(128));
-  pmt_dict_set(usrp_dict, pmt_intern("decim-rx"), pmt_from_long(64));
+  pmt_dict_set(usrp_dict, pmt_intern("interp-tx"), pmt_from_long(d_usrp_interp));
+  pmt_dict_set(usrp_dict, pmt_intern("decim-rx"), pmt_from_long(d_usrp_decim));
   pmt_dict_set(usrp_dict, pmt_intern("fake-usrp"), PMT_F);
   
   // FIXME: RFX2400 hack

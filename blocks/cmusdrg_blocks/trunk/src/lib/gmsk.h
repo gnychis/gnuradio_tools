@@ -66,6 +66,7 @@
 #include <gmsk_framer.h>
 
 static const int BITS_PER_BYTE = 8;
+static const int BITS_PER_SYMBOL = 1;
 
 class gmsk;
 
@@ -103,6 +104,10 @@ class gmsk : public mb_mblock
   bool d_squelch;
 
   long d_corr_thresh;
+  unsigned long d_frame_timestamp;
+
+  long d_usrp_decim;
+  long d_usrp_interp;
 
   gr_complex d_fmdemod_last;
 
@@ -157,7 +162,8 @@ class gmsk : public mb_mblock
   void demod(pmt_t data);
   void conv_to_binary(std::string code, std::vector<unsigned char> &output);
 
-  void framer(const std::vector<unsigned char> input);
+  void framer(const std::vector<unsigned char> input, unsigned long timestamp);
+  void framer_calculate_timestamp(unsigned long timestamp, int bit, int nbits);
   void framer_found_sync();
   void framer_new_header_bit(unsigned char bit);
   void framer_new_payload_bit(unsigned char bit);

@@ -70,6 +70,10 @@ class mac : public mb_mblock
   // The channel numbers assigned for use
   pmt_t d_us_rx_chan, d_us_tx_chan;
 
+  // USRP parameters
+  long d_usrp_decim;
+  long d_usrp_interp;
+
   pmt_t d_which_usrp;
   
   bool d_rx_enabled;
