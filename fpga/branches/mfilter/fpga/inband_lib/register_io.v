@@ -135,12 +135,12 @@ module register_io
 
     //register declarations
     /*setting_reg #(50) setting_reg0(.clock(clk),.reset(reset),
-    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(out[0]));
+    .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(out[0]));*/
     setting_reg #(51) setting_reg1(.clock(clk),.reset(reset),
     .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(out[1]));
     setting_reg #(52) setting_reg2(.clock(clk),.reset(reset),
     .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(out[2]));
-    setting_reg #(53) setting_reg3(.clock(clk),.reset(reset),
+    /*setting_reg #(53) setting_reg3(.clock(clk),.reset(reset),
     .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(out[3]));
     setting_reg #(54) setting_reg4(.clock(clk),.reset(reset),
     .strobe(strobe_wr),.addr(addr_wr),.in(data_wr),.out(out[4]));

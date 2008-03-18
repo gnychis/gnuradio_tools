@@ -10,7 +10,8 @@ module cmd_reader
     //register io
     input wire [31:0] reg_data_out, output reg [31:0] reg_data_in,
     output reg [6:0] reg_addr, output reg [1:0] reg_io_enable,
-    output wire [14:0] debug, output reg stop, output reg [15:0] stop_time);
+    output wire [14:0] debug, output reg stop, output reg [15:0] stop_time,
+    output reg cstate[3:0], output reg cwrite);
 	
    // States
    parameter IDLE                       =   4'd0;
@@ -23,6 +24,7 @@ module cmd_reader
    parameter WRITE_REG                  =   4'd7;
    parameter WRITE_REG_MASKED           =   4'd8;
    parameter READ_REG                   =   4'd9;
+   parameter MF_SET                     =   4'd10;
    parameter DELAY                      =   4'd14;		
 
    `define OP_PING_FIXED                    8'd0
@@ -31,6 +33,7 @@ module cmd_reader
    `define OP_WRITE_REG_MASKED              8'd3
    `define OP_READ_REG                      8'd4
    `define OP_READ_REG_REPLY                8'd5
+   `define OP_MF_SET                        8'd6
    `define OP_DELAY                         8'd12
 	
    reg [6:0]   payload;
@@ -42,7 +45,8 @@ module cmd_reader
    reg [31:0]  value0;
    reg [31:0]  value1;
    reg [31:0]  value2;
-   reg [1:0]   lines_in;
+   reg [3:0]   lines_in;
+   reg [3:0]   lines_in_total;
    reg [1:0]   lines_out;
    reg [1:0]   lines_out_total;
 	
@@ -66,6 +70,8 @@ module cmd_reader
            reg_data_in <= 0;
            reg_addr <= 0;
            stop <= 0;
+           cwrite <= 0;
+           cstate <= 0;
           end
         else case (state)
           IDLE : 
@@ -117,6 +123,8 @@ module cmd_reader
               rx_WR <= 0;
               rx_WR_done <= 1;
               stop <= 0;
+              cwrite <= 0;
+              lines_in_total <= 0;
               if (payload_read == payload)
                 begin
                   skip <= 1;
@@ -126,7 +134,7 @@ module cmd_reader
               else
                 begin
                   value0 <= fifodata;
-                  lines_in <= 2'd1;
+                  lines_in <= 4'd1;
                   rdreq <= 1;
                   payload_read <= payload_read + 7'd1;
                   lines_out <= 0;
@@ -152,6 +160,10 @@ module cmd_reader
                     `OP_DELAY: 
                       begin
                         state <= DELAY;
+                      end
+                    `OP_MF_SET:
+                      begin
+                        state <= MF_SET;
                       end
                     default: 
                       begin
@@ -240,10 +252,10 @@ module cmd_reader
                     pending <= 0;
                 else
                   begin
-                    if (lines_in == 2'd1)
+                    if (lines_in == 4'd1)
                       begin
                         payload_read <= payload_read + 7'd1;
-                        lines_in <= lines_in + 2'd1;
+                        lines_in <= lines_in + 4'd1;
                         value1 <= fifodata;
                         rdreq <= 0;
                       end
@@ -264,18 +276,18 @@ module cmd_reader
                     pending <= 0;
                 else
                   begin
-                    if (lines_in == 2'd1)
+                    if (lines_in == 4'd1)
                       begin
                         rdreq <= 1;
                         payload_read <= payload_read + 7'd1;
-                        lines_in <= lines_in + 2'd1;
+                        lines_in <= lines_in + 4'd1;
                         value1 <= fifodata;
                       end
-                    else if (lines_in == 2'd2)
+                    else if (lines_in == 4'd2)
                       begin
                         rdreq <= 0;
                         payload_read <= payload_read + 7'd1;
-                        lines_in <= lines_in + 2'd1;
+                        lines_in <= lines_in + 4'd1;
                         value2 <= fifodata;
                       end
                     else
@@ -296,6 +308,26 @@ module cmd_reader
                 state <= TEST;
               end
 			
+            MF_SET :
+              begin
+                if (lines_in == lines_in_total)
+                  begin
+                    rdreq  <= 0;
+                    state  <= TEST;
+                    cwrite <= 0;
+                  end
+                else
+                  begin
+                    rdreq          <= 1;
+                    state          <= MF_SET;
+                    cstate         <= lines_in;
+                    lines_in_total <= (value0[3:0] == 0) ? (value0[7:4] + 4'd2) : (value0[7:4] + 4'd3);
+                    lines_in       <= lines_in + 4'd1;
+                    value1         <= fifodata;
+                    reg_data_in    <= (lines_in == 4'd1) ? {24'd0, value0[7:0]} : value1;
+                    cwrite         <= 1;
+                  end              
+	        end		
             default : 
               begin
                 //error state handling

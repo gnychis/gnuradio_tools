@@ -142,18 +142,19 @@ wire [1:0] tx_underrun;
        .txclk(clk64),.txstrobe(strobe_interp),
        .clear_status(clear_status),
        .tx_empty(tx_empty),
-	   .rx_WR(rx_WR),
-	   .rx_databus(rx_databus), 
-	   .rx_WR_done(rx_WR_done),
-	   .rx_WR_enabled(rx_WR_enabled),
-	   .reg_addr(reg_addr),
-	   .reg_data_out(reg_data_out),
-	   .reg_data_in(reg_data_in),
-	   .reg_io_enable(reg_io_enable),
-	   .debugbus(rx_debugbus),
-	   .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), 
+       .rx_WR(rx_WR),
+       .rx_databus(rx_databus), 
+       .rx_WR_done(rx_WR_done),
+       .rx_WR_enabled(rx_WR_enabled),
+       .reg_addr(reg_addr),
+       .reg_data_out(reg_data_out),
+       .reg_data_in(reg_data_in),
+       .reg_io_enable(reg_io_enable),
+       .debugbus(rx_debugbus),
+       .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), 
        .rssi_3(rssi_3), .threshhold(rssi_threshhold), .rssi_wait(rssi_wait),
-	   .stop(stop), .stop_time(stop_time));
+       .stop(stop), .stop_time(stop_time)
+       .cstate(cstate), .cwrite(cwrite));
 `else
    tx_buffer tx_buffer
      ( .usbclk(usbclk),.bus_reset(tx_bus_reset),.reset(tx_dsp_reset),
@@ -263,13 +264,13 @@ wire [1:0] tx_underrun;
        .ch_6(ch6rx),.ch_7(ch7rx),
        .rxclk(clk64),.rxstrobe(hb_strobe),
        .clear_status(clear_status),
-	   .rx_WR(rx_WR),
-	   .rx_databus(rx_databus),
-	   .rx_WR_done(rx_WR_done),
-	   .rx_WR_enabled(rx_WR_enabled),
-	   .debugbus(tx_debugbus),
-	   .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), .rssi_3(rssi_3),
-	   .tx_underrun(tx_underrun));
+       .rx_WR(rx_WR),
+       .rx_databus(rx_databus),
+       .rx_WR_done(rx_WR_done),
+       .rx_WR_enabled(rx_WR_enabled),
+       .debugbus(tx_debugbus),
+       .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), .rssi_3(rssi_3),
+       .tx_underrun(tx_underrun), .cstate(cstate), .cwrite(cwrite), .cdata(reg_data_in));
    `else
    rx_buffer rx_buffer
      ( .usbclk(usbclk),.bus_reset(rx_bus_reset),.reset(rx_dsp_reset),
