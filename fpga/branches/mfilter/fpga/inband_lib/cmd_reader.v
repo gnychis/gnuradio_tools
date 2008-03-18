@@ -11,7 +11,7 @@ module cmd_reader
     input wire [31:0] reg_data_out, output reg [31:0] reg_data_in,
     output reg [6:0] reg_addr, output reg [1:0] reg_io_enable,
     output wire [14:0] debug, output reg stop, output reg [15:0] stop_time,
-    output reg cstate[3:0], output reg cwrite);
+    output reg [3:0] cstate, output reg cwrite);
 	
    // States
    parameter IDLE                       =   4'd0;

@@ -20,7 +20,7 @@ module tx_buffer_inband
     input wire [31:0] rssi_3, input wire [31:0] rssi_wait, input wire [31:0] threshhold, 
     output wire [NUM_CHAN-1:0] tx_underrun, 
     //system stop
-    output wire stop, output wire [15:0] stop_time
+    output wire stop, output wire [15:0] stop_time,
     output wire [3:0] cstate, output wire cwrite);
 	
    parameter NUM_CHAN	 =      2;
@@ -144,8 +144,8 @@ module tx_buffer_inband
     .pkt_waiting(chan_pkt_waiting[NUM_CHAN]), .rx_databus(rx_databus),
     .rx_WR(rx_WR), .rx_WR_done(rx_WR_done), .rx_WR_enabled(rx_WR_enabled),
     .reg_data_in(reg_data_in), .reg_data_out(reg_data_out), .reg_addr(reg_addr),
-    .reg_io_enable(reg_io_enable), .debug(debug[NUM_CHAN]), .stop(stop), .stop_time(stop_time)
-    .cstate(cstate), .cwrite(cwrite));
+    .reg_io_enable(reg_io_enable), .debug(debug[NUM_CHAN]), .stop(stop), 
+    .stop_time(stop_time), .cstate(cstate), .cwrite(cwrite));
 				   
 endmodule // tx_buffer
 

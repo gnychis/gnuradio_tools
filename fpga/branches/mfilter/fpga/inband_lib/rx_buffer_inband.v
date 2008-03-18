@@ -1,4 +1,4 @@
-//`include "../../firmware/include/fpga_regs_common.v"
+ //`include "../../firmware/include/fpga_regs_common.v"
 //`include "../../firmware/include/fpga_regs_standard.v"
 module rx_buffer_inband
   ( input usbclk,
@@ -37,7 +37,7 @@ module rx_buffer_inband
     input wire [1:0] tx_underrun
     );
     
-    parameter NUM_CHAN = 2;
+    parameter NUM_CHAN = 1;
     genvar i ;
     
     // FX2 Bug Fix
@@ -205,8 +205,8 @@ module rx_buffer_inband
   wire [15:0] mf_debugbus;
 
   match_filter mf
-    (.clk(rxclk), .reset(reset), .real(ch_0), .img(ch_1), 
+    (.clk(rxclk), .reset(reset), .r_input(ch_0), .i_input(ch_1), 
      .rxstrobe(rxstrobe), .cdata(cdata), .cstate(cstate), .cwrite(cwrite), 
-     .debugbus(mf_debugbus), .valid(), .match())
+     .debugbus(mf_debugbus), .valid(), .match());
 
 endmodule

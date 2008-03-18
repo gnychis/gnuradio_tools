@@ -153,7 +153,7 @@ wire [1:0] tx_underrun;
        .debugbus(rx_debugbus),
        .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), 
        .rssi_3(rssi_3), .threshhold(rssi_threshhold), .rssi_wait(rssi_wait),
-       .stop(stop), .stop_time(stop_time)
+       .stop(stop), .stop_time(stop_time),
        .cstate(cstate), .cwrite(cwrite));
 `else
    tx_buffer tx_buffer
