@@ -66,6 +66,7 @@
 #include <gmsk_framer.h>
 
 static const int BITS_PER_BYTE = 8;
+static const int BITS_PER_SYMBOL = 1;
 
 class gmsk;
 

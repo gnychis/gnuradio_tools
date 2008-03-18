@@ -98,7 +98,18 @@ void gmsk::framer(const std::vector<unsigned char> input, unsigned long timestam
 // backwards further to the synchronization bits.
 void gmsk::framer_calculate_timestamp(unsigned long timestamp, int bit, int nbits)
 {
-  
+  // The number of clock ticks for a single bit is how many samples are needed
+  // to construct a single bit, and the spacing between samples (decimation).
+  int clock_ticks_per_bit = d_usrp_decim * BITS_PER_SYMBOL * d_samples_per_symbol;
+
+  // The time of the start of the frame header (not transmission)
+  unsigned long start_of_frame = 
+      timestamp - clock_ticks_per_bit*(nbits - bit);
+
+  unsigned long start_of_transmission = 
+      timestamp - clock_ticks_per_bit*(nbits - bit - FRAMING_BITS_LEN - PREAMBLE_LEN);
+ 
+  d_frame_timestamp = start_of_transmission;
 }
 
 // We have found the framing bits and are now synchronized.

@@ -24,9 +24,10 @@
 
 #include <string>
 
-static const long PREAMBLE_LEN=2;
-static const long FRAMING_BITS_LEN=8;
-static const long POSTAMBLE_LEN=2;
+// Lengths in bits of our fields used for timestamp calculation
+static const long PREAMBLE_LEN=16;
+static const long FRAMING_BITS_LEN=64;
+static const long POSTAMBLE_LEN=16;
 
 static const std::string PREAMBLE = "1010010011110010";
 static const std::string FRAMING_BITS = "1010110011011101101001001110001011110010100011000010000011111100";
