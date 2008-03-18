@@ -64,7 +64,26 @@ gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   t_samples =0;
 
   if (pmt_is_dict(user_arg)) {
-    // parse parameters if needed
+
+    if(pmt_t interp = pmt_dict_ref(user_arg, pmt_intern("interp-tx"), PMT_NIL)) {
+      if(!pmt_eqv(interp, PMT_NIL)) {
+        d_usrp_interp = pmt_to_long(interp);
+      } else {
+        std::cout << "[GMSK] Failure: need to specify interp-tx\n";
+        shutdown_all(PMT_F);
+        return;
+      }
+    }
+    
+    if(pmt_t decim = pmt_dict_ref(user_arg, pmt_intern("decim-rx"), PMT_NIL)) {
+      if(!pmt_eqv(decim, PMT_NIL)) {
+        d_usrp_decim = pmt_to_long(decim);
+      } else {
+        std::cout << "[GMSK] Failure: need to specify decim-rx\n";
+        shutdown_all(PMT_F);
+        return;
+      }
+    }
   }
 
   // Initialize the ports
@@ -358,7 +377,7 @@ void gmsk::demod(pmt_t data)
   
   const void *mod_data = pmt_uniform_vector_elements(pmt_nth(2, data), n_bytes);
   int16_t *samples = (int16_t *)mod_data;
-  d_last_timestamp = (unsigned long)pmt_to_long(pmt_nth(3, data));
+  unsigned long timestamp = (unsigned long)pmt_to_long(pmt_nth(3, data));
   
   if(demod_debug)
     std::cout << "[GMSK] Demodulating (" << n_bytes/4 << ")...";
@@ -576,7 +595,7 @@ void gmsk::demod(pmt_t data)
     std::cout << " t_samples: " << t_samples << std::endl;
 
   // Frame!
-  framer(corr_output);
+  framer(corr_output, timestamp);
 
 }
 

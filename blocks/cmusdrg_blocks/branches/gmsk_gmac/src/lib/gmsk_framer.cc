@@ -31,11 +31,12 @@ static bool verbose = false;
 // The framer will use the special flag bit to detect the incoming frame.  To be
 // clean this should be a new block, but for performance reasons I'm keeping it
 // here.
-void gmsk::framer(const std::vector<unsigned char> input)
+void gmsk::framer(const std::vector<unsigned char> input, unsigned long timestamp)
 {
   int bit=0;
+  int nbits=(int)input.size();
 
-  while(bit < (int)input.size()) {
+  while(bit < nbits) {
     switch(d_state)
     {
       //-------------------------- SYNC_SEARCH -----------------------------//
@@ -45,6 +46,7 @@ void gmsk::framer(const std::vector<unsigned char> input)
       // bits.
       case SYNC_SEARCH:
         if(input[bit] & 0x2) {    // Start of frame marker
+          framer_calculate_timestamp(timestamp, bit, nbits);
           framer_found_sync();
           break;
         }
@@ -85,6 +87,18 @@ void gmsk::framer(const std::vector<unsigned char> input)
         break;
     }
   }
+}
+
+// Here, we attempt to approximate the timestamp of the frame by attempting to
+// calculate the time of arrival in the FPGA of the first sample that was used
+// to create the first symbol, used to create the first bit ;)
+//
+// The timestamp corresponds to the last sample in the USB block, so we need to
+// backcalculate from the total number of bits to the current bit, and then
+// backwards further to the synchronization bits.
+void gmsk::framer_calculate_timestamp(unsigned long timestamp, int bit, int nbits)
+{
+  
 }
 
 // We have found the framing bits and are now synchronized.
@@ -186,6 +200,7 @@ void gmsk::framer_have_frame(pmt_t uvec)
   
   // Create a dictionary (hash like structure) with frame header information,
   // you can put as much as you want in here
+  pmt_dict_set(pkt_properties, pmt_intern("timestamp"), pmt_from_long(d_frame_timestamp));
   pmt_dict_set(pkt_properties, pmt_intern("src"), pmt_from_long(d_cframe_hdr.src_addr));
   pmt_dict_set(pkt_properties, pmt_intern("dst"), pmt_from_long(d_cframe_hdr.dst_addr));
 
