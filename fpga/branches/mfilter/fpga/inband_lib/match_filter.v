@@ -41,8 +41,8 @@ module match_filter
 
 
     //data block
-    reg [15:0] real_block [191:0];
-    reg [15:0] img_block  [191:0];
+    reg signed [15:0] real_block [191:0];
+    reg signed [15:0] img_block  [191:0];
     reg data_valid;
 
     always @ (posedge clk)
@@ -71,9 +71,9 @@ module match_filter
 
     
     //computation block
-    reg [31:0] in_64   [63:0];
-    reg [31:0] in_8    [7:0] ;
-    reg [31:0] in_1          ;
+    reg signed [31:0] in_64   [63:0];
+    reg signed [31:0] in_8    [7:0] ;
+    reg signed [31:0] in_1          ;
     
     reg in_64_valid;
     reg in_8_valid;
@@ -103,64 +103,46 @@ module match_filter
 
     
     //data selection block   
-    always @ (posedge clk)
+    /*always @ (posedge clk)
         for (i = 0; i < 64; i = i + 1)
           begin
             case (in_state)
               4'd1:
                 begin
-                  in_64[i] <= (co[2*i+1]) ? 
-                              ((real_block[i] > 0) ? {16'h0000, real_block[i]}: 
-                                                     {16'hFFFF, real_block[i]}):
-                              ((real_block[i] < 0) ? {16'h0000, (-real_block[i])}: 
-                                                     {16'hFFFF, (-real_block[i])});  
+                  in_64[i] <= (co[2*i+1]) ? (real_block[i]) :
+                                            (-real_block[i]); 
                 end
               4'd2:
                 begin
-                  in_64[i] <= (co[2*i+1] == co[2*i]) ? 
-                              ((img_block[i] > 0) ? {16'h0000, img_block[i]}: 
-                                                    {16'hFFFF, img_block[i]}):
-                              ((img_block[i] < 0) ? {16'h0000, (-img_block[i])}: 
-                                                    {16'hFFFF, (-img_block[i])});  
+                  in_64[i] <= (co[2*i+1] == co[2*i]) ? (img_block[i]) :
+                                                       (-img_block[i]);
                 end
               4'd3:
                 begin
-                  in_64[i] <= (co[2*i+129]) ? 
-                              ((real_block[i+64] > 0) ? {16'h0000, real_block[i+64]}: 
-                                                     {16'hFFFF, real_block[i+64]}):
-                              ((real_block[i+64] < 0) ? {16'h0000, (-real_block[i+64])}: 
-                                                     {16'hFFFF, (-real_block[i+64])});  
+                  in_64[i] <= (co[2*i+129]) ? (real_block[i+64]) :
+                                              (-real_block[i+64]);  
                 end
               4'd4:
                 begin
-                  in_64[i] <= (co[2*i+129] == co[2*i+128]) ? 
-                              ((img_block[i+64] > 0) ? {16'h0000, img_block[i+64]}: 
-                                                    {16'hFFFF, img_block[i+64]}):
-                              ((img_block[i+64] < 0) ? {16'h0000, (-img_block[i+64])}: 
-                                                    {16'hFFFF, (-img_block[i+64])});  
+                  in_64[i] <= (co[2*i+129] == co[2*i+128]) ? (img_block[i+64]) :
+                                                             (-img_block[i+64]); 
                 end
               4'd5:
                 begin
-                  in_64[i] <= (co[2*i+257]) ? 
-                              ((real_block[i+128] > 0) ? {16'h0000, real_block[i+128]}: 
-                                                     {16'hFFFF, real_block[i+128]}):
-                              ((real_block[i+128] < 0) ? {16'h0000, (-real_block[i+128])}: 
-                                                     {16'hFFFF, (-real_block[i+128])});  
+                  in_64[i] <= (co[2*i+257]) ? (real_block[i+128]) :
+                                              (-real_block[i+128]); 
                 end
               4'd6:
                 begin
-                  in_64[i] <= (co[2*i+257] == co[2*i+256]) ? 
-                              ((img_block[i+128] > 0) ? {16'h0000, img_block[i+128]}: 
-                                                    {16'hFFFF, img_block[i+128]}):
-                              ((img_block[i+128] < 0) ? {16'h0000, (-img_block[i+128])}: 
-                                                    {16'hFFFF, (-img_block[i+128])});  
+                  in_64[i] <= (co[2*i+257] == co[2*i+256]) ? (img_block[i+128]) :
+                                                             (-img_block[i+128]);
                 end
               default:
                 begin
                   in_64[i] <= 0;
                 end
             endcase
-          end
+          end*/
   
     //logic block
     reg [3:0]  in_state;
