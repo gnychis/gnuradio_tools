@@ -1,0 +1,231 @@
+>>> Entering state machine
+ok =  True  pktno =  256  len(payload) =   22  13/13
+  payload: ['0x1', '0x0', '0xe5', '0xff', '0xff', '0xff', '0xff', '0x10', '0x0', '0x10', '0x0', '0x0', '0xd', '0x80', '0xff', '0xff', '0x10', '0x0', '0x20', '0x0', '0x37', '0x7c']
+ ------------------------
+>>> Entering state machine
+SYNC Search, noutput=255 syncvec=a7
+Found 0 in chip sequence
+Wrong first byte of SFD. 579766526
+@ enter_search
+SYNC Search, noutput=255 syncvec=a7
+Samples Processed: 34028
+>>> Entering state machine
+SYNC Search, noutput=255 syncvec=a7
+Found 0 in chip sequence
+Wrong first byte of SFD. 1372659665
+@ enter_search
+SYNC Search, noutput=255 syncvec=a7
+Samples Processed: 34283
+>>> Entering state machine
+SYNC Search, noutput=127 syncvec=a7
+Found 0 in chip sequence
+Wrong first byte of SFD. 4002283759
+@ enter_search
+SYNC Search, noutput=127 syncvec=a7
+Samples Processed: 34410
+>>> Entering state machine
+SYNC Search, noutput=63 syncvec=a7
+Found 0 in chip sequence
+Found 1 0 in chip sequence
+Samples Processed: 34473
+>>> Entering state machine
+SYNC Search, noutput=31 syncvec=a7
+Found 2 0 in chip sequence
+Samples Processed: 34504
+>>> Entering state machine
+SYNC Search, noutput=1 syncvec=a7
+Samples Processed: 34505
+>>> Entering state machine
+SYNC Search, noutput=1023 syncvec=a7
+Found 3 0 in chip sequence
+Found 4 0 in chip sequence
+Found 5 0 in chip sequence
+Found 6 0 in chip sequence
+Wrong first byte of SFD. 1912358173
+@ enter_search
+SYNC Search, noutput=1023 syncvec=a7
+Found 0 in chip sequence
+Found 1 0 in chip sequence
+Wrong first byte of SFD. 2722072739
+@ enter_search
+SYNC Search, noutput=1023 syncvec=a7
+Found 0 in chip sequence
+Found first SFD
+Wrong second byte of SFD. 125663047
+@ enter_search
+SYNC Search, noutput=1023 syncvec=a7
+Found 0 in chip sequence
+Found 1 0 in chip sequence
+Wrong first byte of SFD. 1912358173
+@ enter_search
+SYNC Search, noutput=1023 syncvec=a7
+Found 0 in chip sequence
+Samples Processed: 35528
+>>> Entering state machine
+SYNC Search, noutput=511 syncvec=a7
+Wrong first byte of SFD. 3758793634
+@ enter_search
+SYNC Search, noutput=511 syncvec=a7
+Found 0 in chip sequence
+Wrong first byte of SFD. 4002397890
+@ enter_search
+SYNC Search, noutput=511 syncvec=a7
+Found 0 in chip sequence
+Wrong first byte of SFD. 2199849918
+@ enter_search
+SYNC Search, noutput=511 syncvec=a7
+Found 0 in chip sequence
+Wrong first byte of SFD. 2735256847
+@ enter_search
+SYNC Search, noutput=511 syncvec=a7
+Found 0 in chip sequence
+Wrong first byte of SFD. 889150178
+@ enter_search
+SYNC Search, noutput=511 syncvec=a7
+Found 0 in chip sequence
+Samples Processed: 36039
+>>> Entering state machine
+SYNC Search, noutput=255 syncvec=a7
+Wrong first byte of SFD. 3479818255
+@ enter_search
+SYNC Search, noutput=255 syncvec=a7
+Found 0 in chip sequence
+Wrong first byte of SFD. 1230781476
+@ enter_search
+SYNC Search, noutput=255 syncvec=a7
+Found 0 in chip sequence
+Wrong first byte of SFD. 1928513575
+@ enter_search
+SYNC Search, noutput=255 syncvec=a7
+Found 0 in chip sequence
+Wrong first byte of SFD. 2738026981
+@ enter_search
+SYNC Search, noutput=255 syncvec=a7
+Samples Processed: 36294
+>>> Entering state machine
+SYNC Search, noutput=3 syncvec=a7
+Samples Processed: 36297
+>>> Entering state machine
+SYNC Search, noutput=63 syncvec=a7
+Found 0 in chip sequence
+Samples Processed: 36360
+>>> Entering state machine
+SYNC Search, noutput=7 syncvec=a7
+Samples Processed: 36367
+>>> Entering state machine
+SYNC Search, noutput=3 syncvec=a7
+Samples Processed: 36370
+>>> Entering state machine
+SYNC Search, noutput=3 syncvec=a7
+Wrong first byte of SFD. 1404064561
+@ enter_search
+SYNC Search, noutput=3 syncvec=a7
+Samples Processed: 36373
+>>> Entering state machine
+SYNC Search, noutput=255 syncvec=a7
+Found 0 in chip sequence
+Found 1 0 in chip sequence
+Found 2 0 in chip sequence
+Found 3 0 in chip sequence
+Found 4 0 in chip sequence
+Found 5 0 in chip sequence
+Found 6 0 in chip sequence
+Samples Processed: 36628
+>>> Entering state machine
+SYNC Search, noutput=255 syncvec=a7
+Found 7 0 in chip sequence
+Found first SFD
+Found sync, 0x7a
+@ enter_have_sync
+Header Search bitcnt=0, header=0x00000000
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+@ enter_have_header (payload_len = 22)
+Packet Build count=137, noutput_items=255, packet_len=22
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 0, payloadcnt: 0, payload 0x1, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Samples Processed: 36883
+>>> Entering state machine
+Packet Build count=0, noutput_items=255, packet_len=22
+Found sequence with 0 errors at 0x0
+packetcnt: 1, payloadcnt: 1, payload 0x0, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 2, payloadcnt: 2, payload 0xe5, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 3, payloadcnt: 3, payload 0xff, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 4, payloadcnt: 4, payload 0xff, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Samples Processed: 37138
+>>> Entering state machine
+Packet Build count=0, noutput_items=63, packet_len=22
+Found sequence with 0 errors at 0x0
+packetcnt: 5, payloadcnt: 5, payload 0xff, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Samples Processed: 37201
+>>> Entering state machine
+Packet Build count=0, noutput_items=31, packet_len=22
+Found sequence with 0 errors at 0x0
+packetcnt: 6, payloadcnt: 6, payload 0xff, d_packet_byte_index: 2
+Samples Processed: 37232
+>>> Entering state machine
+Packet Build count=0, noutput_items=15, packet_len=22
+Found sequence with 0 errors at 0x0
+Samples Processed: 37247
+>>> Entering state machine
+Packet Build count=0, noutput_items=3, packet_len=22
+Samples Processed: 37250
+>>> Entering state machine
+Packet Build count=0, noutput_items=1023, packet_len=22
+Found sequence with 0 errors at 0x0
+packetcnt: 7, payloadcnt: 7, payload 0x10, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 8, payloadcnt: 8, payload 0x0, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 9, payloadcnt: 9, payload 0x10, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 10, payloadcnt: 10, payload 0x0, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 11, payloadcnt: 11, payload 0x0, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 12, payloadcnt: 12, payload 0xf, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 13, payloadcnt: 13, payload 0x80, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 14, payloadcnt: 14, payload 0xff, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 15, payloadcnt: 15, payload 0xff, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 16, payloadcnt: 16, payload 0x10, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 17, payloadcnt: 17, payload 0x0, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 18, payloadcnt: 18, payload 0x20, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 19, payloadcnt: 19, payload 0x0, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 20, payloadcnt: 20, payload 0x58, d_packet_byte_index: 2
+Found sequence with 0 errors at 0x0
+Found sequence with 0 errors at 0x0
+packetcnt: 21, payloadcnt: 21, payload 0x77, d_packet_byte_index: 2
+ok =  True  pktno =  256  len(payload) =   22  14/14
+  payload: ['0x1', '0x0', '0xe5', '0xff', '0xff', '0xff', '0xff', '0x10', '0x0', '0x10', '0x0', '0x0', '0xf', '0x80', '0xff', '0xff', '0x10', '0x0', '0x20', '0x0', '0x58', '0x77']
+ ------------------------
