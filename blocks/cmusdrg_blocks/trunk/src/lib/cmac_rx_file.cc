@@ -38,12 +38,12 @@
 #include <fstream>
 
 #include <gmsk.h>
-#include <gmac.h>
-#include <gmac_symbols.h>
+#include <cmac.h>
+#include <cmac_symbols.h>
 
 static bool verbose = false;
 
-class gmac_rx_file : public mb_mblock
+class cmac_rx_file : public mb_mblock
 {
   mb_port_sptr 	d_tx;
   mb_port_sptr  d_rx;
@@ -64,8 +64,8 @@ class gmac_rx_file : public mb_mblock
   long d_local_addr;
 
  public:
-  gmac_rx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg);
-  ~gmac_rx_file();
+  cmac_rx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg);
+  ~cmac_rx_file();
   void handle_message(mb_message_sptr msg);
 
  protected:
@@ -79,7 +79,7 @@ class gmac_rx_file : public mb_mblock
   void enter_closing_channel();
 };
 
-gmac_rx_file::gmac_rx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg)
+cmac_rx_file::cmac_rx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(runtime, instance_name, user_arg),
     d_state(INIT), 
     d_nframes_xmitted(0),
@@ -108,31 +108,31 @@ gmac_rx_file::gmac_rx_file(mb_runtime *runtime, const std::string &instance_name
     return;
   }
 
-  pmt_t gmac_data = pmt_list2(usrp, pmt_from_long(d_local_addr));
+  pmt_t cmac_data = pmt_list2(usrp, pmt_from_long(d_local_addr));
   
-  define_component("GMAC", "gmac", gmac_data); 
-  d_tx = define_port("tx0", "gmac-tx", false, mb_port::INTERNAL);
-  d_rx = define_port("rx0", "gmac-rx", false, mb_port::INTERNAL);
-  d_cs = define_port("cs", "gmac-cs", false, mb_port::INTERNAL);
+  define_component("CMAC", "cmac", cmac_data); 
+  d_tx = define_port("tx0", "cmac-tx", false, mb_port::INTERNAL);
+  d_rx = define_port("rx0", "cmac-rx", false, mb_port::INTERNAL);
+  d_cs = define_port("cs", "cmac-cs", false, mb_port::INTERNAL);
 
-  connect("self", "tx0", "GMAC", "tx0");
-  connect("self", "rx0", "GMAC", "rx0");
-  connect("self", "cs", "GMAC", "cs");
+  connect("self", "tx0", "CMAC", "tx0");
+  connect("self", "rx0", "CMAC", "rx0");
+  connect("self", "cs", "CMAC", "cs");
 
-  std::cout << "[GMAC_RX_FILE] Initialized ..."
+  std::cout << "[CMAC_RX_FILE] Initialized ..."
             << "\n    Filename: " << file
             << "\n    Address: " << d_local_addr
             << "\n";
 
 }
 
-gmac_rx_file::~gmac_rx_file()
+cmac_rx_file::~cmac_rx_file()
 {
   d_ofile.close();
 }
 
 void
-gmac_rx_file::handle_message(mb_message_sptr msg)
+cmac_rx_file::handle_message(mb_message_sptr msg)
 {
   pmt_t event = msg->signal();
   pmt_t data = msg->data();
@@ -147,10 +147,10 @@ gmac_rx_file::handle_message(mb_message_sptr msg)
   switch(d_state) {
 
     //------------------------------ INIT ---------------------------------//
-    // When GMAC is done initializing, it will send a response
+    // When CMAC is done initializing, it will send a response
     case INIT:
       
-      if(pmt_eq(event, s_response_gmac_initialized)) {
+      if(pmt_eq(event, s_response_cmac_initialized)) {
         handle = pmt_nth(0, data);
         status = pmt_nth(1, data);
 
@@ -159,7 +159,7 @@ gmac_rx_file::handle_message(mb_message_sptr msg)
           return;
         }
         else {
-          error_msg = "error initializing gmac:";
+          error_msg = "error initializing cmac:";
           goto bail;
         }
       }
@@ -191,20 +191,20 @@ gmac_rx_file::handle_message(mb_message_sptr msg)
  // Received an unhandled message for a specific state
  unhandled:
   if(verbose && 0 && !pmt_eq(event, pmt_intern("%shutdown")))
-    std::cout << "[GMAC_RX_FILE] unhandled msg: " << msg
+    std::cout << "[CMAC_RX_FILE] unhandled msg: " << msg
               << "in state "<< d_state << std::endl;
 }
 
 // Wait until we get incoming data...
 void
-gmac_rx_file::enter_data_wait()
+cmac_rx_file::enter_data_wait()
 {
   d_state = DATA_WAIT;
   d_cs->send(s_cmd_rx_enable, pmt_list1(PMT_NIL));
 }
 
 void
-gmac_rx_file::handle_response_rx_pkt(pmt_t data)
+cmac_rx_file::handle_response_rx_pkt(pmt_t data)
 {
   pmt_t invocation_handle = pmt_nth(0, data);
   pmt_t payload = pmt_nth(1, data);
@@ -221,4 +221,4 @@ gmac_rx_file::handle_response_rx_pkt(pmt_t data)
 
 }
 
-REGISTER_MBLOCK_CLASS(gmac_rx_file);
+REGISTER_MBLOCK_CLASS(cmac_rx_file);

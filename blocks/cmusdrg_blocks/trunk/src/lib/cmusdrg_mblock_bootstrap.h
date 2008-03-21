@@ -60,10 +60,10 @@ class cmusdrg_mblock_bootstrap {
 #include <mb_class_registry.h>
 #include <pmt.h>
 
-/* GMAC */
-#include <gmac.h>
+/* CMAC */
+#include <cmac.h>
 #include <mac.h>
-#include <gmac_symbols.h>
-/* GMAC */
+#include <cmac_symbols.h>
+/* CMAC */
 
 #endif 

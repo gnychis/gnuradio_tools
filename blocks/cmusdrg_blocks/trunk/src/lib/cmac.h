@@ -19,8 +19,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef INCLUDED_GMAC_H
-#define INCLUDED_GMAC_H
+#ifndef INCLUDED_CMAC_H
+#define INCLUDED_CMAC_H
 
 #include <mb_mblock.h>
 #include <mb_runtime.h>
@@ -42,23 +42,23 @@
 #include <symbols_usrp_tx.h>
 #include <symbols_usrp_rx.h>
 
-#include <gmac_symbols.h>
+#include <cmac_symbols.h>
 #include <gmsk_symbols.h>
 
 #include <mac.h>
 
-class gmac;
+class cmac;
 
-class gmac : public mac
+class cmac : public mac
 {
 
-  enum gmac_state_t {
-    INIT_GMAC,
+  enum cmac_state_t {
+    INIT_CMAC,
     ACK_WAIT,
     SEND_ACK,
     IDLE,
   };
-  gmac_state_t	d_state;
+  cmac_state_t	d_state;
 
   // Ports used for applications to connect to this block
   mb_port_sptr		  d_tx, d_rx, d_cs;
@@ -82,13 +82,13 @@ class gmac : public mac
   void usrp_initialized();                        // overriding MAC method
 
  public:
-  gmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg);
-  ~gmac();
+  cmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg);
+  ~cmac();
 
  private:
-  // GMAC initialization
+  // CMAC initialization
   void define_mac_ports();
-  void initialize_gmac();
+  void initialize_cmac();
 
   // Crucial CSMA methods
   void transmit_pkt(pmt_t data);
@@ -107,4 +107,4 @@ class gmac : public mac
  
 };
 
-#endif // INCLUDED_GMAC_H
+#endif // INCLUDED_CMAC_H
