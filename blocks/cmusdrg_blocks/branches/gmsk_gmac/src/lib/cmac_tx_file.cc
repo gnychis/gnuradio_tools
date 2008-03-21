@@ -39,12 +39,12 @@
 #include <sys/time.h>
 
 #include <gmsk.h>
-#include <gmac.h>
-#include <gmac_symbols.h>
+#include <cmac.h>
+#include <cmac_symbols.h>
 
 static bool verbose = false;
 
-class gmac_tx_file : public mb_mblock
+class cmac_tx_file : public mb_mblock
 {
   mb_port_sptr 	d_tx;
   mb_port_sptr  d_rx;
@@ -68,8 +68,8 @@ class gmac_tx_file : public mb_mblock
   struct timeval d_start, d_end;
 
  public:
-  gmac_tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg);
-  ~gmac_tx_file();
+  cmac_tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg);
+  ~cmac_tx_file();
   void handle_message(mb_message_sptr msg);
 
  protected:
@@ -82,7 +82,7 @@ class gmac_tx_file : public mb_mblock
   void enter_closing_channel();
 };
 
-gmac_tx_file::gmac_tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg)
+cmac_tx_file::cmac_tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(runtime, instance_name, user_arg),
     d_state(INIT), 
     d_nframes_xmitted(0),
@@ -112,18 +112,18 @@ gmac_tx_file::gmac_tx_file(mb_runtime *runtime, const std::string &instance_name
     return;
   }
   
-  pmt_t gmac_data = pmt_list2(usrp, pmt_from_long(d_local_addr));
+  pmt_t cmac_data = pmt_list2(usrp, pmt_from_long(d_local_addr));
   
-  define_component("GMAC", "gmac", gmac_data);  // FIXME: RFX2400 hack
-  d_tx = define_port("tx0", "gmac-tx", false, mb_port::INTERNAL);
-  d_rx = define_port("rx0", "gmac-rx", false, mb_port::INTERNAL);
-  d_cs = define_port("cs", "gmac-cs", false, mb_port::INTERNAL);
+  define_component("CMAC", "cmac", cmac_data);  // FIXME: RFX2400 hack
+  d_tx = define_port("tx0", "cmac-tx", false, mb_port::INTERNAL);
+  d_rx = define_port("rx0", "cmac-rx", false, mb_port::INTERNAL);
+  d_cs = define_port("cs", "cmac-cs", false, mb_port::INTERNAL);
 
-  connect("self", "tx0", "GMAC", "tx0");
-  connect("self", "rx0", "GMAC", "rx0");
-  connect("self", "cs", "GMAC", "cs");
+  connect("self", "tx0", "CMAC", "tx0");
+  connect("self", "rx0", "CMAC", "rx0");
+  connect("self", "cs", "CMAC", "cs");
   
-  std::cout << "[GMAC_TX_FILE] Initialized ..."
+  std::cout << "[CMAC_TX_FILE] Initialized ..."
             << "\n    Filename: " << file
             << "\n    Address: " << d_local_addr
             << "\n    Destination:" << d_dst_addr
@@ -131,14 +131,14 @@ gmac_tx_file::gmac_tx_file(mb_runtime *runtime, const std::string &instance_name
 
 }
 
-gmac_tx_file::~gmac_tx_file()
+cmac_tx_file::~cmac_tx_file()
 {
 
   d_ifile.close();
 }
 
 void
-gmac_tx_file::handle_message(mb_message_sptr msg)
+cmac_tx_file::handle_message(mb_message_sptr msg)
 {
   pmt_t event = msg->signal();
   pmt_t data = msg->data();
@@ -153,10 +153,10 @@ gmac_tx_file::handle_message(mb_message_sptr msg)
   switch(d_state) {
     
     //------------------------------ INIT ---------------------------------//
-    // When GMAC is done initializing, it will send a response
+    // When CMAC is done initializing, it will send a response
     case INIT:
       
-      if(pmt_eq(event, s_response_gmac_initialized)) {
+      if(pmt_eq(event, s_response_cmac_initialized)) {
         handle = pmt_nth(0, data);
         status = pmt_nth(1, data);
 
@@ -168,7 +168,7 @@ gmac_tx_file::handle_message(mb_message_sptr msg)
           return;
         }
         else {
-          error_msg = "error initializing gmac:";
+          error_msg = "error initializing cmac:";
           goto bail;
         }
       }
@@ -207,12 +207,12 @@ gmac_tx_file::handle_message(mb_message_sptr msg)
  // Received an unhandled message for a specific state
  unhandled:
   if(verbose && !pmt_eq(event, pmt_intern("%shutdown")))
-    std::cout << "[GMAC_TX_FILE] unhandled msg: " << msg
+    std::cout << "[CMAC_TX_FILE] unhandled msg: " << msg
               << "in state "<< d_state << std::endl;
 }
 
 void
-gmac_tx_file::enter_transmitting()
+cmac_tx_file::enter_transmitting()
 {
   d_state = TRANSMITTING;
 
@@ -228,7 +228,7 @@ gmac_tx_file::enter_transmitting()
 }
 
 void
-gmac_tx_file::build_and_send_next_frame()
+cmac_tx_file::build_and_send_next_frame()
 {
   size_t ignore;
   long n_bytes;
@@ -268,7 +268,7 @@ gmac_tx_file::build_and_send_next_frame()
   d_nframes_xmitted++;
 
   if(verbose)
-    std::cout << "[GMAC_TX_FILE] Transmitted frame from " << d_local_addr
+    std::cout << "[CMAC_TX_FILE] Transmitted frame from " << d_local_addr
               << " to " << d_dst_addr 
               << " of size " << n_bytes << " bytes\n";
 
@@ -278,7 +278,7 @@ gmac_tx_file::build_and_send_next_frame()
 
 
 void
-gmac_tx_file::handle_xmit_response(pmt_t handle)
+cmac_tx_file::handle_xmit_response(pmt_t handle)
 {
   if (d_done_sending && pmt_to_long(handle)==(d_nframes_xmitted-1)){
     gettimeofday(&d_end, NULL);
@@ -291,8 +291,8 @@ gmac_tx_file::handle_xmit_response(pmt_t handle)
     shutdown_all(PMT_T);
   }
 
-  // GMAC has taken care of waiting for the ACK
+  // CMAC has taken care of waiting for the ACK
   build_and_send_next_frame();  
 }
 
-REGISTER_MBLOCK_CLASS(gmac_tx_file);
+REGISTER_MBLOCK_CLASS(cmac_tx_file);

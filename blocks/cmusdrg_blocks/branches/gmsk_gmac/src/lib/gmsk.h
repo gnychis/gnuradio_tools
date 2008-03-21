@@ -172,4 +172,4 @@ class gmsk : public mb_mblock
   void framer_have_frame(pmt_t uvec);
 };
 
-#endif // INCLUDED_GMAC_H
+#endif // INCLUDED_CMAC_H

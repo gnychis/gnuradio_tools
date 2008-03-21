@@ -19,8 +19,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef INCLUDED_GMAC_SYMBOLS_H
-#define INCLUDED_GMAC_SYMBOLS_H
+#ifndef INCLUDED_CMAC_SYMBOLS_H
+#define INCLUDED_CMAC_SYMBOLS_H
 
 #include <pmt.h>
 
@@ -40,7 +40,7 @@ static pmt_t s_cmd_carrier_sense_disable = pmt_intern("cmd-carrier-sense-disable
 static pmt_t s_cmd_set_tx_retries = pmt_intern("cmd-set-tx-retries");
 static pmt_t s_cmd_rx_enable = pmt_intern("cmd-rx-enable");
 static pmt_t s_cmd_rx_disable = pmt_intern("cmd-rx-disable");
-static pmt_t s_response_gmac_initialized = pmt_intern("response-gmac-initialized");
+static pmt_t s_response_cmac_initialized = pmt_intern("response-cmac-initialized");
 static pmt_t s_response_set_address = pmt_intern("response-set-address");
 static pmt_t s_response_carrier_sense_enable = pmt_intern("response-carrier-sense-enable");
 static pmt_t s_response_carrier_sense_treshold = pmt_intern("response-carrier-sense-threshold");
@@ -50,4 +50,4 @@ static pmt_t s_response_set_tx_retries = pmt_intern("response-set-tx-retries");
 static pmt_t s_response_rx_enable = pmt_intern("response-rx-enable");
 static pmt_t s_response_rx_disable = pmt_intern("response-rx-disable");
 
-#endif // INCLUDED_GMAC_SYMBOLS_H
+#endif // INCLUDED_CMAC_SYMBOLS_H

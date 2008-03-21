@@ -44,13 +44,25 @@ NON_LOCAL_IFILES =			\
 LOCAL_IFILES = 				\
 	$(top_srcdir)/src/lib/cmusdrg.i				
 
+EXTRA_DIST = 		\
+	cmac.mbh
+
+#GUILE_LOAD_PATH="../scheme/pmt:../scheme/mblock" /usr/bin/guile -e main -s ../scheme/mblock/gnuradio/compile-mbh.scm ./cmac.mbh cmac_mbh.cc
+
+GUILE_LOAD_PATH=GUILE_LOAD_PATH="$(top_srcdir)/src/scheme/pmt:$(top_srcdir)/src/scheme/mblock"
+GUILE=/usr/bin/guile -e main -s $(top_srcdir)/src/scheme/mblock/gnuradio/compile-mbh.scm
+
 # These files are built by SWIG.  The first is the C++ glue.
 # The second is the python wrapper that loads the _cmusdrg shared library
 # and knows how to call our extensions.
 
 BUILT_SOURCES = 			\
 	cmusdrg.cc			\
-	cmusdrg.py			
+	cmusdrg.py			\
+	cmac_mbh.cc
+
+cmac_mbh.cc : cmac.mbh
+	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/cmac.mbh $(srcdir)/cmac_mbh.cc
 
 # This gets cmusdrg.py installed in the right place
 ourpython_PYTHON =			\
@@ -63,13 +75,13 @@ _cmusdrg_la_SOURCES = 			\
 	cmusdrg.cc	\
 	cmusdrg_mblock_bootstrap.cc	\
 	mac.cc \
-	gmac.cc	\
+	cmac.cc	\
 	gmsk.cc	\
 	gmsk_framer.cc \
-	gmac_mbh.cc	\
+	cmac_mbh.cc	\
 	gmsk_mbh.cc	\
-	gmac_tx_file.cc	\
-	gmac_rx_file.cc
+	cmac_tx_file.cc	\
+	cmac_rx_file.cc
 
 # magic flags
 _cmusdrg_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
@@ -92,7 +104,7 @@ cmusdrg.cc cmusdrg.py: $(LOCAL_IFILES) $(ALL_IFILES)
 grinclude_HEADERS =			\
 	cmusdrg_mblock_bootstrap.h	\
 	mac.h \
-	gmac.h	\
+	cmac.h	\
 	gmsk.h	\
 	gmsk_framer.h
 

@@ -65,7 +65,7 @@ def run(freq, args):
   usrp_rx = urx.get_usrp()
 
   # Now make a mblock_bootstrap
-  mblock_bootstrap = cmusdrg.mblock_bootstrap(usrp_tx, usrp_rx, "gmac_rx_file", args)
+  mblock_bootstrap = cmusdrg.mblock_bootstrap(usrp_tx, usrp_rx, "cmac_rx_file", args)
   mblock_bootstrap.start()
 
 def main (args):
@@ -76,7 +76,7 @@ def main (args):
     saddr = int(args[2])
     daddr = int(args[3])
   else:
-    sys.stderr.write ("usage: ./run_gmac_rx_file.py if_freq output_file src_addr dst_addr\n")
+    sys.stderr.write ("usage: ./run_cmac_rx_file.py if_freq output_file src_addr dst_addr\n")
     sys.exit (1)
 
   run(freq, sys.argv[2:])

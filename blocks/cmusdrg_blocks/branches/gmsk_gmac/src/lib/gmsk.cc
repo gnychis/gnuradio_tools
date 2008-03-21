@@ -190,7 +190,7 @@ gmsk::~gmsk()
   }
 }
 
-// The full functionality of GMAC is based on messages passed back and forth
+// The full functionality of CMAC is based on messages passed back and forth
 // between the application and a physical layer and/or usrp_server.  Each
 // message triggers additional events, states, and messages to be sent.
 void gmsk::handle_message(mb_message_sptr msg)
