@@ -96,7 +96,7 @@ def main ():
     fg = transmit_path(options)
     fg.start()
     
-    for i in range(10):
+    for i in range(2):
         print "send message %d:"%(i+1,)
         fg.send_pkt(struct.pack('9B', 0x1, 0x80, 0x80, 0xff, 0xff, 0x10, 0x0, 0x20, 0x0))
         #this is an other example packet we could send.

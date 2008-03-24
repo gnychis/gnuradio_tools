@@ -36,6 +36,7 @@ SUCH DAMAGE.
 #include <ucla_qpsk_modulator_cc.h>
 #include <gr_io_signature.h>
 #include <assert.h>
+#include <iostream>
 
 static const int SAMPLES_PER_SYMBOL = 4;
 
@@ -49,7 +50,8 @@ ucla_qpsk_modulator_cc::ucla_qpsk_modulator_cc ()
   : gr_sync_interpolator ("qpsk_modulator_cc",
 			  gr_make_io_signature (1, 1, sizeof (gr_complex)),
 			  gr_make_io_signature (1, 1, sizeof (gr_complex)),
-			  SAMPLES_PER_SYMBOL)
+			  SAMPLES_PER_SYMBOL),
+  d_prev_q(1)
 {
 }
 
@@ -77,11 +79,26 @@ ucla_qpsk_modulator_cc::work (int noutput_items,
     float iphase = real(in[i]);
     float qphase = imag(in[i]);
     //fprintf(stderr, "%.0f %.0f ", iphase, qphase), fflush(stderr);
+    
+    *out++ = gr_complex(iphase * 0.70710678, d_prev_q * 0.70710678);
+    std::cout << *out << std::endl;
+    *out++ = gr_complex(iphase, 0.0);
+    std::cout << *out << std::endl;
+    *out++ = gr_complex(iphase * 0.70710678, qphase * 0.70710678);
+    std::cout << *out << std::endl;
+    *out++ = gr_complex(0.0, qphase);
+    std::cout << *out << std::endl;
 
-    *out++ = gr_complex(0.0, 0.0);
-    *out++ = gr_complex(iphase * 0.70710678, qphase * 0.70710678);
-    *out++ = gr_complex(iphase, qphase);
-    *out++ = gr_complex(iphase * 0.70710678, qphase * 0.70710678);
+    //*out++ = gr_complex(0.0, 0.0);
+    //std::cout << *out << std::endl;
+    //*out++ = gr_complex(iphase * 0.70710678, qphase * 0.70710678);
+    //std::cout << *out << std::endl;
+    //*out++ = gr_complex(iphase, qphase);
+    //std::cout << *out << std::endl;
+    //*out++ = gr_complex(iphase * 0.70710678, qphase * 0.70710678);
+    //std::cout << *out << std::endl;
+
+    fflush(stdout);
   }
 
   return noutput_items;

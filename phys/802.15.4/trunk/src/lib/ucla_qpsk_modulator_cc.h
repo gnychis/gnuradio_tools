@@ -58,6 +58,7 @@ ucla_make_qpsk_modulator_cc ();
 class ucla_qpsk_modulator_cc : public gr_sync_interpolator
 {
   friend ucla_qpsk_modulator_cc_sptr ucla_make_qpsk_modulator_cc ();
+  float d_prev_q;
 
  protected:
   ucla_qpsk_modulator_cc ();
