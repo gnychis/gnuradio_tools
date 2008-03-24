@@ -80,23 +80,23 @@ ucla_qpsk_modulator_cc::work (int noutput_items,
     float qphase = imag(in[i]);
     //fprintf(stderr, "%.0f %.0f ", iphase, qphase), fflush(stderr);
     
-    *out++ = gr_complex(iphase * 0.70710678, d_prev_q * 0.70710678);
-    std::cout << *out << std::endl;
-    *out++ = gr_complex(iphase, 0.0);
+    //*out++ = gr_complex(iphase * 0.70710678, d_prev_q * 0.70710678);
+    //std::cout << *out << std::endl;
+    //*out++ = gr_complex(iphase, 0.0);
+    //std::cout << *out << std::endl;
+    //*out++ = gr_complex(iphase * 0.70710678, qphase * 0.70710678);
+    //std::cout << *out << std::endl;
+    //*out++ = gr_complex(0.0, qphase);
+    //std::cout << *out << std::endl;
+
+    *out++ = gr_complex(0.0, 0.0);
     std::cout << *out << std::endl;
     *out++ = gr_complex(iphase * 0.70710678, qphase * 0.70710678);
     std::cout << *out << std::endl;
-    *out++ = gr_complex(0.0, qphase);
+    *out++ = gr_complex(iphase, qphase);
     std::cout << *out << std::endl;
-
-    //*out++ = gr_complex(0.0, 0.0);
-    //std::cout << *out << std::endl;
-    //*out++ = gr_complex(iphase * 0.70710678, qphase * 0.70710678);
-    //std::cout << *out << std::endl;
-    //*out++ = gr_complex(iphase, qphase);
-    //std::cout << *out << std::endl;
-    //*out++ = gr_complex(iphase * 0.70710678, qphase * 0.70710678);
-    //std::cout << *out << std::endl;
+    *out++ = gr_complex(iphase * 0.70710678, qphase * 0.70710678);
+    std::cout << *out << std::endl;
 
     fflush(stdout);
   }

@@ -64,8 +64,8 @@ class oqpsk_rx_graph (gr.flow_graph):
         u.set_pga(0, options.gain)
         u.set_pga(1, options.gain)
 
-        self.u = u
-        #self.u = gr.file_source(gr.sizeof_gr_complex, 'rx_test.dat')
+        #self.u = u
+        self.u = gr.file_source(gr.sizeof_gr_complex, 'rx_test.dat')
         self.packet_receiver = ieee802_15_4_pkt.ieee802_15_4_demod_pkts(self,
                                                                 callback=rx_callback,
                                                                 sps=self.samples_per_symbol,
