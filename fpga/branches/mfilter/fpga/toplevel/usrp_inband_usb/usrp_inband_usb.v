@@ -129,6 +129,8 @@ module usrp_inband_usb
    assign      bb_tx_q1 = ch3tx;
 
 wire [1:0] tx_underrun;
+wire [3:0] cstate;
+wire cwrite;
 
 `ifdef TX_IN_BAND
  	tx_buffer_inband tx_buffer
@@ -447,9 +449,5 @@ wire [1:0] tx_underrun;
    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
    // Misc Settings
    setting_reg #(`FR_MODE) sr_misc(.clock(clk64),.reset(rx_dsp_reset),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(settings));
-   reg forb;
-   always @(posedge usbclk)
-     begin
-         if (strobe_db) forb <= 1;
-     end  
+
 endmodule // usrp_inband_usb

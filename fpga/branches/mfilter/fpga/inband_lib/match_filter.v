@@ -41,39 +41,46 @@ module match_filter
 
 
     //data block
-    reg signed [15:0] real_block [191:0];
-    reg signed [15:0] img_block  [191:0];
-    reg data_valid;
+    genvar g;
+    wire [15:0] bridge_real[31:0];
+    wire [15:0] bridge_img [31:0];
+    reg [2:0] state;
+    wire [15:0] data_real[31:0];
+    wire [15:0] data_img [31:0];
+    
+    generate for (g = 1; g< 32; g = g + 1)
+      begin : generate_shift_regs_real
+      
+        shift_register sr_r (.clk(clk), .reset(reset), .rxstrobe(rxstrobe),
+                      .in_sample(bridge_real[g-1]), .out_sample(bridge_real[g]),
+                      .sel(state), .data(data_real[g]));
+      end
+    endgenerate
 
-    always @ (posedge clk)
-        if (reset)
-          begin
-            for( i = 0; i < 192; i = i + 1)
-              begin
-                real_block[i] <= 0;
-                img_block[i]  <= 0;
-              end
-            data_valid <= 0;
-          end 
-        else if (rxstrobe)
-          begin
-            for( i = 1; i < 192; i = i + 1 ) 
-              begin
-                real_block[i] <= (i < co_length) ? real_block[i-1] : 0;
-                img_block[i]  <= (i < co_length) ? img_block[i-1]  : 0;   
-              end
-            real_block[0] <= r_input;
-            img_block[0]  <= i_input;
-            data_valid    <= 1;
-          end
-        else
-            data_valid    <= 0;
+    generate for (g = 1; g< 32; g = g + 1)
+      begin : generate_shift_regs_img
+      
+        shift_register sr_i (.clk(clk), .reset(reset), .rxstrobe(rxstrobe),
+                      .in_sample(bridge_img[g-1]), .out_sample(bridge_img[g]),
+                      .sel(state), .data(data_img[g]));
+      end
+    endgenerate
 
+    shift_register sr_r0 (.clk(clk), .reset(reset), .rxstrobe(rxstrobe),
+                     .in_sample(in_real), .out_sample(bridge_real[0]),
+                     .sel(state), .data(data_real[0]));
+
+    shift_register sr_i0 (.clk(clk), .reset(reset), .rxstrobe(rxstrobe),
+                     .in_sample(in_img), .out_sample(bridge_img[0]),
+                     .sel(state), .data(data_img[0]));
     
     //computation block
-    reg signed [31:0] in_64   [63:0];
-    reg signed [31:0] in_8    [7:0] ;
-    reg signed [31:0] in_1          ;
+    reg signed [31:0] in_32_real   [31:0];
+    reg signed [31:0] in_32_img    [31:0];
+    reg signed [31:0] in_4_real    [3:0] ;
+    reg signed [31:0] in_4_img     [3:0] ;
+    reg signed [31:0] in_1_real          ;
+    reg signed [31:0] in_1_img           ;
     
     reg in_64_valid;
     reg in_8_valid;
@@ -90,20 +97,22 @@ module match_filter
           end
         else
           begin
-            for (i = 0; i < 8; i = i + 1)
+            for (i = 0; i < 4; i = i + 1)
               begin
-                in_8[i] <= in_64[8*i] + in_64[8*i+1] + in_64[8*i+2] + in_64[8*i+3] + 
-                           in_64[8*i + 4] + in_64[8*i+5] + in_64[8*i+6] + in_64[8*i+7];
+                in_4_real[i] <= in_32_real[8*i] + in_32_real[8*i+1] + in_32_real[8*i+2] + in_32_real[8*i+3] + 
+                            in_32_real[8*i + 4] + in_32_real[8*i+5] + in_32_real[8*i+6] + in_32_real[8*i+7];
+                in_4_img [i] <= in_32_img[8*i]  + in_32_img[8*i+1]  + in_32_img[8*i+2]  + in_32_img[8*i+3]  + 
+                            in_32_img[8*i + 4]  + in_32_img[8*i+5]  + in_32_img[8*i+6]  + in_32_img[8*i+7] ;
               end
-            in_1 <= in_8[0] + in_8[1] + in_8[2] + in_8[3] + in_8[4] + 
-                    in_8[5] + in_8[6] + in_8[7];
+            in_1_real <= in_4_real[0] + in_4_real[1] + in_4_real[2] + in_4_real[3];
+            in_1_img  <= in_4_img[0]  + in_4_img[1]  + in_4_img[2]  + in_4_img[3] ;
             in_8_valid <= in_64_valid;
             in_1_valid <= in_8_valid;
           end
 
     
     //data selection block   
-    /*always @ (posedge clk)
+    always @ (posedge clk)
         for (i = 0; i < 64; i = i + 1)
           begin
             case (in_state)
@@ -142,7 +151,7 @@ module match_filter
                   in_64[i] <= 0;
                 end
             endcase
-          end*/
+          end
   
     //logic block
     reg [3:0]  in_state;

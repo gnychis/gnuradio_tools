@@ -23,7 +23,7 @@ module tx_buffer_inband
     output wire stop, output wire [15:0] stop_time,
     output wire [3:0] cstate, output wire cwrite);
 	
-   parameter NUM_CHAN	 =      2;
+   parameter NUM_CHAN	 =      1;
    /* Debug paramters */
    parameter STROBE_RATE_0 =   8'd1 ;
    parameter STROBE_RATE_1 =   8'd2 ;
@@ -80,12 +80,12 @@ module tx_buffer_inband
    assign tx_empty = chan_txempty[0] & chan_txempty[1] ;
    assign tx_i_0 = chan_txempty[0] ? 16'b0 : tx_i[0] ;
    assign tx_q_0 = chan_txempty[0] ? 16'b0 : tx_q[0] ;
-   assign tx_i_1 = chan_txempty[1] ? 16'b0 : tx_i[1] ;
-   assign tx_q_1 = chan_txempty[1] ? 16'b0 : tx_q[1] ;
+   //assign tx_i_1 = chan_txempty[1] ? 16'b0 : tx_i[1] ;
+   //assign tx_q_1 = chan_txempty[1] ? 16'b0 : tx_q[1] ;
         
    /* Debug statement */
    assign txstrobe_rate[0] = STROBE_RATE_0 ;
-   assign txstrobe_rate[1] = STROBE_RATE_1 ;
+   //assign txstrobe_rate[1] = STROBE_RATE_1 ;
    assign tx_q_2 = 16'b0 ;
    assign tx_i_2 = 16'b0 ;
    assign tx_q_3 = 16'b0 ;
@@ -109,7 +109,7 @@ module tx_buffer_inband
     .reset(reset), .txclk(txclk), .WR_channel(chan_WR),
     .WR_done_channel(chan_done), .ram_data(tx_data_bus));
 	
-   /*generate for (i = 0 ; i < NUM_CHAN; i = i + 1)
+   generate for (i = 0 ; i < NUM_CHAN; i = i + 1)
      begin : generate_channel_readers
        assign tx_underrun[i] = chan_underrun[i];
 
@@ -129,7 +129,7 @@ module tx_buffer_inband
         .tx_empty(chan_txempty[i]), .rssi(rssi[i]), .debug(debug[i]),
         .threshhold(threshhold), .rssi_wait(rssi_wait));	         
     end
-    endgenerate*/
+    endgenerate
 
 
    channel_ram tx_cmd_packet_fifo 
