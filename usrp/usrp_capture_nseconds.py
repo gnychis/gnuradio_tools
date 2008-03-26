@@ -28,7 +28,7 @@ import sys
 def build_graph (filename, IF_freq, decim_rate, sample_count):
 
     # Initialize empty flow graph
-    fg = gr.flow_graph ()
+    fg = gr.top_block ()
 
     # Pick USRP 0 and set the decimation rate
     src = usrp.source_c (0)
