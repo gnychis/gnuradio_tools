@@ -66,6 +66,8 @@ class tmac : public mac
   mb_port_sptr      d_gmsk_cs;
 
   // TDMA state
+  bool d_base_station;
+  unsigned long d_total_nodes;
   unsigned long d_last_sync;
   unsigned long d_slot_time;
   unsigned long d_guard_time;
@@ -88,10 +90,15 @@ class tmac : public mac
   void define_mac_ports();
   void initialize_tmac();
 
-  // Crucial CSMA methods
+  // Crucial TDMA methods
+  void initialize_base_station();
   void transmit_pkt(pmt_t data);
   void packet_transmitted(pmt_t data);
   void incoming_frame(pmt_t data);
+
+  // Synchronization related
+  void calculate_parameters();
+  void transmit_sync();
   void incoming_sync(pmt_t data);
   
 };

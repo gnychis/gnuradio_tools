@@ -67,6 +67,7 @@
 
 static const int BITS_PER_BYTE = 8;
 static const int BITS_PER_SYMBOL = 1;
+static const int SAMPLES_PER_SYMBOL = 2;
 
 class gmsk;
 
@@ -151,6 +152,15 @@ class gmsk : public mb_mblock
   gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg);
   ~gmsk();
   void handle_message(mb_message_sptr msg);
+  static int bits_per_symbol() {
+    return(BITS_PER_SYMBOL);
+  }
+  static int samples_per_symbol() {
+    return(SAMPLES_PER_SYMBOL);
+  }
+  static int max_frame_size() {
+    return(MAX_FRAME_SIZE);
+  }
   static int max_frame_payload() {
     return(sizeof(d_frame_hdr_t));
   }

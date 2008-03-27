@@ -31,10 +31,32 @@ static pmt_t s_timeout = pmt_intern("%timeout");
 
 tmac::tmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   : mac(rt, instance_name, user_arg),
-  d_state(INIT_TMAC)
+  d_state(INIT_TMAC),
+  d_base_station(true),
+  d_last_sync(0)
 {
   define_mac_ports();   // Initialize ports for message passing
-  d_local_address = pmt_to_long(pmt_nth(1, user_arg));
+  
+  // Make sure a local address was specified, convert it from PMT to long
+  if(!pmt_eqv(pmt_nth(1, user_arg), PMT_NIL)) {
+    d_local_address = pmt_to_long(pmt_nth(1, user_arg));
+  } else {
+    std::cout << "[TMAC] ERROR: Need to specify local address when initializing MAC\n";
+    shutdown_all(PMT_F);
+  }
+
+  // The local address 0 is reserved for the base station, the total number of
+  // nodes needs to be specified if so.
+  if(d_local_address==0) {
+    d_base_station=true;
+
+    if(!pmt_eqv(pmt_nth(2, user_arg), PMT_NIL)) {
+      d_total_nodes = pmt_to_long(pmt_nth(2, user_arg));
+    } else {
+      std::cout << "[TMAC] ERROR: Need to specify total number of nodes in the network\n";
+      shutdown_all(PMT_F);
+    }
+  }
 }
 
 tmac::~tmac()
@@ -68,12 +90,16 @@ void tmac::usrp_initialized()
 void tmac::initialize_tmac()
 {
   d_state = IDLE;   // State where we wait for messages to do something
+
+  // The base station takes special initialization
+  if(d_base_station)
+    initialize_base_station();
   
-  d_cs->send(s_response_tmac_initialized,   // Notify the application that
-             pmt_list2(PMT_NIL, PMT_T));    // the MAC is initialized
+//  d_cs->send(s_response_tmac_initialized,   // Notify the application that
+//             pmt_list2(PMT_NIL, PMT_T));    // the MAC is initialized
 
   if(verbose)
-    std::cout << "[TMAC] Initialized, and idle\n";
+    std::cout << "[TMAC] Waiting for SYNC before notifying application of initialization...\n";
 }
 
 // This is the crux of the MAC layer.  The general architecture is to have
@@ -178,6 +204,12 @@ void tmac::handle_mac_message(mb_message_sptr msg)
               << "in state "<< d_state << std::endl;
 }
 
+// This method is used for initializing the MAC as a base station, where it will
+// transmit synchronization frames at the start of each round.
+void tmac::initialize_base_station()
+{
+}
+
 // Handles the transmission of a pkt from the application.  The invocation
 // handle is passed on but a response is not given back to the application until
 // the response is passed from usrp_server.  This ensures that the MAC passes
@@ -260,10 +292,22 @@ void tmac::incoming_frame(pmt_t data)
     std::cout << "[TMAC] Passing up demoded frame\n";
 }
 
+void tmac::transmit_sync()
+{
+
+}
+
 void tmac::incoming_sync(pmt_t data)
 {
 
 }
 
+// Here we calculate the crucial TDMA parameters.  Everything is calculated in
+// clock cycles, which is 1/64e6 based on the FPGA clock.
+void tmac::calculate_parameters()
+{
+  // The slot time is fixed to the maximum frame time over the air.
+  d_slot_time = 0;
+}
 
 REGISTER_MBLOCK_CLASS(tmac);

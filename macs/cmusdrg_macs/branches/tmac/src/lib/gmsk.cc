@@ -39,7 +39,7 @@ long t_samples;
 gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(rt, instance_name, user_arg),
   d_state(SYNC_SEARCH),
-  d_samples_per_symbol(2),
+  d_samples_per_symbol(SAMPLES_PER_SYMBOL),
   d_bt(0.35),
   d_gain_mu(0.175),
   d_mu(0.5),
