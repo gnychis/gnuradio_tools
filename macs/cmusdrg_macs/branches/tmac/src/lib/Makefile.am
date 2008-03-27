@@ -45,7 +45,8 @@ LOCAL_IFILES = 				\
 	$(top_srcdir)/src/lib/cmusdrg.i				
 
 EXTRA_DIST = 		\
-	cmac.mbh
+	cmac.mbh			\
+	tmac.mbh
 
 #GUILE_LOAD_PATH="../scheme/pmt:../scheme/mblock" /usr/bin/guile -e main -s ../scheme/mblock/gnuradio/compile-mbh.scm ./cmac.mbh cmac_mbh.cc
 
@@ -59,10 +60,14 @@ GUILE=/usr/bin/guile -e main -s $(top_srcdir)/src/scheme/mblock/gnuradio/compile
 BUILT_SOURCES = 			\
 	cmusdrg.cc			\
 	cmusdrg.py			\
-	cmac_mbh.cc
+	cmac_mbh.cc			\
+	tmac_mbh.cc
 
 cmac_mbh.cc : cmac.mbh
 	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/cmac.mbh $(srcdir)/cmac_mbh.cc
+
+tmac_mbh.cc : tmac.mbh
+	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/tmac.mbh $(srcdir)/tmac_mbh.cc
 
 # This gets cmusdrg.py installed in the right place
 ourpython_PYTHON =			\
@@ -79,6 +84,7 @@ _cmusdrg_la_SOURCES = 			\
 	gmsk.cc	\
 	gmsk_framer.cc \
 	cmac_mbh.cc	\
+	tmac_mbh.cc \
 	gmsk_mbh.cc	\
 	cmac_tx_file.cc	\
 	cmac_rx_file.cc
