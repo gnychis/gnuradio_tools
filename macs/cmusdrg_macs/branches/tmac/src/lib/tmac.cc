@@ -212,6 +212,9 @@ void tmac::initialize_base_station()
   // synchronization packets.
   d_guard_time = 1000;
   calculate_parameters();
+
+  // Schedule the initial synchronization frame.
+  transmit_sync();
 }
 
 // Handles the transmission of a pkt from the application.  The invocation
