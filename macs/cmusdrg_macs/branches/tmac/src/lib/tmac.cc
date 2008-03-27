@@ -208,6 +208,10 @@ void tmac::handle_mac_message(mb_message_sptr msg)
 // transmit synchronization frames at the start of each round.
 void tmac::initialize_base_station()
 {
+  // The base station specifies the guard time, which it will transmit in its
+  // synchronization packets.
+  d_guard_time = 1000;
+  calculate_parameters();
 }
 
 // Handles the transmission of a pkt from the application.  The invocation
@@ -306,8 +310,16 @@ void tmac::incoming_sync(pmt_t data)
 // clock cycles, which is 1/64e6 based on the FPGA clock.
 void tmac::calculate_parameters()
 {
+  // The number of clock cycles a bit transmission/reception takes
+  d_clock_ticks_per_bit = (d_usrp_decim * gmsk::samples_per_symbol()) / BITS_PER_SYMBOL;
+
   // The slot time is fixed to the maximum frame time over the air.
-  d_slot_time = 0;
+  d_slot_time = (gmsk::max_frame_size() * BITS_PER_BYTE) * d_clock_ticks_per_bit;
+
+  // The local slot offset depends on the local address and slot/guard times.
+  // The local address defines the node's slot assignment.  Slot 0 is for the
+  // base station.
+  d_local_slot_offset = d_local_address * (d_slot_time + d_guard_time);
 }
 
 REGISTER_MBLOCK_CLASS(tmac);

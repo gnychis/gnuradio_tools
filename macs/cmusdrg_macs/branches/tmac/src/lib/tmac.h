@@ -46,6 +46,7 @@
 #include <gmsk_symbols.h>
 
 #include <mac.h>
+#include <gmsk.h>
 
 class tmac;
 
@@ -73,6 +74,7 @@ class tmac : public mac
   unsigned long d_guard_time;
   unsigned long d_local_slot_offset;
   unsigned long d_next_tx_time;
+  unsigned long d_clock_ticks_per_bit;
 
   // Local user address
   long d_local_address;

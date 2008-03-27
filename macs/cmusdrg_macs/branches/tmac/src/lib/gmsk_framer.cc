@@ -100,7 +100,7 @@ void gmsk::framer_calculate_timestamp(unsigned long timestamp, int bit, int nbit
 {
   // The number of clock ticks for a single bit is how many samples are needed
   // to construct a single bit, and the spacing between samples (decimation).
-  int clock_ticks_per_bit = d_usrp_decim * BITS_PER_SYMBOL * d_samples_per_symbol;
+  int clock_ticks_per_bit = (d_usrp_decim * d_samples_per_symbol) / BITS_PER_SYMBOL;
 
   // The time of the start of the frame header (not transmission)
   unsigned long start_of_frame = 
