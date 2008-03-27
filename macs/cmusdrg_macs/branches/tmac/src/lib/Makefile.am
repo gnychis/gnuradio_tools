@@ -81,6 +81,7 @@ _cmusdrg_la_SOURCES = 			\
 	cmusdrg_mblock_bootstrap.cc	\
 	mac.cc \
 	cmac.cc	\
+	tmac.cc \
 	gmsk.cc	\
 	gmsk_framer.cc \
 	cmac_mbh.cc	\
@@ -111,6 +112,7 @@ grinclude_HEADERS =			\
 	cmusdrg_mblock_bootstrap.h	\
 	mac.h \
 	cmac.h	\
+	tmac.h	\
 	gmsk.h	\
 	gmsk_framer.h
 

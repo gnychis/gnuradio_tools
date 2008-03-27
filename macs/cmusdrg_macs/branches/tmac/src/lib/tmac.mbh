@@ -118,10 +118,6 @@
     ;; Set the local node address
     (cmd-set-address invocation-handle address)
 
-    ;; Setting the number of fast transmission retries on a failure before
-    ;; reporting a loss back to the application.
-    (cmd-set-tx-retries invocation-handle retries)
-
     ;; Allow the ability to disable the RX to save processing
     (cmd-rx-enable invocation-handle)
     (cmd-rx-disable invocation-handle)
@@ -133,8 +129,6 @@
     (response-tmac-initialized invocation-handle status)
 
     (response-set-address invocation-handle status)
-
-    (response-set-tx-retries invocation-handle status)
 
     (response-rx-enable invocation-handle status)
     (response-rx-disable invocation-handle status)
