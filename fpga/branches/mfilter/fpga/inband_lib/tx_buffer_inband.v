@@ -86,6 +86,8 @@ module tx_buffer_inband
    /* Debug statement */
    assign txstrobe_rate[0] = STROBE_RATE_0 ;
    //assign txstrobe_rate[1] = STROBE_RATE_1 ;
+   assign tx_q_1 = 16'b0 ;
+   assign tx_i_1 = 16'b0 ;
    assign tx_q_2 = 16'b0 ;
    assign tx_i_2 = 16'b0 ;
    assign tx_q_3 = 16'b0 ;

@@ -1,79 +1,26 @@
 module match_filter
    (input clk, input reset, input wire [15:0] r_input, input wire [15:0] i_input, 
-    input rxstrobe, input wire [31:0] cdata, input wire [3:0] cstate, input cwrite, 
+    input rxstrobe, input wire [31:0] cdata,  input wire [3:0] cstate, input cwrite, 
     output wire [15:0] debugbus, output reg valid, output reg match);
 
-
-    //parameter block
-    reg [383:0] co;
-    reg [7:0]   co_length;
-    reg         co_valid;
-    reg [31:0]  threshhold;
-
-    always @ (posedge clk)
-        if (reset)
+    //setting up parameters  
+    reg signed [31:0] threshhold;
+    reg [2:0] co_len_state;
+    reg [4:0] co_len_residual;
+    always @(posedge clk)
+        if(reset)
           begin
-            co_length <= 8'd192;
-            co_valid  <= 0;
+            threshhold      <= 0;
+            co_len_state    <= 0;
+            co_len_residual <= 0;
           end
-        else if (cwrite)
+        else if (in_state == 0)
           begin
-            case (cstate)
-              4'd1:    co_length   <= cdata;
-              4'd2:    threshhold  <= cdata;
-              4'd3:    co[383:352] <= cdata;
-              4'd4:    co[351:320] <= cdata;
-              4'd5:    co[319:288] <= cdata;
-              4'd6:    co[287:256] <= cdata;
-              4'd7:    co[255:224] <= cdata;
-              4'd8:    co[223:192] <= cdata;
-              4'd9:    co[191:160] <= cdata;
-              4'd10:   co[159:128] <= cdata;
-              4'd11:   co[127:96]  <= cdata;
-              4'd12:   co[95:64]   <= cdata;
-              4'd13:   co[63:32]   <= cdata;
-              default: co[31:0]    <= cdata;
-            endcase
-            co_valid <= 0;
-          end
-        else
-            co_valid <= 1;   
+            threshhold      <= cout_real;
+            co_len_state    <= cout_img[7:5] + 3'd1;
+            co_len_residual <= cout_img[4:0];
+          end   
 
-
-    //data block
-    genvar g;
-    wire [15:0] bridge_real[31:0];
-    wire [15:0] bridge_img [31:0];
-    reg [2:0] state;
-    wire [15:0] data_real[31:0];
-    wire [15:0] data_img [31:0];
-    
-    generate for (g = 1; g< 32; g = g + 1)
-      begin : generate_shift_regs_real
-      
-        shift_register sr_r (.clk(clk), .reset(reset), .rxstrobe(rxstrobe),
-                      .in_sample(bridge_real[g-1]), .out_sample(bridge_real[g]),
-                      .sel(state), .data(data_real[g]));
-      end
-    endgenerate
-
-    generate for (g = 1; g< 32; g = g + 1)
-      begin : generate_shift_regs_img
-      
-        shift_register sr_i (.clk(clk), .reset(reset), .rxstrobe(rxstrobe),
-                      .in_sample(bridge_img[g-1]), .out_sample(bridge_img[g]),
-                      .sel(state), .data(data_img[g]));
-      end
-    endgenerate
-
-    shift_register sr_r0 (.clk(clk), .reset(reset), .rxstrobe(rxstrobe),
-                     .in_sample(in_real), .out_sample(bridge_real[0]),
-                     .sel(state), .data(data_real[0]));
-
-    shift_register sr_i0 (.clk(clk), .reset(reset), .rxstrobe(rxstrobe),
-                     .in_sample(in_img), .out_sample(bridge_img[0]),
-                     .sel(state), .data(data_img[0]));
-    
     //computation block
     reg signed [31:0] in_32_real   [31:0];
     reg signed [31:0] in_32_img    [31:0];
@@ -82,8 +29,8 @@ module match_filter
     reg signed [31:0] in_1_real          ;
     reg signed [31:0] in_1_img           ;
     
-    reg in_64_valid;
-    reg in_8_valid;
+    reg in_32_valid;
+    reg in_4_valid;
     reg in_1_valid;
 
 
@@ -92,7 +39,7 @@ module match_filter
     always @ (posedge clk)
         if (reset)
           begin
-            in_8_valid  <= 0;
+            in_4_valid  <= 0;
             in_1_valid  <= 0;
           end
         else
@@ -106,85 +53,131 @@ module match_filter
               end
             in_1_real <= in_4_real[0] + in_4_real[1] + in_4_real[2] + in_4_real[3];
             in_1_img  <= in_4_img[0]  + in_4_img[1]  + in_4_img[2]  + in_4_img[3] ;
-            in_8_valid <= in_64_valid;
-            in_1_valid <= in_8_valid;
+            in_4_valid <= in_32_valid;
+            in_1_valid <= in_4_valid;
           end
 
+
+    //coefficient block
+    wire [31:0] cout_real;
+    wire [31:0] cout_img ;
+    wire [3:0] ram_addr_a;
+    wire [3:0] ram_addr_b;
+    wire we_a;
+    wire we_b;
+    assign ram_addr_a = (cwrite) ? cstate : {in_state[2:0], 1'b0};
+    assign ram_addr_b = (cwrite) ? cstate : {in_state[2:0], 1'b1};
+    assign we_a       = cwrite & (~cstate[0]);
+    assign we_b       = cwrite & cstate[0];
+    true_dual_port_ram_single_clock ram
+    (.data_a(cdata), .data_b(cdata), .addr_a(ram_addr_a), .addr_b(ram_addr_b),
+     .we_a(we_a), .we_b(we_b), .clk(clk), .q_a(cout_real), .q_b(cout_img));   
+
+
+    //data block
+    genvar g;
+    wire [15:0] bridge_real[31:0];
+    wire [15:0] bridge_img [31:0];
+    wire [15:0] data_real[31:0];
+    wire [15:0] data_img [31:0];
+    wire [2:0]  sel;
+
+    assign sel = in_state;
+
+    generate for (g = 1; g< 32; g = g + 1)
+      begin : generate_shift_regs_real
+      
+        shift_register sr_r (.clk(clk), .reset(reset), .rxstrobe(rxstrobe),
+                      .in_sample(bridge_real[g-1]), .out_sample(bridge_real[g]),
+                      .sel(sel), .data(data_real[g]));
+      end
+    endgenerate
+
+    generate for (g = 1; g< 32; g = g + 1)
+      begin : generate_shift_regs_img
+      
+        shift_register sr_i (.clk(clk), .reset(reset), .rxstrobe(rxstrobe),
+                      .in_sample(bridge_img[g-1]), .out_sample(bridge_img[g]),
+                      .sel(sel), .data(data_img[g]));
+      end
+    endgenerate
+
+    shift_register sr_r0 (.clk(clk), .reset(reset), .rxstrobe(rxstrobe),
+                     .in_sample(r_input), .out_sample(bridge_real[0]),
+                     .sel(in_state), .data(data_real[0]));
+
+    shift_register sr_i0 (.clk(clk), .reset(reset), .rxstrobe(rxstrobe),
+                     .in_sample(i_input), .out_sample(bridge_img[0]),
+                     .sel(in_state), .data(data_img[0]));
+    
+
+    wire state_check_under;
+    wire state_check_equal;
+    assign state_check_under = in_state < co_len_state;
+    assign state_check_equal = in_state == co_len_state; 
     
     //data selection block   
     always @ (posedge clk)
-        for (i = 0; i < 64; i = i + 1)
+        if (reset)
           begin
-            case (in_state)
-              4'd1:
-                begin
-                  in_64[i] <= (co[2*i+1]) ? (real_block[i]) :
-                                            (-real_block[i]); 
-                end
-              4'd2:
-                begin
-                  in_64[i] <= (co[2*i+1] == co[2*i]) ? (img_block[i]) :
-                                                       (-img_block[i]);
-                end
-              4'd3:
-                begin
-                  in_64[i] <= (co[2*i+129]) ? (real_block[i+64]) :
-                                              (-real_block[i+64]);  
-                end
-              4'd4:
-                begin
-                  in_64[i] <= (co[2*i+129] == co[2*i+128]) ? (img_block[i+64]) :
-                                                             (-img_block[i+64]); 
-                end
-              4'd5:
-                begin
-                  in_64[i] <= (co[2*i+257]) ? (real_block[i+128]) :
-                                              (-real_block[i+128]); 
-                end
-              4'd6:
-                begin
-                  in_64[i] <= (co[2*i+257] == co[2*i+256]) ? (img_block[i+128]) :
-                                                             (-img_block[i+128]);
-                end
-              default:
-                begin
-                  in_64[i] <= 0;
-                end
-            endcase
+            for (i = 0; i< 32; i = i + 1)
+              begin
+                in_32_real[i] <= 0;
+                in_32_img [i] <= 0;
+              end
+          end
+        else
+          begin
+            for (i = 0; i < 32; i = i + 1)
+              begin
+                if ((state_check_equal && i < co_len_residual) || 
+                    state_check_under)
+                  begin
+                    in_32_real[i] <= (cout_real[i]) ? (data_real[i]) :
+                                                      (-data_real[i]);
+                    in_32_img [i] <= (cout_img[i] ) ? (data_img[i])  :
+                                                      (-data_img[i]) ;
+                  end
+                else
+                  begin
+                    in_32_real[i] <= 0;
+                    in_32_img [i] <= 0;
+                  end
+              end
           end
   
     //logic block
-    reg [3:0]  in_state;
-    reg [3:0]  out_state;
-    reg [31:0] real_result; 
-    reg [31:0] img_result;
+    reg [2:0]  in_state;
+    reg signed [31:0] real_result; 
+    reg signed [31:0] img_result;
     reg sum_valid;
+    reg calculate;
 
     always @ (posedge clk)
         if (reset)
-            in_state <= 0; 
-        else if (rxstrobe && co_valid)
-            in_state <= 4'd1;
-        else if (in_state > 0 && in_state < 4'd6)
-            in_state <= in_state + 4'd1;
+          begin
+            in_state <= 0;
+          end 
+        else if (rxstrobe && !cwrite)
+          begin
+            in_state <= 3'd1;
+          end  
+        else if (in_state != 0)
+          begin
+            in_state <= in_state + 3'd1;
+          end
         else
-            in_state <= 0; 
+          begin
+            in_state <= 0;
+          end 
    
     always @ (posedge clk)
         if (reset)
-            out_state <= 4'd1;
-        else if (in_1_valid)
-            out_state <= out_state + 4'd1;
+            in_32_valid <= 0;
+        else if (in_state > 3'd1)
+            in_32_valid <= 1;
         else
-            out_state <= 4'd1; 
-    
-    always @ (posedge clk)
-        if (reset)
-            in_64_valid <= 0;
-        else if (in_state > 0)
-            in_64_valid <= 1;
-        else
-            in_64_valid <= 0;
+            in_32_valid <= 0;
 
     always @ (posedge clk)
         if (reset)
@@ -194,24 +187,34 @@ module match_filter
           end
         else if (in_1_valid)
           begin
-            real_result <= (out_state[0]) ? (real_result + in_1) : (real_result);
-            img_result  <= (out_state[0]) ? (img_result) : (img_result + in_1)  ;
+            real_result <= real_result + in_1_real;
+            img_result  <= img_result  + in_1_img ;
           end
         else
           begin
             real_result <= 0;
             img_result  <= 0;
           end
-   
+
     always @ (posedge clk)
          if (reset)
+           begin
              sum_valid <= 0;
-         else if (out_state == 4'd6)
+             calculate <= 0;
+           end
+         else if (in_1_valid)
+           begin
+             calculate <= 1;
+           end
+         else if (calculate)
+           begin
              sum_valid <= 1;
+             calculate <= 0;
+           end
          else
              sum_valid <= 0;                   
 
-    reg [31:0] final_result;
+    reg signed [31:0] final_result;
     wire [31:0] real_result_abs;
     wire [31:0] img_result_abs;
     reg final_result_valid;
@@ -231,7 +234,7 @@ module match_filter
             if (real_result_abs > img_result_abs)
                 final_result <= real_result_abs + {1'b0, img_result_abs[30:0]};
             else
-                final_result <= {1'b0, real_result_abs} + img_result_abs;
+                final_result <= {1'b0, real_result_abs[30:0]} + img_result_abs;
             final_result_valid <= 1;    
           end
         else
@@ -247,12 +250,12 @@ module match_filter
         else if (final_result_valid)
           begin
             match <= (final_result > threshhold)? 1: 0;
-            valid <= 1;
+            valid <= 1'b1;
           end
         else
             valid <= 0;
    
     assign debugbus = {clk, match, valid, sum_valid, final_result_valid, 
-                      in_64_valid, in_8_valid, in_1_valid, data_valid, co_valid,
-                      in_state[2:0], out_state[2:0]};    
+                      in_32_valid, in_4_valid, in_1_valid, 
+                      in_state[2:0], cstate[3:0], cwrite};    
 endmodule
