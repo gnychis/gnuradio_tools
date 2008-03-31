@@ -72,6 +72,7 @@ class tmac : public mac
   unsigned long d_last_sync;
   unsigned long d_slot_time;
   unsigned long d_guard_time;
+  unsigned long d_round_time;
   unsigned long d_local_slot_offset;
   unsigned long d_next_tx_time;
   unsigned long d_clock_ticks_per_bit;
@@ -94,6 +95,7 @@ class tmac : public mac
 
   // Crucial TDMA methods
   void initialize_base_station();
+  void initialize_node();
   void transmit_pkt(pmt_t data);
   void packet_transmitted(pmt_t data);
   void incoming_frame(pmt_t data);

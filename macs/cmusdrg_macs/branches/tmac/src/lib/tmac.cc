@@ -25,6 +25,8 @@
 
 #include <tmac.h>
 
+static int INITIAL_SYNC = 0;
+
 static bool verbose = false;
 
 static pmt_t s_timeout = pmt_intern("%timeout");
@@ -89,11 +91,11 @@ void tmac::usrp_initialized()
 
 void tmac::initialize_tmac()
 {
-  d_state = IDLE;   // State where we wait for messages to do something
-
   // The base station takes special initialization
   if(d_base_station)
     initialize_base_station();
+  else
+    initialize_node();
   
 //  d_cs->send(s_response_tmac_initialized,   // Notify the application that
 //             pmt_list2(PMT_NIL, PMT_T));    // the MAC is initialized
@@ -208,13 +210,30 @@ void tmac::handle_mac_message(mb_message_sptr msg)
 // transmit synchronization frames at the start of each round.
 void tmac::initialize_base_station()
 {
+  // The base station automatically enters IDLE.  All other nodes wait for SYNC.
+  d_state = IDLE;
+
+  // The base station does not decode any frames, so we disable the RX
+  disable_rx();
+
   // The base station specifies the guard time, which it will transmit in its
-  // synchronization packets.
+  // synchronization packets.  Other nodes will calculate parameters on sync.
   d_guard_time = 1000;
   calculate_parameters();
+ 
+  // Initialize the next time its going to transmit, which is the initial
+  // synchronization frame time
+  d_next_tx_time = INITIAL_SYNC;
 
   // Schedule the initial synchronization frame.
   transmit_sync();
+}
+
+// The initialization of a regular station, which waits for a sync before
+// anything can really occur.
+void tmac::initialize_node()
+{
+  d_state = WAIT_SYNC;
 }
 
 // Handles the transmission of a pkt from the application.  The invocation
@@ -231,7 +250,10 @@ void tmac::transmit_pkt(pmt_t data)
   // down the layers.
   pmt_t us_tx_properties = pmt_make_dict();
 
-  pmt_t timestamp = pmt_from_long(0xffffffff);	// 0xffffffff == transmit NOW!
+  // Set the timestamp to the next tx time, and then recalculate the next TX
+  // time to be the current time plus a total round time.
+  pmt_t timestamp = pmt_from_long(d_next_tx_time);
+  d_next_tx_time += d_round_time;
 
   pmt_t pdata = pmt_list5(invocation_handle,    // Invocation handle is passed back.
 		                      d_us_tx_chan,         // Destined for our TX channel.
@@ -248,15 +270,21 @@ void tmac::transmit_pkt(pmt_t data)
 // Invoked when we get a response that a packet was written to the USRP USB bus,
 // we assume that it has been transmitted (or will be, within negligable time).
 //
-// The application is NOT informed that the packet was transmitted successfully
-// until an ACK is received, so we enter an ACK wait state.
+// We can notify the application that the transmission was successful if we are
+// not the base station.
 void tmac::packet_transmitted(pmt_t data)
 {
   pmt_t invocation_handle = pmt_nth(0, data);
   pmt_t status = pmt_nth(1, data);
-
-  enable_rx();  // Need to listen for ACKs
   
+  if(!d_base_station)
+    d_tx->send(s_response_tx_pkt,
+               pmt_list2(invocation_handle,
+                         PMT_T));
+
+  if(d_base_station)
+    transmit_sync();
+
   d_state = IDLE;
 }
 
@@ -299,9 +327,28 @@ void tmac::incoming_frame(pmt_t data)
     std::cout << "[TMAC] Passing up demoded frame\n";
 }
 
+// We transmit a sync every round time with an offset of 0, meaning the base
+// station will be the start of each round.
 void tmac::transmit_sync()
 {
+  size_t ignore;
+  char data;
+  long n_bytes=1;   // Negligable payload
+  
+  // Make the PMT data, get a writable pointer to it, then copy our data in
+  pmt_t uvec = pmt_make_u8vector(n_bytes, 0);
+  char *vdata = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
+  memcpy(vdata, &data, n_bytes);
 
+  // Per packet properties
+  pmt_t tx_properties = pmt_make_dict();
+  pmt_t pdata = pmt_list5(PMT_NIL,                        // Unused invoc handle.
+                          pmt_from_long(d_local_address), // From us.
+                          pmt_from_long(0xffffffff),      // To broadcast.
+                          uvec,                           // With data.
+                          tx_properties);                 // It's an ACK!
+
+  d_gmsk_cs->send(s_cmd_mod, pdata);    // Modulate the SYNC frame
 }
 
 void tmac::incoming_sync(pmt_t data)
@@ -323,6 +370,10 @@ void tmac::calculate_parameters()
   // The local address defines the node's slot assignment.  Slot 0 is for the
   // base station.
   d_local_slot_offset = d_local_address * (d_slot_time + d_guard_time);
+
+  // The total round time takes in to account all of the nodes and slot timing.
+  // We add one for the base station.
+  d_round_time = (d_total_nodes+1) * (d_slot_time + d_guard_time);
 }
 
 REGISTER_MBLOCK_CLASS(tmac);
