@@ -3,8 +3,12 @@ module match_filter
     input rxstrobe, input wire [31:0] cdata,  input wire [3:0] cstate, input cwrite, 
     output wire [15:0] debugbus, output reg valid, output reg match);
 
+
+    genvar  g;
+    integer i;
+
     //setting up parameters  
-    reg signed [31:0] threshhold;
+    reg signed [23:0] threshhold;
     reg [2:0] co_len_state;
     reg [4:0] co_len_residual;
     always @(posedge clk)
@@ -16,47 +20,55 @@ module match_filter
           end
         else if (in_state == 0)
           begin
-            threshhold      <= cout_real;
+            threshhold      <= cout_real[23:0];
             co_len_state    <= cout_img[7:5] + 3'd1;
             co_len_residual <= cout_img[4:0];
           end   
 
     //computation block
-    reg signed [31:0] in_32_real   [31:0];
-    reg signed [31:0] in_32_img    [31:0];
-    reg signed [31:0] in_4_real    [3:0] ;
-    reg signed [31:0] in_4_img     [3:0] ;
-    reg signed [31:0] in_1_real          ;
-    reg signed [31:0] in_1_img           ;
+    reg signed [23:0] in_32_real   [31:0];
+    reg signed [23:0] in_32_img    [31:0];
+
+    wire [23:0] in_4_real          [3:0] ;
+    wire [23:0] in_4_img           [3:0] ;
+    wire [23:0] in_1_real                ;
+    wire [23:0] in_1_img                 ;
     
     reg in_32_valid;
     reg in_4_valid;
     reg in_1_valid;
 
 
-    integer i;
-    
-    always @ (posedge clk)
-        if (reset)
+    generate for (g = 0; g < 4; g = g + 1)
+      begin : generate_adder_8X24
+      
+        adder_8X24 a8_r(clk, reset, in_32_real[4*g], in_32_real[4*g+1], 
+                        in_32_real[4*g+2], in_32_real[4*g+3], in_32_real[4*g+4],
+                        in_32_real[4*g+5], in_32_real[4*g+6], in_32_real[4*g+7],
+                        in_4_real[g]);
+        adder_8X24 a8_i(clk, reset, in_32_img [4*g], in_32_img [4*g+1], 
+                        in_32_img [4*g+2], in_32_img [4*g+3], in_32_img [4*g+4],
+                        in_32_img [4*g+5], in_32_img [4*g+6], in_32_img [4*g+7],
+                        in_4_img [g]);
+      end
+    endgenerate
+
+    adder_4X24 a4_r(clk, reset, in_4_real[0], in_4_real[1], in_4_real[2],
+                    in_4_real[3], in_1_real);
+    adder_4X24 a4_i(clk, reset, in_4_img [0], in_4_img [1], in_4_img [2],
+                    in_4_img [3], in_1_img );
+
+    always @(posedge clk)
+        if(reset)
           begin
-            in_4_valid  <= 0;
-            in_1_valid  <= 0;
+            in_4_valid <= 0;
+            in_1_valid <= 0;
           end
         else
           begin
-            for (i = 0; i < 4; i = i + 1)
-              begin
-                in_4_real[i] <= in_32_real[8*i] + in_32_real[8*i+1] + in_32_real[8*i+2] + in_32_real[8*i+3] + 
-                            in_32_real[8*i + 4] + in_32_real[8*i+5] + in_32_real[8*i+6] + in_32_real[8*i+7];
-                in_4_img [i] <= in_32_img[8*i]  + in_32_img[8*i+1]  + in_32_img[8*i+2]  + in_32_img[8*i+3]  + 
-                            in_32_img[8*i + 4]  + in_32_img[8*i+5]  + in_32_img[8*i+6]  + in_32_img[8*i+7] ;
-              end
-            in_1_real <= in_4_real[0] + in_4_real[1] + in_4_real[2] + in_4_real[3];
-            in_1_img  <= in_4_img[0]  + in_4_img[1]  + in_4_img[2]  + in_4_img[3] ;
             in_4_valid <= in_32_valid;
             in_1_valid <= in_4_valid;
           end
-
 
     //coefficient block
     wire [31:0] cout_real;
@@ -75,7 +87,7 @@ module match_filter
 
 
     //data block
-    genvar g;
+    
     wire [15:0] bridge_real[31:0];
     wire [15:0] bridge_img [31:0];
     wire [15:0] data_real[31:0];
@@ -148,8 +160,8 @@ module match_filter
   
     //logic block
     reg [2:0]  in_state;
-    reg signed [31:0] real_result; 
-    reg signed [31:0] img_result;
+    reg signed [23:0] real_result; 
+    reg signed [23:0] img_result;
     reg sum_valid;
     reg calculate;
 
@@ -184,39 +196,28 @@ module match_filter
           begin
             real_result <= 0;
             img_result  <= 0;
+            sum_valid   <= 0;
           end
         else if (in_1_valid)
           begin
             real_result <= real_result + in_1_real;
             img_result  <= img_result  + in_1_img ;
+            sum_valid   <= 0;
           end
-        else
+        else if (sum_valid)
           begin
             real_result <= 0;
             img_result  <= 0;
+            sum_valid   <= 0;
           end
+        else if (real_result != 0 || img_result != 0)
+          begin
+            sum_valid   <= 1;
+          end                
 
-    always @ (posedge clk)
-         if (reset)
-           begin
-             sum_valid <= 0;
-             calculate <= 0;
-           end
-         else if (in_1_valid)
-           begin
-             calculate <= 1;
-           end
-         else if (calculate)
-           begin
-             sum_valid <= 1;
-             calculate <= 0;
-           end
-         else
-             sum_valid <= 0;                   
-
-    reg signed [31:0] final_result;
-    wire [31:0] real_result_abs;
-    wire [31:0] img_result_abs;
+    reg signed [23:0] final_result;
+    wire [23:0] real_result_abs;
+    wire [23:0] img_result_abs;
     reg final_result_valid;
     
     assign real_result_abs = (real_result > 0) ? real_result : (-real_result);
@@ -232,9 +233,9 @@ module match_filter
         else if (sum_valid)
           begin
             if (real_result_abs > img_result_abs)
-                final_result <= real_result_abs + {1'b0, img_result_abs[30:0]};
+                final_result <= real_result_abs + {1'b0, img_result_abs[22:0]};
             else
-                final_result <= {1'b0, real_result_abs[30:0]} + img_result_abs;
+                final_result <= {1'b0, real_result_abs[22:0]} + img_result_abs;
             final_result_valid <= 1;    
           end
         else
@@ -249,7 +250,7 @@ module match_filter
           end
         else if (final_result_valid)
           begin
-            match <= (final_result > threshhold)? 1: 0;
+            match <= (final_result > threshhold);
             valid <= 1'b1;
           end
         else

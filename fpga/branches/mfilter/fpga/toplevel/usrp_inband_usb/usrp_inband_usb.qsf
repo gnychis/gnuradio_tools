@@ -374,6 +374,8 @@ set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name FITTER_AUTO_EFFORT_DESIRED_SLACK_MARGIN "100 ps"
 set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
 set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
+set_global_assignment -name VERILOG_FILE ../../inband_lib/adder_8X24.v
+set_global_assignment -name VERILOG_FILE ../../inband_lib/adder_4X24.v
 set_global_assignment -name VERILOG_FILE ../../inband_lib/shift_register.v
 set_global_assignment -name VERILOG_FILE ../../inband_lib/true_dual_port_ram_single_clock.v
 set_global_assignment -name VERILOG_FILE ../../inband_lib/match_filter.v

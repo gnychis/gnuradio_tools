@@ -42,7 +42,6 @@ module packet_builder #(parameter NUM_CHAN = 2)(
     reg [NUM_CHAN:0] overrun;
     reg [2:0] state;
     reg [8:0] read_length;
-    reg [8:0] payload_len;
     reg tstamp_complete;
     reg [3:0] check_next;
 	
@@ -99,7 +98,6 @@ module packet_builder #(parameter NUM_CHAN = 2)(
             
             `HEADER1: begin
                 fifodata[`PAYLOAD_LEN] <= #1 9'd504;
-                payload_len <= #1 9'd504;
                 fifodata[`TAG] <= #1 0;
                 fifodata[`MBZ] <= #1 0;
                 WR <= #1 1;
@@ -130,7 +128,7 @@ module packet_builder #(parameter NUM_CHAN = 2)(
             
             `FORWARD: begin
                 read_length <= #1 read_length + 9'd2;
-                fifodata <= #1 (read_length >= payload_len ? 16'hDEAD : chan_fifodata);
+                fifodata <= #1 (read_length >= 9'd504 ? 16'hDEAD : chan_fifodata);
                 
                 if (read_length >= `MAXPAYLOAD)
                   begin
@@ -138,7 +136,7 @@ module packet_builder #(parameter NUM_CHAN = 2)(
                     state <= #1 `IDLE;
 					chan_rdreq <= #1 0;
                   end
-                else if (read_length == payload_len - 4)
+                else if (read_length == 9'd500)
                     chan_rdreq <= #1 0;
             end
             
