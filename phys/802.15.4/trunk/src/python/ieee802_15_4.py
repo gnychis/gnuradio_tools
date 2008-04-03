@@ -101,7 +101,7 @@ class ieee802_15_4_demod(gr.hier_block):
         omega = sps
         gain_mu=0.03
         mu=0.5
-        omega_relative_limit=0.0002
+        omega_relative_limit=0.005
         freq_error=0.0
         
         gain_omega = .25*gain_mu*gain_mu        # critically damped
