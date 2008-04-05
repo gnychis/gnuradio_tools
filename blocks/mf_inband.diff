@@ -119,7 +119,7 @@ Index: usrp/host/lib/inband/usrp_server.cc
 ===================================================================
 --- usrp/host/lib/inband/usrp_server.cc	(revision 8149)
 +++ usrp/host/lib/inband/usrp_server.cc	(working copy)
-@@ -1087,7 +1087,78 @@
+@@ -1087,7 +1087,89 @@
        if(verbose)
          std::cout << "[USRP_SERVER] Received SPI read\n";
      }
@@ -130,18 +130,21 @@ Index: usrp/host/lib/inband/usrp_server.cc
 +    if(pmt_eq(subp_cmd, s_op_mf_set)) {
 +      
 +      long threshold = pmt_to_long(pmt_nth(0, subp_data));
-+      long ncoeff = pmt_to_long(pmt_nth(1, subp_data));
-+      pmt_t data = pmt_nth(2, subp_data);
++      pmt_t data = pmt_nth(1, subp_data);
  
 +      // Get a readable address to the raw matched filter data, which is 16-bit
 +      // I and 16-bit Q
-+      size_t ignore, data_len;
-+      uint16_t *raw_mf_data = (uint16_t *) pmt_u16vector_writeable_elements(data, ignore);
++      size_t raw_len, data_len;
++      uint16_t *raw_mf_data = (uint16_t *) pmt_u16vector_writeable_elements(data, raw_len);
 +
 +      // New data to store the 2-bit coefficient version
 +      // FIXME: using the max number for now, 0 values don't matter
 +      pmt_t v_mf_data = pmt_make_u8vector(96/4, 0);
 +      uint32_t *mf_data = (uint32_t *) pmt_u32vector_writeable_elements(v_mf_data, data_len);
++
++      // A raw sample is 4 bytes, so we use this to calculate the number of
++      // coefficients
++      long ncoeff = raw_len / 4;
 +
 +      // Convert from full coefficient set to 2-bit rotated version
 +      uint32_t *curr_word = mf_data;
@@ -152,9 +155,6 @@ Index: usrp/host/lib/inband/usrp_server.cc
 +
 +        int real = raw_mf_data[2*i];
 +        int imag = raw_mf_data[2*i+1];
-+
-+        int real_shift = 32-(i%16);
-+        int imag_shift = 16-(i%16);
 +
 +        int opt_real, opt_imag;
 +
@@ -174,6 +174,17 @@ Index: usrp/host/lib/inband/usrp_server.cc
 +          opt_real = 0;
 +          opt_imag = 0;
 +        }
++
++        // The first 2 bytes of a word are for real, the last 2 bytes of a word
++        // are for imaginary, like: rrrrrrrrrrrrrrrriiiiiiiiiiiiiiii
++        //
++        // Imagine if we were doing a bit-wise access:
++        //   word[31], which is real, coincides with, word[15] which is
++        //   imaginary, and makes up the first coefficient
++        //
++        // This is done for reducing complexity in the FPGA
++        int real_shift = 32-(i%16);
++        int imag_shift = 16-(i%16);
 +
 +        *curr_word |= opt_real << real_shift;
 +        *curr_word |= opt_imag << imag_shift;
