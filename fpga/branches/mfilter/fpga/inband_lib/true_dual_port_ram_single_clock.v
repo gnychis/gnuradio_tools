@@ -9,7 +9,7 @@ module true_dual_port_ram_single_clock
 	output reg [(DATA_WIDTH-1):0] q_a, q_b
 );
 
-	parameter DATA_WIDTH = 32;
+	parameter DATA_WIDTH = 16;
 	parameter ADDR_WIDTH = 4;
 
 	// Declare the RAM variable

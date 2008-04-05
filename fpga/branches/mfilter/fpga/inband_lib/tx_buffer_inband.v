@@ -21,7 +21,7 @@ module tx_buffer_inband
     output wire [NUM_CHAN-1:0] tx_underrun, 
     //system stop
     output wire stop, output wire [15:0] stop_time,
-    output wire [3:0] cstate, output wire cwrite);
+    output wire [2:0] cstate, output wire cwrite);
 	
    parameter NUM_CHAN	 =      1;
    /* Debug paramters */

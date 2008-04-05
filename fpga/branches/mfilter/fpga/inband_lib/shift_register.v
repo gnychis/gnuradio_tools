@@ -1,8 +1,8 @@
 module shift_register(input clk, input reset, input rxstrobe, 
-                 input [15:0] in_sample, output wire [15:0] out_sample, 
-                 input [2:0] sel, output wire [15:0] data);
+                 input [7:0] in_sample, output wire [7:0] out_sample, 
+                 input [2:0] sel, output wire [7:0] data);
   
-    reg [15:0] shift [5:0];
+    reg [7:0] shift [5:0];
     integer i;
     assign out_sample = shift[5];
     assign data = (sel[2:1] == 2'd1) ? ((sel[0]) ? shift[0] : shift[1]) :

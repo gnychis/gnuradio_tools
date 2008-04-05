@@ -129,7 +129,7 @@ module usrp_inband_usb
    assign      bb_tx_q1 = ch3tx;
 
 wire [1:0] tx_underrun;
-wire [3:0] cstate;
+wire [2:0] cstate;
 wire cwrite;
 
 `ifdef TX_IN_BAND

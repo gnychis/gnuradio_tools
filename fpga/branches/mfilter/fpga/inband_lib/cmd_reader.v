@@ -11,7 +11,7 @@ module cmd_reader
     input wire [31:0] reg_data_out, output reg [31:0] reg_data_in,
     output reg [6:0] reg_addr, output reg [1:0] reg_io_enable,
     output wire [14:0] debug, output reg stop, output reg [15:0] stop_time,
-    output reg [3:0] cstate, output reg cwrite);
+    output reg [2:0] cstate, output reg cwrite);
 	
    // States
    parameter IDLE                       =   4'd0;
@@ -316,15 +316,24 @@ module cmd_reader
                     state  <= TEST;
                     cwrite <= 0;
                   end
+                else if (lines_in == 4'd1)
+                  begin
+                    rdreq    <= 1;
+                    state    <= MF_SET;
+                    cwrite   <= 0;
+                    value1   <= fifodata;
+                    lines_in <= lines_in + 4'd1;
+                    cstate   <= 3'd7;
+                  end
                 else
                   begin
                     rdreq          <= 1;
                     state          <= MF_SET;
-                    cstate         <= lines_in;
-                    lines_in_total <= (value0[3:0] == 0) ? (value0[7:4] + 4'd2) : (value0[7:4] + 4'd3);
+                    cstate         <= cstate + 3'd1;
+                    lines_in_total <= (value0[4:0] == 0) ? (value0[7:5] + 4'd2) : (value0[7:4] + 4'd3);
                     lines_in       <= lines_in + 4'd1;
                     value1         <= fifodata;
-                    reg_data_in    <= (lines_in == 4'd1) ? {24'd0, value0[7:0]} : value1;
+                    reg_data_in    <= (lines_in == 4'd2) ? {value1[15:0], 8'd0, value0[7:0]} : value1;
                     cwrite         <= 1;
                   end              
 	        end		

@@ -21,7 +21,7 @@ module rx_buffer_inband
     input rxclk,
     input rxstrobe,
     input clear_status,
-    input [3:0] cstate, 
+    input [2:0] cstate, 
     input [31:0] cdata, 
     input cwrite,
     output wire [15:0] debugbus,
