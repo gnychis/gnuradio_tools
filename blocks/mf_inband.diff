@@ -1,0 +1,200 @@
+Index: usrp/host/lib/inband/symbols_usrp_low_level_cs.h
+===================================================================
+--- usrp/host/lib/inband/symbols_usrp_low_level_cs.h	(revision 8149)
++++ usrp/host/lib/inband/symbols_usrp_low_level_cs.h	(working copy)
+@@ -43,5 +43,6 @@
+ static pmt_t s_op_spi_read = pmt_intern("op-spi-read");
+ static pmt_t s_op_spi_read_reply = pmt_intern("op-spi-read-reply");
+ static pmt_t s_op_delay = pmt_intern("op-delay");
++static pmt_t s_op_mf_set = pmt_intern("s-op-mf-set");
+ 
+ #endif /* INCLUDED_SYMBOLS_USRP_LOW_LEVEL_CS_H */
+Index: usrp/host/lib/inband/usrp_inband_usb_packet.cc
+===================================================================
+--- usrp/host/lib/inband/usrp_inband_usb_packet.cc	(revision 8149)
++++ usrp/host/lib/inband/usrp_inband_usb_packet.cc	(working copy)
+@@ -592,6 +592,48 @@
+ }
+ 
+ /*!
++ * \brief
++ *
++ * \returns true if the command was added to the packet, false otherwise.
++ */
++bool usrp_inband_usb_packet::cs_mf_set(long threshold, long ncoeff, uint32_t *mf_data, size_t data_len)
++{
++  if(!align32())
++    return false;
++
++  int p_len = payload_len();
++
++  int mf_len = data_len + 2 + 4;   // 2 bytes between mbz and addr + 4 for threshold
++
++  if((MAX_PAYLOAD - p_len) < (mf_len + CS_FIXED_LEN))
++    return false;
++
++  uint32_t word0 = 0;
++
++  word0 = (
++      ((OP_MF_SET & CS_OPCODE_MASK) << CS_OPCODE_SHIFT)
++    | ((mf_len & CS_LEN_MASK) << CS_LEN_SHIFT)
++    | ((ncoeff & CS_MFNCOEFF_MASK) << CS_MFNCOEFF_SHIFT)
++  );
++
++  uint32_t *payload = (uint32_t *) (d_payload + p_len);
++   *payload = host_to_usrp_u32(word0);
++   
++   payload += 1;
++   *payload = host_to_usrp_u32(threshold);
++
++   // Jump over the first word and write the data
++   // FIXME: Should the data be changed to usrp byte order?
++   payload += 1;
++   memcpy(payload, mf_data, data_len);
++
++  // Update payload length
++  incr_header_len(CS_FIXED_LEN + mf_len);
++
++  return true;
++}
++
++/*!
+  * \brief Since all control packets contain subpackets which have the length of
+  * the subpacket at a uniform location in the subpacket, this will return the
+  * subpacket length given a byte offset of the start of the subpacket from the beginning of the packet.
+@@ -783,7 +825,12 @@
+ 
+       return pmt_list2(s_op_delay, ticks);
+     }
+-    
++
++    case OP_MF_SET:
++    {
++      return PMT_NIL;
++    }
++
+     default:
+       return PMT_NIL;
+ 
+Index: usrp/host/lib/inband/usrp_inband_usb_packet.h
+===================================================================
+--- usrp/host/lib/inband/usrp_inband_usb_packet.h	(revision 8149)
++++ usrp/host/lib/inband/usrp_inband_usb_packet.h	(working copy)
+@@ -50,13 +50,14 @@
+     OP_WRITE_REG_MASKED   = 0x03,
+     OP_READ_REG           = 0x04,
+     OP_READ_REG_REPLY     = 0x05,
+-    OP_I2C_WRITE          = 0x06,
++    OP_MF_SET             = 0x06,
+     OP_I2C_READ           = 0x07,
+     OP_I2C_READ_REPLY     = 0x08,
+     OP_SPI_WRITE          = 0x09,
+     OP_SPI_READ           = 0x0a,
+     OP_SPI_READ_REPLY     = 0x0b,
+-    OP_DELAY              = 0x0c
++    OP_DELAY              = 0x0c,
++    OP_I2C_WRITE          = 0x0d
+   };
+ 
+   enum flags {
+@@ -132,6 +133,9 @@
+   static const int CS_SPINBYTES_MASK = 0xff;
+   static const int CS_SPINBYTES_SHIFT = 24;
+ 
++  static const int CS_MFNCOEFF_MASK = 0xff;
++  static const int CS_MFNCOEFF_SHIFT = 0;
++
+ public:
+   
+   void set_timestamp(uint32_t timestamp){
+@@ -233,6 +237,7 @@
+   bool cs_spi_write(long enables, long format, long opt_header_bytes, uint8_t *spi_data, long spi_data_len);
+   bool cs_spi_read(long rid, long enables, long format, long opt_header_bytes, long n_bytes);
+   bool cs_spi_read_reply(long rid, uint8_t *spi_data, long spi_data_len);
++  bool cs_mf_set(long threshold, long ncoeff, uint32_t *mf_data, size_t data_len);
+   int cs_len(int payload_offset);
+   pmt_t read_subpacket(int payload_offset);
+ };
+Index: usrp/host/lib/inband/usrp_server.cc
+===================================================================
+--- usrp/host/lib/inband/usrp_server.cc	(revision 8149)
++++ usrp/host/lib/inband/usrp_server.cc	(working copy)
+@@ -1087,7 +1087,78 @@
+       if(verbose)
+         std::cout << "[USRP_SERVER] Received SPI read\n";
+     }
++    
++    //--------- MF SET -----------//
++    // FIXME: could check that byte count does not exceed 2^8 which
++    // is the max length in the subpacket for # of bytes to read.
++    if(pmt_eq(subp_cmd, s_op_mf_set)) {
++      
++      long threshold = pmt_to_long(pmt_nth(0, subp_data));
++      long ncoeff = pmt_to_long(pmt_nth(1, subp_data));
++      pmt_t data = pmt_nth(2, subp_data);
+ 
++      // Get a readable address to the raw matched filter data, which is 16-bit
++      // I and 16-bit Q
++      size_t ignore, data_len;
++      uint16_t *raw_mf_data = (uint16_t *) pmt_u16vector_writeable_elements(data, ignore);
++
++      // New data to store the 2-bit coefficient version
++      // FIXME: using the max number for now, 0 values don't matter
++      pmt_t v_mf_data = pmt_make_u8vector(96/4, 0);
++      uint32_t *mf_data = (uint32_t *) pmt_u32vector_writeable_elements(v_mf_data, data_len);
++
++      // Convert from full coefficient set to 2-bit rotated version
++      uint32_t *curr_word = mf_data;
++      for(int i=0; i < ncoeff; i++) {
++
++        if(i!=0 && i%32==0)
++          curr_word++;
++
++        int real = raw_mf_data[2*i];
++        int imag = raw_mf_data[2*i+1];
++
++        int real_shift = 32-(i%16);
++        int imag_shift = 16-(i%16);
++
++        int opt_real, opt_imag;
++
++        if(real>0 && imag>0) {         // Shift Q1 to (0,1) = 1 = 0b00
++          opt_real = 0;
++          opt_imag = 1;
++        }
++        else if(real<0 && imag>0) {    // Shift Q2 to (-1,0) = 3 = 0b11
++          opt_real = 1;
++          opt_imag = 1;
++        }
++        else if(real<0 && imag<0) {    // Shift Q3 to (0,-1) = 2 = 0b10
++          opt_real = 1;
++          opt_imag = 0;
++        }
++        else if(real>0 && imag<0) {    // Shift Q4 to (1,0) = 0 = 0b00
++          opt_real = 0;
++          opt_imag = 0;
++        }
++
++        *curr_word |= opt_real << real_shift;
++        *curr_word |= opt_imag << imag_shift;
++      }
++
++
++      // Make the USB packet
++      if(!pkt->cs_mf_set(threshold, ncoeff, mf_data, data_len))
++      {
++        d_cs_usrp->send(s_cmd_usrp_write, 
++                        pmt_list3(invocation_handle, 
++                                  pmt_from_long(channel), 
++                                  v_packet));
++        
++        goto new_packet;
++      }
++      
++      if(verbose)
++        std::cout << "[USRP_SERVER] Received matched filter set\n";
++    }
++
+   subpkt_bail:
+     curr_subpkt++;
+ 
