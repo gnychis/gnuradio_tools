@@ -10,14 +10,14 @@ module cmd_reader
     //register io
     input wire [31:0] reg_data_out, output reg [31:0] reg_data_in,
     output reg [6:0] reg_addr, output reg [1:0] reg_io_enable,
-    output wire [14:0] debug, output reg stop, output reg [15:0] stop_time,
+    output wire [11:0] debug, output reg stop, output reg [15:0] stop_time,
     output reg [2:0] cstate, output reg cwrite);
 	
    // States
    parameter IDLE                       =   4'd0;
    parameter HEADER                     =   4'd1;
    parameter TIMESTAMP                  =   4'd2;
-   parameter WAIT          	        =   4'd3;
+   parameter WAIT          	            =   4'd3;
    parameter TEST                       =   4'd4;
    parameter SEND                       =   4'd5;
    parameter PING                       =   4'd6;
@@ -56,7 +56,7 @@ module cmd_reader
 	
    wire [7:0] ops;
    assign ops = value0[`OP_CODE];
-   assign debug = {state[3:0], lines_out[1:0], pending, rx_WR, rx_WR_enabled, value0[2:0], ops[2:0]};
+   assign debug = {state[3:0], ops[2:0], cwrite, cstate[2:0], pkt_waiting};
 	
    always @(posedge txclk)
        if (reset)
