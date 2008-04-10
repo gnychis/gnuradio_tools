@@ -37,7 +37,7 @@ module rx_buffer_inband
     input wire [1:0] tx_underrun
     );
     
-    parameter NUM_CHAN = 2;
+    parameter NUM_CHAN = 1;
     genvar i ;
     
     // FX2 Bug Fix
@@ -51,12 +51,12 @@ module rx_buffer_inband
             read_count <= #1 RD ? read_count : 9'b0;
        
 	// Time counter
-	reg [31:0] adctime;
+	reg [31:0] timestamp_clock;
 	always @(posedge rxclk)
 		if (reset)
-			adctime <= 0;
-		else if (rxstrobe)
-			adctime <= adctime + 1;
+			timestamp_clock <= 0;
+		else
+			timestamp_clock <= timestamp_clock + 1;
      
   // USB side fifo
   wire [11:0] rdusedw;
@@ -108,6 +108,9 @@ module rx_buffer_inband
   assign have_space = (wrusedw < 12'd760);
 	 
   // Rx side fifos
+  // These are of size [NUM_CHAN:0] because the extra channel is used for the
+  // RX command channel.  If there were no command channel, they would be
+  // NUM_CHAN-1.
   wire chan_rdreq;
   wire [15:0] chan_fifodata;
   wire [9:0] chan_usedw;
@@ -118,8 +121,8 @@ module rx_buffer_inband
   packet_builder #(NUM_CHAN) rx_pkt_builer (
     .rxclk ( rxclk ),
     .reset ( reset ),
-    .adctime ( adctime ),
-    .channels ( 4'd2 ), //need to be tested and changed to channels 
+    .timestamp_clock ( timestamp_clock ),
+    .channels ( NUM_CHAN ),
     .chan_rdreq ( chan_rdreq ),
     .chan_fifodata ( chan_fifodata ),
     .chan_empty ( chan_empty ),
@@ -142,7 +145,7 @@ module rx_buffer_inband
       rx_overrun <= 1'b0;
 
 		
-  // TODO write this genericly
+  // FIXME: what is the purpose of these two lines?
   wire [15:0]ch[NUM_CHAN:0];
   assign ch[0] = ch_0;
 	
@@ -157,6 +160,7 @@ module rx_buffer_inband
       rx_WR_enabled <= 0;
 
 
+  // Of Size 0:NUM_CHAN due to extra command channel.
   wire [15:0] dataout [0:NUM_CHAN];
   wire [9:0]  usedw	[0:NUM_CHAN];
   wire empty[0:NUM_CHAN];

@@ -27,7 +27,7 @@
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 3.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "00:14:04  JULY 13, 2003"
-set_global_assignment -name LAST_QUARTUS_VERSION "5.1 SP1"
+set_global_assignment -name LAST_QUARTUS_VERSION "7.2 SP2"
 
 # Pin & Location Assignments
 # ==========================
@@ -419,3 +419,5 @@ set_global_assignment -name VERILOG_FILE ../../sdr_lib/strobe_gen.v
 set_global_assignment -name VERILOG_FILE ../../sdr_lib/sign_extend.v
 set_global_assignment -name VERILOG_FILE ../../inband_lib/channel_ram.v
 set_global_assignment -name VERILOG_FILE ../../inband_lib/register_io.v
+set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
+set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"

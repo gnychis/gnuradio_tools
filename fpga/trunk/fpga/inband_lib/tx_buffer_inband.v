@@ -22,6 +22,10 @@ module tx_buffer_inband
     //system stop
     output wire stop, output wire [15:0] stop_time);
 	
+   // FIXME: this should default to 1, but I have to set it to 2 even if there
+   // is only a single TX channel because the rest of this code is not generic
+   // enough and does not use NUM_CHAN.  It assumes there are always 2 TX
+   // channels, this needs fixed.
    parameter NUM_CHAN	 =      2 ;
    /* Debug paramters */
    parameter STROBE_RATE_0 =   8'd1 ;
@@ -32,7 +36,7 @@ module tx_buffer_inband
    genvar i ;
     
    /* These will eventually be external register */
-   reg                  [31:0] adc_time ;
+   reg                  [31:0] timestamp_clock ;
    wire                 [7:0] txstrobe_rate [NUM_CHAN-1:0] ;
    wire			        [31:0] rssi [3:0];
    assign rssi[0] = rssi_0;
@@ -42,9 +46,9 @@ module tx_buffer_inband
    
    always @(posedge txclk)
        if (reset)
-           adc_time <= 0;
-       else if (txstrobe)
-           adc_time <= adc_time + 1;
+           timestamp_clock <= 0;
+       else
+           timestamp_clock <= timestamp_clock + 1;
 
 
     /* Connections between tx_usb_fifo_reader and
@@ -74,6 +78,8 @@ module tx_buffer_inband
    wire                 [15:0] tx_q [NUM_CHAN-1:0] ;
     
    /* TODO: Figure out how to write this genericly */
+   // FIXME: this seriously needs to be written generically, it's preventing
+   // proper usage of NUM_CHAN.
    assign have_space = chan_have_space[0] & chan_have_space[1];
    assign tx_empty = chan_txempty[0] & chan_txempty[1] ;
    assign tx_i_0 = chan_txempty[0] ? 16'b0 : tx_i[0] ;
@@ -120,7 +126,7 @@ module tx_buffer_inband
 
        chan_fifo_reader tx_chan_reader 
        (.reset(reset), .tx_clock(txclk), .tx_strobe(txstrobe),
-        .adc_time(adc_time), .samples_format(4'b0),          
+        .timestamp_clock(timestamp_clock), .samples_format(4'b0),          
         .tx_q(tx_q[i]), .tx_i(tx_i[i]), .underrun(chan_underrun[i]),
         .skip(chan_skip[i]), .rdreq(chan_rdreq[i]),
         .fifodata(chan_fifodata[i]), .pkt_waiting(chan_pkt_waiting[i]),
@@ -137,7 +143,7 @@ module tx_buffer_inband
     .RD(chan_rdreq[NUM_CHAN]), .RD_done(chan_skip[NUM_CHAN]));
 
    cmd_reader tx_cmd_reader
-   (.reset(reset), .txclk(txclk), .adc_time(adc_time), .skip(chan_skip[NUM_CHAN]),
+   (.reset(reset), .txclk(txclk), .timestamp_clock(timestamp_clock), .skip(chan_skip[NUM_CHAN]),
     .rdreq(chan_rdreq[NUM_CHAN]), .fifodata(chan_fifodata[NUM_CHAN]),
     .pkt_waiting(chan_pkt_waiting[NUM_CHAN]), .rx_databus(rx_databus),
     .rx_WR(rx_WR), .rx_WR_done(rx_WR_done), .rx_WR_enabled(rx_WR_enabled),

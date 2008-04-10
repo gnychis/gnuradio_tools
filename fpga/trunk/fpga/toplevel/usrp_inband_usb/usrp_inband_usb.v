@@ -154,6 +154,11 @@ wire [1:0] tx_underrun;
 	   .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), 
        .rssi_3(rssi_3), .threshhold(rssi_threshhold), .rssi_wait(rssi_wait),
 	   .stop(stop), .stop_time(stop_time));
+
+  `ifdef TX_DUAL
+    defparam tx_buffer.NUM_CHAN=2;
+  `endif
+
 `else
    tx_buffer tx_buffer
      ( .usbclk(usbclk),.bus_reset(tx_bus_reset),.reset(tx_dsp_reset),
@@ -270,6 +275,11 @@ wire [1:0] tx_underrun;
 	   .debugbus(tx_debugbus),
 	   .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), .rssi_3(rssi_3),
 	   .tx_underrun(tx_underrun));
+    
+    `ifdef RX_DUAL
+      defparam rx_buffer.NUM_CHAN=2;
+    `endif
+
    `else
    rx_buffer rx_buffer
      ( .usbclk(usbclk),.bus_reset(rx_bus_reset),.reset(rx_dsp_reset),
@@ -367,42 +377,14 @@ wire [1:0] tx_underrun;
    //assign serial_data = data_wr;
    //assign serial_addr = addr_wr;
 
-   //wires for register connection
-	wire [11:0] atr_tx_delay;
-	wire [11:0] atr_rx_delay;
-	wire [7:0]  master_controls;
-	wire [3:0]  debug_en;
-	wire [15:0] atr_mask_0;
-	wire [15:0] atr_txval_0;
-	wire [15:0] atr_rxval_0;
-	wire [15:0] atr_mask_1;
-	wire [15:0] atr_txval_1;
-	wire [15:0] atr_rxval_1;
-	wire [15:0] atr_mask_2;
-	wire [15:0] atr_txval_2;
-	wire [15:0] atr_rxval_2;
-	wire [15:0] atr_mask_3;
-	wire [15:0] atr_txval_3;
-	wire [15:0] atr_rxval_3;
-	wire [7:0]  txa_refclk;
-	wire [7:0]  txb_refclk;
-	wire [7:0]  rxa_refclk;
-	wire [7:0]  rxb_refclk;	
-	 
    register_io register_control
     (.clk(clk64),.reset(1'b0),.enable(reg_io_enable),.addr(reg_addr),.datain(reg_data_in),
-     .dataout(reg_data_out), .data_wr(data_wr), .addr_wr(addr_wr), .strobe_wr(strobe_wr),
+     .dataout(reg_data_out), .addr_wr(addr_wr), .data_wr(data_wr), .strobe_wr(strobe_wr),
      .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), 
      .rssi_3(rssi_3), .threshhold(rssi_threshhold), .rssi_wait(rssi_wait),
 	 .reg_0(reg_0),.reg_1(reg_1),.reg_2(reg_2),.reg_3(reg_3),
-     .interp_rate(interp_rate), .decim_rate(decim_rate), .misc(settings), 
-	 .txmux({dac3mux,dac2mux,dac1mux,dac0mux,tx_realsignals,tx_numchan}), 
-	 .atr_tx_delay(atr_tx_delay), .atr_rx_delay(atr_rx_delay), .master_controls(master_controls), 
-	 .debug_en(debug_en), .atr_mask_0(atr_mask_0), .atr_txval_0(atr_txval_0), .atr_rxval_0(atr_rxval_0),
-	 .atr_mask_1(atr_mask_1), .atr_txval_1(atr_txval_1), .atr_rxval_1(atr_rxval_1), 
-	 .atr_mask_2(atr_mask_2), .atr_txval_2(atr_txval_2), .atr_rxval_2(atr_rxval_2), 
-	 .atr_mask_3(atr_mask_3), .atr_txval_3(atr_txval_3), .atr_rxval_3(atr_rxval_3),
-	 .txa_refclk(txa_refclk), .txb_refclk(txb_refclk), .rxa_refclk(rxa_refclk), .rxb_refclk(rxb_refclk));
+     .debug_en(debug_en), .misc(settings), 
+	 .txmux({dac3mux,dac2mux,dac1mux,dac0mux,tx_realsignals,tx_numchan}));
    
    
    //implementing freeze mode
@@ -427,15 +409,11 @@ wire [1:0] tx_underrun;
        .interp_rate(interp_rate),.decim_rate(decim_rate),
        .tx_sample_strobe(tx_sample_strobe),.strobe_interp(strobe_interp),
        .rx_sample_strobe(rx_sample_strobe),.strobe_decim(strobe_decim),
-       .tx_empty(tx_empty), .reg_0(reg_0),.reg_1(reg_1),.reg_2(reg_2),.reg_3(reg_3),
-	   .atr_tx_delay(atr_tx_delay), .atr_rx_delay(atr_rx_delay), 
-	   .master_controls(master_controls), .debug_en(debug_en), 
-	   .atr_mask_0(atr_mask_0), .atr_txval_0(atr_txval_0), .atr_rxval_0(atr_rxval_0),
-	   .atr_mask_1(atr_mask_1), .atr_txval_1(atr_txval_1), .atr_rxval_1(atr_rxval_1), 
-	   .atr_mask_2(atr_mask_2), .atr_txval_2(atr_txval_2), .atr_rxval_2(atr_rxval_2),
-	   .atr_mask_3(atr_mask_3), .atr_txval_3(atr_txval_3), .atr_rxval_3(atr_rxval_3), 
-	   .txa_refclk(txa_refclk), .txb_refclk(txb_refclk), .rxa_refclk(rxa_refclk), .rxb_refclk(rxb_refclk),
-	   .debug_0(tx_debugbus), .debug_1(rx_debugbus));
+       .tx_empty(tx_empty),
+       //.debug_0(rx_a_a),.debug_1(ddc0_in_i),
+       .debug_0(rx_debugbus),.debug_1(ddc0_in_i),
+       .debug_2({rx_sample_strobe,strobe_decim,serial_strobe,serial_addr}),.debug_3({rx_dsp_reset,tx_dsp_reset,rx_bus_reset,tx_bus_reset,enable_rx,tx_underrun,rx_overrun,decim_rate}),
+       .reg_0(reg_0),.reg_1(reg_1),.reg_2(reg_2),.reg_3(reg_3) );
    
    io_pins io_pins
      (.io_0(io_tx_a),.io_1(io_rx_a),.io_2(io_tx_b),.io_3(io_rx_b),
@@ -446,9 +424,5 @@ wire [1:0] tx_underrun;
    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
    // Misc Settings
    setting_reg #(`FR_MODE) sr_misc(.clock(clk64),.reset(rx_dsp_reset),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(settings));
-   reg forb;
-   always @(posedge usbclk)
-     begin
-         if (strobe_db) forb <= 1;
-     end  
+
 endmodule // usrp_inband_usb

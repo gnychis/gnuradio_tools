@@ -1,6 +1,6 @@
 module cmd_reader
    (//System
-    input reset, input txclk, input [31:0] adc_time,
+    input reset, input txclk, input [31:0] timestamp_clock,
     //FX2 Side
     output reg skip, output reg rdreq, 
     input [31:0] fifodata, input pkt_waiting,
@@ -96,15 +96,15 @@ module cmd_reader
           WAIT : 
             begin
               // Let's send it
-              if ((value0 <= adc_time + `JITTER 
-                 && value0 > adc_time)
+              if ((value0 <= timestamp_clock + `JITTER 
+                 && value0 > timestamp_clock)
                  || value0 == 32'hFFFFFFFF)
                   state <= TEST;
               // Wait a little bit more
-              else if (value0 > adc_time + `JITTER)
+              else if (value0 > timestamp_clock + `JITTER)
                   state <= WAIT; 
               // Outdated
-              else if (value0 < adc_time)
+              else if (value0 < timestamp_clock)
                 begin
                   state <= IDLE;
                   skip <= 1;

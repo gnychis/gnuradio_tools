@@ -2,7 +2,7 @@ module packet_builder #(parameter NUM_CHAN = 2)(
     // System
     input rxclk,
     input reset,
-	 input [31:0] adctime,
+	 input [31:0] timestamp_clock,
 	 input [3:0] channels,
     // ADC side
     input [15:0]chan_fifodata,
@@ -43,7 +43,7 @@ module packet_builder #(parameter NUM_CHAN = 2)(
     reg [2:0] state;
     reg [8:0] read_length;
     reg [8:0] payload_len;
-    reg tstamp_complete;
+    reg timestamp_complete;
     reg [3:0] check_next;
 	
     wire [31:0] true_rssi;
@@ -68,7 +68,7 @@ module packet_builder #(parameter NUM_CHAN = 2)(
             WR <= 0;
             rd_select <= 0;
             chan_rdreq <= 0;
-            tstamp_complete <= 0;
+            timestamp_complete <= 0;
             check_next <= 0;
             state <= `IDLE;
           end
@@ -119,13 +119,13 @@ module packet_builder #(parameter NUM_CHAN = 2)(
             end
             
             `TIMESTAMP: begin
-                fifodata <= #1 (tstamp_complete ? adctime[31:16] : adctime[15:0]);
-                tstamp_complete <= #1 ~tstamp_complete;
+                fifodata <= #1 (timestamp_complete ? timestamp_clock[31:16] : timestamp_clock[15:0]);
+                timestamp_complete <= #1 ~timestamp_complete;
                 
-                if (~tstamp_complete)
+                if (~timestamp_complete)
                     chan_rdreq <= #1 1;
                 
-                state <= #1 (tstamp_complete ? `FORWARD : `TIMESTAMP);
+                state <= #1 (timestamp_complete ? `FORWARD : `TIMESTAMP);
             end
             
             `FORWARD: begin

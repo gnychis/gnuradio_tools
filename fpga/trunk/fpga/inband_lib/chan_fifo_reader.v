@@ -1,12 +1,12 @@
 module chan_fifo_reader 
-   (reset, tx_clock, tx_strobe, adc_time, samples_format,
+   (reset, tx_clock, tx_strobe, timestamp_clock, samples_format,
     fifodata, pkt_waiting, rdreq, skip, tx_q, tx_i,
     underrun, tx_empty, debug, rssi, threshhold, rssi_wait) ;
 
    input   wire                     reset ;
    input   wire                     tx_clock ;
    input   wire                     tx_strobe ; //signal to output tx_i and tx_q
-   input   wire              [31:0] adc_time ; //current time
+   input   wire              [31:0] timestamp_clock ; //current time
    input   wire               [3:0] samples_format ;// not useful at this point
    input   wire              [31:0] fifodata ; //the data input
    input   wire                     pkt_waiting ; //signal the next packet is ready
@@ -23,10 +23,6 @@ module chan_fifo_reader
    output wire [14:0] debug;
    assign debug = {7'd0, rdreq, skip, reader_state, pkt_waiting, tx_strobe, tx_clock};
    
-   // Should not be needed if adc clock rate < tx clock rate
-   // Used only to debug
-   `define JITTER                   5
-    
    //Samples format
    // 16 bits interleaved complex samples
    `define QI16                     4'b0
@@ -146,7 +142,7 @@ module chan_fifo_reader
                     
                    time_wait <= time_wait + 32'd1;
                    // Outdated
-                   if ((timestamp < adc_time) ||
+                   if ((timestamp < timestamp_clock) ||
                       (time_wait >= rssi_wait && rssi_wait != 0 && rssi_flag))
                      begin
                        trash <= 1;
@@ -154,8 +150,7 @@ module chan_fifo_reader
                        skip <= 1;
                      end  
                    // Let's send it					
-                   else if ((timestamp <= adc_time + `JITTER 
-                             && timestamp > adc_time)
+                   else if (timestamp == timestamp_clock 
                              || timestamp == 32'hFFFFFFFF)
                      begin
                        if (rssi <= threshhold || rssi_flag == 0)

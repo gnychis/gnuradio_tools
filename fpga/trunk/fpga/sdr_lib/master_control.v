@@ -33,20 +33,12 @@ module master_control
     output rx_sample_strobe, output strobe_decim,
     input tx_empty,
     input wire [15:0] debug_0,input wire [15:0] debug_1,input wire [15:0] debug_2,input wire [15:0] debug_3,
-    output wire [15:0] reg_0, output wire [15:0] reg_1, output wire [15:0] reg_2, output wire [15:0] reg_3,
-    //the following output is for register reads only
-    output wire [11:0] atr_tx_delay, output wire [11:0] atr_rx_delay, output wire [7:0] master_controls,
-    output wire [3:0] debug_en, 
-    output wire [15:0] atr_mask_0, output wire [15:0] atr_txval_0, output wire [15:0] atr_rxval_0,
-    output wire [15:0] atr_mask_1, output wire [15:0] atr_txval_1, output wire [15:0] atr_rxval_1,
-    output wire [15:0] atr_mask_2, output wire [15:0] atr_txval_2, output wire [15:0] atr_rxval_2,
-    output wire [15:0] atr_mask_3, output wire [15:0] atr_txval_3, output wire [15:0] atr_rxval_3,
-    output wire [7:0] txa_refclk, output wire [7:0] txb_refclk, output wire [7:0] rxa_refclk, output wire [7:0] rxb_refclk
+    output wire [15:0] reg_0, output wire [15:0] reg_1, output wire [15:0] reg_2, output wire [15:0] reg_3
     );
    
    // FIXME need a separate reset for all control settings 
    // Master Controls assignments
-   //wire [7:0] master_controls;
+   wire [7:0] master_controls;
    setting_reg #(`FR_MASTER_CTRL) sr_mstr_ctrl(.clock(master_clk),.reset(1'b0),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(master_controls));
    assign     enable_tx = master_controls[0];
    assign     enable_rx = master_controls[1];
@@ -87,10 +79,9 @@ module master_control
    assign tx_bus_reset = tx_reset_bus_sync2;
    assign rx_bus_reset = rx_reset_bus_sync2;
 
-   //wire [7:0]   txa_refclk, rxa_refclk, txb_refclk, rxb_refclk;
+   wire [7:0]   txa_refclk, rxa_refclk, txb_refclk, rxb_refclk;
    wire        txaclk,txbclk,rxaclk,rxbclk;
-   //wire [3:0] debug_en;
-   wire [3:0]  txcvr_ctrl;
+   wire [3:0]  debug_en, txcvr_ctrl;
 
    wire [31:0] txcvr_rxlines, txcvr_txlines;
       
@@ -123,8 +114,8 @@ module master_control
 
    wire        transmit_now;
    wire        atr_ctl;
-   //wire [11:0] atr_tx_delay, atr_rx_delay;
-   //wire [15:0] atr_mask_0, atr_txval_0, atr_rxval_0, atr_mask_1, atr_txval_1, atr_rxval_1, atr_mask_2, atr_txval_2, atr_rxval_2, atr_mask_3, atr_txval_3, atr_rxval_3;
+   wire [11:0] atr_tx_delay, atr_rx_delay;
+   wire [15:0] atr_mask_0, atr_txval_0, atr_rxval_0, atr_mask_1, atr_txval_1, atr_rxval_1, atr_mask_2, atr_txval_2, atr_rxval_2, atr_mask_3, atr_txval_3, atr_rxval_3;
       
    setting_reg #(`FR_ATR_MASK_0) sr_atr_mask_0(.clock(master_clk),.reset(1'b0),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(atr_mask_0));
    setting_reg #(`FR_ATR_TXVAL_0) sr_atr_txval_0(.clock(master_clk),.reset(1'b0),.strobe(serial_strobe),.addr(serial_addr),.in(serial_data),.out(atr_txval_0));
