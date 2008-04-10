@@ -18,7 +18,7 @@ module tx_buffer_inband
     //input characteristic signals
     input wire [31:0] rssi_0, input wire [31:0] rssi_1, input wire [31:0] rssi_2, 
     input wire [31:0] rssi_3, input wire [31:0] rssi_wait, input wire [31:0] threshhold, 
-    output wire [NUM_CHAN-1:0] tx_underrun, 
+    output wire [1:0] tx_underrun, 
     //system stop
     output wire stop, output wire [15:0] stop_time);
 	
@@ -26,18 +26,14 @@ module tx_buffer_inband
    // is only a single TX channel because the rest of this code is not generic
    // enough and does not use NUM_CHAN.  It assumes there are always 2 TX
    // channels, this needs fixed.
-   parameter NUM_CHAN	 =      2 ;
-   /* Debug paramters */
-   parameter STROBE_RATE_0 =   8'd1 ;
-   parameter STROBE_RATE_1 =   8'd2 ;
+   parameter NUM_CHAN	 =      1 ;
     
-	
    /* To generate channel readers */
    genvar i ;
     
    /* These will eventually be external register */
    reg                  [31:0] timestamp_clock ;
-   wire                 [7:0] txstrobe_rate [NUM_CHAN-1:0] ;
+   wire                 [7:0]  txstrobe_rate [NUM_CHAN-1:0] ;
    wire			        [31:0] rssi [3:0];
    assign rssi[0] = rssi_0;
    assign rssi[1] = rssi_1;
@@ -69,27 +65,27 @@ module tx_buffer_inband
    wire                        chan_rdreq [NUM_CHAN:0] ;
    wire                        chan_skip [NUM_CHAN:0] ;
    wire                        chan_have_space [NUM_CHAN:0] ;
-   wire                        chan_txstrobe [NUM_CHAN-1:0] ;
 
-   wire		        [14:0] debug [NUM_CHAN:0];
+   wire		            [14:0] debug [NUM_CHAN:0];
     
    /* Outputs to transmit chains */
-   wire                 [15:0] tx_i [NUM_CHAN-1:0] ;
-   wire                 [15:0] tx_q [NUM_CHAN-1:0] ;
+   wire                 [15:0] tx_i [NUM_CHAN:0] ;
+   wire                 [15:0] tx_q [NUM_CHAN:0] ;
+
+   assign tx_i[NUM_CHAN] = 0;
+   assign tx_q[NUM_CHAN] = 0;
     
    /* TODO: Figure out how to write this genericly */
    // FIXME: this seriously needs to be written generically, it's preventing
    // proper usage of NUM_CHAN.
    assign have_space = chan_have_space[0] & chan_have_space[1];
    assign tx_empty = chan_txempty[0] & chan_txempty[1] ;
+
    assign tx_i_0 = chan_txempty[0] ? 16'b0 : tx_i[0] ;
    assign tx_q_0 = chan_txempty[0] ? 16'b0 : tx_q[0] ;
    assign tx_i_1 = chan_txempty[1] ? 16'b0 : tx_i[1] ;
    assign tx_q_1 = chan_txempty[1] ? 16'b0 : tx_q[1] ;
         
-   /* Debug statement */
-   assign txstrobe_rate[0] = STROBE_RATE_0 ;
-   assign txstrobe_rate[1] = STROBE_RATE_1 ;
    assign tx_q_2 = 16'b0 ;
    assign tx_i_2 = 16'b0 ;
    assign tx_q_3 = 16'b0 ;
@@ -108,7 +104,7 @@ module tx_buffer_inband
     .usbdata(usbdata), .reset(reset), .txclk(txclk),
     .usbdata_final(usbdata_final), .WR_final(WR_final));
 	
-   channel_demux channel_demuxer
+   channel_demux #(NUM_CHAN) channel_demuxer
    (.usbdata_final(usbdata_final), .WR_final(WR_final),
     .reset(reset), .txclk(txclk), .WR_channel(chan_WR),
     .WR_done_channel(chan_done), .ram_data(tx_data_bus));
