@@ -20,7 +20,8 @@ module tx_buffer_inband
     input wire [31:0] rssi_3, input wire [31:0] rssi_wait, input wire [31:0] threshhold, 
     output wire [1:0] tx_underrun, 
     //system stop
-    output wire stop, output wire [15:0] stop_time);
+    output wire stop, output wire [15:0] stop_time,
+    output wire cwrite, output wire [2:0] cstate);
 	
    // FIXME: this should default to 1, but I have to set it to 2 even if there
    // is only a single TX channel because the rest of this code is not generic
@@ -66,7 +67,7 @@ module tx_buffer_inband
    wire                        chan_skip [NUM_CHAN:0] ;
    wire                        chan_have_space [NUM_CHAN:0] ;
 
-   wire		            [14:0] debug [NUM_CHAN:0];
+   wire		        [14:0] debug [NUM_CHAN-1:0]; 
     
    /* Outputs to transmit chains */
    wire                 [15:0] tx_i [NUM_CHAN:0] ;
@@ -92,9 +93,7 @@ module tx_buffer_inband
    assign tx_i_3 = 16'b0 ;
    assign tx_i_3 = 16'b0 ;
 	
-   assign debugbus = {have_space, txclk, WR, WR_final, chan_WR, chan_done, 
-                      chan_pkt_waiting[0], chan_pkt_waiting[1],
-                      chan_rdreq[0], chan_rdreq[1], chan_txempty[0], chan_txempty[1]};
+   assign debugbus = {txclk, reg_data_in[7:0], cstate[2:0], cwrite};
 
    wire [31:0] usbdata_final;
    wire		WR_final;
@@ -144,7 +143,9 @@ module tx_buffer_inband
     .pkt_waiting(chan_pkt_waiting[NUM_CHAN]), .rx_databus(rx_databus),
     .rx_WR(rx_WR), .rx_WR_done(rx_WR_done), .rx_WR_enabled(rx_WR_enabled),
     .reg_data_in(reg_data_in), .reg_data_out(reg_data_out), .reg_addr(reg_addr),
-    .reg_io_enable(reg_io_enable), .debug(debug[NUM_CHAN]), .stop(stop), .stop_time(stop_time));
+    .reg_io_enable(reg_io_enable), .debug(), .stop(stop), .stop_time(stop_time),
+    .cstate(cstate), .cwrite(cwrite));
+
 				   
 endmodule // tx_buffer
 

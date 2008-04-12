@@ -1,7 +1,6 @@
 module register_io
 	(clk, reset, enable, addr, datain, dataout, debugbus, addr_wr, data_wr, strobe_wr,
-	 rssi_0, rssi_1, rssi_2, rssi_3, threshhold, rssi_wait, reg_0, reg_1, reg_2, reg_3, 
-     debug_en, misc, txmux);   
+         threshhold, rssi_wait);   
 	
 	input clk;
 	input reset;
@@ -13,19 +12,8 @@ module register_io
 	output reg [6:0] addr_wr;
 	output reg [31:0] data_wr;
 	output wire strobe_wr; 
-	input wire [31:0] rssi_0;
-	input wire [31:0] rssi_1;
-	input wire [31:0] rssi_2; 
-	input wire [31:0] rssi_3; 
 	output wire [31:0] threshhold;
 	output wire [31:0] rssi_wait;
-	input wire [15:0] reg_0;
-	input wire [15:0] reg_1; 
-	input wire [15:0] reg_2; 
-	input wire [15:0] reg_3;
-	input wire [3:0]  debug_en;
-	input wire [7:0]  misc;
-	input wire [31:0] txmux;
 	
 	reg strobe;
 	wire [31:0] out[2:1];
@@ -45,19 +33,18 @@ module register_io
 	         if (enable[0])
 	           begin
 	             //read
-				if (addr <= 7'd52 && addr > 7'd50)
-					dataout <= out[addr-7'd50];
-				else
-					dataout <= 32'hFFFFFFFF; 	
-	            strobe <= 0;
+                     if (addr <= 7'd52 && addr > 7'd50)
+                         dataout <= out[addr-7'd50];
+                     else
+                         dataout <= 32'hFFFFFFFF;
+                     strobe <= 0;
               end
              else
                begin
                  //write
-	             dataout <= dataout;
                  strobe <= 1;
-				 data_wr <= datain;
-				 addr_wr <= addr;
+                 data_wr <= datain;
+                 addr_wr <= addr;
                end
           end
 

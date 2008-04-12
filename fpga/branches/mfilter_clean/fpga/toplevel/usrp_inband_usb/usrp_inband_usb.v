@@ -129,6 +129,8 @@ module usrp_inband_usb
    assign      bb_tx_q1 = ch3tx;
 
 wire [1:0] tx_underrun;
+wire cwrite;
+wire [2:0] cstate;
 
 `ifdef TX_IN_BAND
  	tx_buffer_inband tx_buffer
@@ -142,18 +144,19 @@ wire [1:0] tx_underrun;
        .txclk(clk64),.txstrobe(strobe_interp),
        .clear_status(clear_status),
        .tx_empty(tx_empty),
-	   .rx_WR(rx_WR),
-	   .rx_databus(rx_databus), 
-	   .rx_WR_done(rx_WR_done),
-	   .rx_WR_enabled(rx_WR_enabled),
-	   .reg_addr(reg_addr),
-	   .reg_data_out(reg_data_out),
-	   .reg_data_in(reg_data_in),
-	   .reg_io_enable(reg_io_enable),
-	   .debugbus(rx_debugbus),
-	   .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), 
+       .rx_WR(rx_WR),
+       .rx_databus(rx_databus), 
+       .rx_WR_done(rx_WR_done),
+       .rx_WR_enabled(rx_WR_enabled),
+       .reg_addr(reg_addr),
+       .reg_data_out(reg_data_out),
+       .reg_data_in(reg_data_in),
+       .reg_io_enable(reg_io_enable),
+       .debugbus(tx_debugbus),
+       .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), 
        .rssi_3(rssi_3), .threshhold(rssi_threshhold), .rssi_wait(rssi_wait),
-	   .stop(stop), .stop_time(stop_time));
+       .stop(stop), .stop_time(stop_time),
+       .cwrite(cwrite), .cstate(cstate));
 
   `ifdef TX_DUAL
     defparam tx_buffer.NUM_CHAN=2;
@@ -268,13 +271,14 @@ wire [1:0] tx_underrun;
        .ch_6(ch6rx),.ch_7(ch7rx),
        .rxclk(clk64),.rxstrobe(hb_strobe),
        .clear_status(clear_status),
-	   .rx_WR(rx_WR),
-	   .rx_databus(rx_databus),
-	   .rx_WR_done(rx_WR_done),
-	   .rx_WR_enabled(rx_WR_enabled),
-	   .debugbus(tx_debugbus),
-	   .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), .rssi_3(rssi_3),
-	   .tx_underrun(tx_underrun));
+       .rx_WR(rx_WR),
+       .rx_databus(rx_databus),
+       .rx_WR_done(rx_WR_done),
+       .rx_WR_enabled(rx_WR_enabled),
+       .debugbus(rx_debugbus),
+       .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), .rssi_3(rssi_3),
+       .tx_underrun(tx_underrun), .cwrite(cwrite), .cstate(cstate), 
+       .cdata(reg_data_in));
     
     `ifdef RX_DUAL
       defparam rx_buffer.NUM_CHAN=2;
@@ -380,11 +384,7 @@ wire [1:0] tx_underrun;
    register_io register_control
     (.clk(clk64),.reset(1'b0),.enable(reg_io_enable),.addr(reg_addr),.datain(reg_data_in),
      .dataout(reg_data_out), .addr_wr(addr_wr), .data_wr(data_wr), .strobe_wr(strobe_wr),
-     .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), 
-     .rssi_3(rssi_3), .threshhold(rssi_threshhold), .rssi_wait(rssi_wait),
-	 .reg_0(reg_0),.reg_1(reg_1),.reg_2(reg_2),.reg_3(reg_3),
-     .debug_en(debug_en), .misc(settings), 
-	 .txmux({dac3mux,dac2mux,dac1mux,dac0mux,tx_realsignals,tx_numchan}));
+     .threshhold(rssi_threshhold), .rssi_wait(rssi_wait));
    
    
    //implementing freeze mode
@@ -393,10 +393,10 @@ wire [1:0] tx_underrun;
    wire [15:0] stop_time;
    assign	clk64 = (timestop == 0) ? master_clk : 0;
    always @(posedge master_clk)
-		if (timestop[15:0] != 0)
-			timestop <= timestop - 16'd1;
-		else if (stop)
-			timestop <= stop_time;
+       if (timestop[15:0] != 0)
+           timestop <= timestop - 16'd1;
+       else if (stop)
+           timestop <= stop_time;
 						
 
    wire [15:0] reg_0,reg_1,reg_2,reg_3;
@@ -411,7 +411,7 @@ wire [1:0] tx_underrun;
        .rx_sample_strobe(rx_sample_strobe),.strobe_decim(strobe_decim),
        .tx_empty(tx_empty),
        //.debug_0(rx_a_a),.debug_1(ddc0_in_i),
-       .debug_0(rx_debugbus),.debug_1(ddc0_in_i),
+       .debug_0(tx_debugbus),.debug_1(rx_debugbus),
        .debug_2({rx_sample_strobe,strobe_decim,serial_strobe,serial_addr}),.debug_3({rx_dsp_reset,tx_dsp_reset,rx_bus_reset,tx_bus_reset,enable_rx,tx_underrun,rx_overrun,decim_rate}),
        .reg_0(reg_0),.reg_1(reg_1),.reg_2(reg_2),.reg_3(reg_3) );
    
