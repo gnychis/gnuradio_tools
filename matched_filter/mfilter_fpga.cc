@@ -27,7 +27,7 @@ std::vector<gr_complex> read_coeffs(std::string filename)
     float real, imag;
     sreal >> real;
     simag >> imag;
-    complex_coeffs.push_back(gr_complex(real, imag));
+    complex_coeffs.push_back(gr_complex(real, -imag));
   }
 
   coeffs.close();
@@ -45,7 +45,7 @@ void rotate_coeffs(std::vector<gr_complex> &coeffs)
 
     int opt_real, opt_imag;
 
-    if(real>0 && imag>=0) {         // Shift Q1 to (0,1) = 1 = 0b00
+    if(real>0 && imag>=0) {         // Shift Q1 to (0,1) = 1 = 0b01
       opt_real = 0;
       opt_imag = 1;
     }
