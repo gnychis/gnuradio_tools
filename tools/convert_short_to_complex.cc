@@ -30,7 +30,6 @@ int main(int argc, char *argv[]) {
 
 
   while(!infile.eof()) {
-    printf("%d %d\n", real, imag);
     infile.read((char *)&real, sizeof(data_t));
     infile.read((char *)&imag, sizeof(data_t));
     comp = data2_t(real,imag);
