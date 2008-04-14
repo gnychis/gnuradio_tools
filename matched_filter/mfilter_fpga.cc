@@ -32,14 +32,11 @@ std::vector<gr_complex> read_coeffs(std::string filename)
 
   coeffs.close();
 
-  std::cout << "Read " << complex_coeffs.size() << " from " << filename << "...\n";
-
   return complex_coeffs;
 }
 
 void rotate_coeffs(std::vector<gr_complex> &coeffs)
 {
-  std::cout << "Rotating " << coeffs.size() << " coefficients\n";
 
   for(int i=0; i < coeffs.size(); i++) {
 
@@ -120,7 +117,7 @@ int main(int argc, char *argv[])
   }
 
   // Read in a buffer of ncoeffs to start the pipeline
-  uint16_t real, imag;
+  int16_t real, imag;
   std::vector<gr_complex> stream;
   for(int i=0; i<coeffs.size(); i++) {
     dfile.read((char *)&real, sizeof(real));
@@ -135,18 +132,18 @@ int main(int argc, char *argv[])
     gr_complex result = compute(coeffs, stream);
 
     // Perform magnitude computation
-    uint16_t real_result_abs, imag_result_abs;
-    uint32_t final_result;
+    int16_t real_result_abs, imag_result_abs;
+    int32_t final_result;
     
     if(result.real()>0)
-      real_result_abs = (uint16_t)result.real();
+      real_result_abs = (int16_t)result.real();
     else
-      real_result_abs = (uint16_t)-result.real();
+      real_result_abs = (int16_t)-result.real();
 
     if(result.imag()>0)
-      imag_result_abs = (uint16_t)result.imag();
+      imag_result_abs = (int16_t)result.imag();
     else
-      imag_result_abs = (uint16_t)-result.imag();
+      imag_result_abs = (int16_t)-result.imag();
       
     if(real_result_abs > imag_result_abs)
       final_result = real_result_abs + imag_result_abs/2;
