@@ -115,14 +115,19 @@ int main(int argc, char *argv[])
     std::cerr << "Could not open binary USRP dump...\n";
     exit(-1);
   }
+  
+  int16_t real, imag;
+
+  // Skip first 500 (has USRP init spike)
+  for(int i=0; i<5000; i++)
+    dfile.read((char *)&real, sizeof(real));
 
   // Read in a buffer of ncoeffs to start the pipeline
-  int16_t real, imag;
   std::vector<gr_complex> stream;
   for(int i=0; i<coeffs.size(); i++) {
     dfile.read((char *)&real, sizeof(real));
     dfile.read((char *)&imag, sizeof(imag));
-    stream.push_back(gr_complex(0xff00 & real, 0xff00 & imag));
+    stream.push_back(gr_complex(real>>8, imag>>8));
   }
 
   // Start the pipeline...
@@ -133,17 +138,17 @@ int main(int argc, char *argv[])
 
     // Perform magnitude computation
     int16_t real_result_abs, imag_result_abs;
-    int32_t final_result;
+    uint32_t final_result;
     
     if(result.real()>0)
-      real_result_abs = (int16_t)result.real();
+      real_result_abs = (int32_t)result.real();
     else
-      real_result_abs = (int16_t)-result.real();
+      real_result_abs = (int32_t)-result.real();
 
     if(result.imag()>0)
-      imag_result_abs = (int16_t)result.imag();
+      imag_result_abs = (int32_t)result.imag();
     else
-      imag_result_abs = (int16_t)-result.imag();
+      imag_result_abs = (int32_t)-result.imag();
       
     if(real_result_abs > imag_result_abs)
       final_result = real_result_abs + imag_result_abs/2;
@@ -156,7 +161,7 @@ int main(int argc, char *argv[])
     stream.erase(stream.begin()); 
     dfile.read((char *)&real, sizeof(real));
     dfile.read((char *)&imag, sizeof(imag));
-    stream.push_back(gr_complex(0xff00 & real, 0xff00 & imag));
+    stream.push_back(gr_complex(real>>8, imag>>8));
   }
 
   dfile.close();
