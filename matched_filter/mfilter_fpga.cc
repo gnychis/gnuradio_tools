@@ -77,10 +77,41 @@ gr_complex compute(std::vector<gr_complex> &coeffs, std::vector<gr_complex> &str
     // In binary form, bit 0 is imag, bit 1 is real
     // Binary 0 means addition of the respective component, 1 means subtraction
     // 
-    // (1,0)  = a+b  = 0 = 0b00 
-    // (0,1)  = a-b  = 1 = 0b01 
-    // (0,-1) = -a+b = 2 = 0b10
-    // (-1,0) = -a-b = 3 = 0b11
+    // (1,0)  = a+bi  = 0 = 0b00 
+    // (0,1)  = -b+ai = 1 = 0b01 
+    // (0,-1) = b-ai  = 2 = 0b10
+    // (-1,0) = -a-bi = 3 = 0b11
+    int computation = 0;
+    computation |= (int)coeffs[i].real()<<1;
+    computation |= (int)coeffs[i].imag();
+
+    switch(computation) {
+
+      case 0:
+        real_result += (int)stream[i].real();
+        imag_result += (int)stream[i].imag();
+        break;
+      
+      case 1:
+        real_result -= (int)stream[i].imag();
+        imag_result += (int)stream[i].real();
+        break;
+
+      case 2:
+        real_result += (int)stream[i].imag();
+        imag_result -= (int)stream[i].real();
+        break;
+
+      case 3:
+        real_result -= (int)stream[i].real();
+        imag_result -= (int)stream[i].imag();
+        break;
+
+      default:
+        std::cerr << "wth coefficient is this?" << computation << std::endl;
+        exit(-1);
+    }
+
     if(!coeffs[i].real()) 
       real_result += (int)stream[i].real();
     else
