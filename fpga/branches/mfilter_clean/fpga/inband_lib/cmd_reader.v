@@ -164,6 +164,7 @@ module cmd_reader
                     `OP_MF_SET:
                       begin
                         state <= MF_SET;
+                        pending <= 1;
                       end
                     default: 
                       begin
@@ -311,31 +312,31 @@ module cmd_reader
             MF_SET :
               begin
                 lines_in_total <= (value0[3:0] == 0) ? (value0[7:4] + 4'd2) : 
-                                                       (value0[7:4] + 4'd3) ;	
-	            if (lines_in == 4'd1)
-                  begin
-                    rdreq        <= 1;
-                    state        <= MF_SET;
-                    lines_in     <= lines_in + 4'd1;
-                    cwrite       <= 1;
-                    cstate       <= 0;
-                    reg_data_in  <= {fifodata[15:0], 8'd0, value0[7:0]};
-                  end
-                else if (lines_in == lines_in_total)
-                  begin
-                    rdreq        <= 0;
-                    state        <= TEST;
-                    cwrite       <= 0;
-                  end
+                                                       (value0[7:4] + 4'd3) ;
+                if (pending)
+                    pending <= 0;
                 else
-                  begin
-                    rdreq        <= 1;
-                    state        <= MF_SET;
-                    lines_in     <= lines_in + 4'd1;
-                    cwrite       <= 1;
-                    cstate       <= cstate + 3'd1;
-                    reg_data_in  <= fifodata;           
-                  end              
+                  begin	
+	                if (lines_in == 4'd1)
+                      begin
+                        lines_in     <= lines_in + 4'd1;
+                        cwrite       <= 1;
+                        cstate       <= 0;
+                        reg_data_in  <= {fifodata[15:0], 8'd0, value0[7:0]};
+                      end
+                    else if (lines_in == lines_in_total)
+                      begin
+                        rdreq        <= 0;
+                        state        <= TEST;
+                        cwrite       <= 0;
+                      end
+                    else
+                      begin
+                        lines_in     <= lines_in + 4'd1;
+                        cstate       <= cstate + 3'd1;
+                        reg_data_in  <= fifodata;           
+                      end              
+	              end
 	          end		
             default : 
               begin
