@@ -69,6 +69,35 @@ void rotate_coeffs(std::vector<gr_complex> &coeffs)
   }
 }
 
+gr_complex compute(std::vector<gr_complex> &coeffs, std::vector<gr_complex> &stream)
+{
+  int real_result=0, imag_result=0;
+
+  // Compute the results
+  for(int i=0; i<coeffs.size(); i++) {
+
+    // Not quite inuitive, but its what the FPGA is doing...
+    // In binary form, bit 0 is imag, bit 1 is real
+    // Binary 0 means addition of the respective component, 1 means subtraction
+    // 
+    // (1,0)  = a+b  = 0 = 0b00 
+    // (0,1)  = a-b  = 1 = 0b01 
+    // (0,-1) = -a+b = 2 = 0b10
+    // (-1,0) = -a-b = 3 = 0b11
+    if(!coeffs[i].real()) 
+      real_result += (int)stream[i].real();
+    else
+      real_result -= (int)stream[i].real();
+
+    if(!coeffs[i].imag())
+      imag_result += (int)stream[i].imag();
+    else
+      imag_result -= (int)stream[i].imag();
+  }
+
+  return gr_complex(real_result,imag_result);
+}
+
 int main(int argc, char *argv[])
 {
   if(argc!=3) {
@@ -101,9 +130,30 @@ int main(int argc, char *argv[])
 
   // Start the pipeline...
   while(!dfile.eof()) {
-    // Compute real
-    // Compute imag
-    // Compute result
+
+    // Get a real and imaginary result
+    gr_complex result = compute(coeffs, stream);
+
+    // Perform magnitude computation
+    uint16_t real_result_abs, imag_result_abs;
+    uint32_t final_result;
+    
+    if(result.real()>0)
+      real_result_abs = (uint16_t)result.real();
+    else
+      real_result_abs = (uint16_t)-result.real();
+
+    if(result.imag()>0)
+      imag_result_abs = (uint16_t)result.imag();
+    else
+      imag_result_abs = (uint16_t)-result.imag();
+      
+    if(real_result_abs > imag_result_abs)
+      final_result = real_result_abs + imag_result_abs/2;
+    else
+      final_result = imag_result_abs + real_result_abs/2;
+
+    std::cout << final_result << std::endl;
 
     // Erase the 0th element and push a new element on to the back
     stream.erase(stream.begin()); 
