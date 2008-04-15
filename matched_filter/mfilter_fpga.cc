@@ -151,8 +151,7 @@ int main(int argc, char *argv[])
   for(int i=0; i<coeffs.size(); i++) {
     dfile.read((char *)&real, sizeof(real));
     dfile.read((char *)&imag, sizeof(imag));
-    //stream.push_back(gr_complex(real>>8, imag>>8));
-    stream.push_back(gr_complex(real,imag));
+    stream.push_back(gr_complex(real>>8, imag>>8));
   }
 
   // Start the pipeline...
@@ -186,8 +185,7 @@ int main(int argc, char *argv[])
     stream.erase(stream.begin()); 
     dfile.read((char *)&real, sizeof(real));
     dfile.read((char *)&imag, sizeof(imag));
-//    stream.push_back(gr_complex(real>>8, imag>>8));
-    stream.push_back(gr_complex(real,imag));
+    stream.push_back(gr_complex(real>>8, imag>>8));
   }
 
   dfile.close();
