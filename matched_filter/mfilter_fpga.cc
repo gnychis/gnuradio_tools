@@ -118,15 +118,6 @@ gr_complex compute(std::vector<gr_complex> &coeffs, std::vector<gr_complex> &str
         exit(-1);
     }
 
-    if(!coeffs[i].real()) 
-      real_result += (int)stream[i].real();
-    else
-      real_result -= (int)stream[i].real();
-
-    if(!coeffs[i].imag())
-      imag_result += (int)stream[i].imag();
-    else
-      imag_result -= (int)stream[i].imag();
   }
 
   return gr_complex(real_result,imag_result);
@@ -154,10 +145,6 @@ int main(int argc, char *argv[])
   }
   
   int16_t real, imag;
-
-  // Skip first 500 (has USRP init spike)
-  for(int i=0; i<5000; i++)
-    dfile.read((char *)&real, sizeof(real));
 
   // Read in a buffer of ncoeffs to start the pipeline
   std::vector<gr_complex> stream;
