@@ -132,10 +132,36 @@ module match_filter
                 if ((state_check_equal && i < co_len_residual) || 
                     state_check_under)
                   begin
-                    in_16_real[i] <= (cout_real[i]) ? (data_real[i]) :
-                                                      (-data_real[i]);
-                    in_16_img [i] <= (cout_img[i] ) ? (data_img[i])  :
-                                                      (-data_img[i]) ;
+
+					wire [1:0] computation;
+					assign computation[1] = in_16_real[i];
+					assign computation[0] = in_16_real[i];
+					
+					case(computation)
+						2'b00:
+						begin
+							in_16_real[i] <= data_real[i];
+							in_16_img[i]  <= data_img[i];
+						end
+						
+						2'b01:
+						begin
+							in_16_real[i] <= -data_img[i];
+							in_16_img[i]  <= data_real[i];
+						end
+						
+						2'b10:
+						begin
+							in_16_real[i] <= data_img[i];
+							in_16_img[i]  <= -data_real[i];
+						end
+						
+						2'b11:
+						begin
+							in_16_real[i] <= -data_real[i];
+							in_16_img[i]  <= -data_img[i];
+						end
+					endcase
                   end
                 else
                   begin
