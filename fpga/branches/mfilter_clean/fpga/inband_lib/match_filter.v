@@ -220,9 +220,9 @@ module match_filter
         else if (sum_valid)
           begin
             if (real_result_abs > img_result_abs)
-                final_result <= real_result_abs + {1'b0, img_result_abs[14:0]};
+                final_result <= real_result_abs + {1'b0, img_result_abs[15:1]};
             else
-                final_result <= {1'b0, real_result_abs[14:0]} + img_result_abs;
+                final_result <= {1'b0, real_result_abs[15:1]} + img_result_abs;
             final_result_valid <= 1;    
           end
         else
