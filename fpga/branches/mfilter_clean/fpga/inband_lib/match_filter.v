@@ -132,12 +132,7 @@ module match_filter
                 if ((state_check_equal && i < co_len_residual) || 
                     state_check_under)
                   begin
-
-					wire [1:0] computation;
-					assign computation[1] = in_16_real[i];
-					assign computation[0] = in_16_real[i];
-					
-					case(computation)
+					case({cout_real[i], cout_img[i]})
 						2'b00:
 						begin
 							in_16_real[i] <= data_real[i];
@@ -271,7 +266,10 @@ module match_filter
             match <= 0;
             valid <= 0;
           end
-   
-    assign debugbus = {clk, match, valid, final_result[15:12], real_result[15:12], threshhold[15:12],
-                       in_1_valid};    
+    wire [15:0] test;
+    wire [7:0]  checksum;
+    assign test = in_16_real[0];
+    assign checksum = test[15:8] + {7'd0, test[7]};
+ 
+    assign debugbus = {clk, match, valid, threshhold[7:4], r_input[15:8], (checksum==0)};    
 endmodule
