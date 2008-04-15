@@ -3,6 +3,7 @@
 #include <complex>
 #include <string>
 #include <fstream>
+#include <list>
 
 typedef std::complex<float> gr_complex;
 
@@ -27,7 +28,7 @@ std::vector<gr_complex> read_coeffs(std::string filename)
     float real, imag;
     sreal >> real;
     simag >> imag;
-    complex_coeffs.push_back(gr_complex(real, -imag));
+    complex_coeffs.push_back(gr_complex(real, imag));
   }
 
   coeffs.close();
@@ -42,7 +43,7 @@ void rotate_coeffs(std::vector<gr_complex> &coeffs)
   for(int i=0; i < coeffs.size(); i++) {
 
     float real = coeffs[i].real();
-    float imag = coeffs[i].imag();
+    float imag = -coeffs[i].imag();
 
     int opt_real, opt_imag;
 
@@ -72,12 +73,15 @@ void rotate_coeffs(std::vector<gr_complex> &coeffs)
   rcoeff_fh.close();
 }
 
-gr_complex compute(std::vector<gr_complex> &coeffs, std::vector<gr_complex> &stream)
+gr_complex compute(std::vector<gr_complex> &coeffs, std::list<gr_complex> &stream)
 {
   int real_result=0, imag_result=0;
 
+  std::list<gr_complex>::iterator i;
+  int index=0;
+
   // Compute the results
-  for(int i=0; i<coeffs.size(); i++) {
+  for(i=stream.begin(); i!=stream.end(); i++) {
 
     // Not quite inuitive, but its what the FPGA is doing...
     // In binary form, bit 0 is imag, bit 1 is real
@@ -88,36 +92,38 @@ gr_complex compute(std::vector<gr_complex> &coeffs, std::vector<gr_complex> &str
     // (0,-1) = b-ai  = 2 = 0b10
     // (-1,0) = -a-bi = 3 = 0b11
     int computation = 0;
-    computation |= (int)coeffs[i].real()<<1;
-    computation |= (int)coeffs[i].imag();
+    computation |= (int)coeffs[index].real()<<1;
+    computation |= (int)coeffs[index].imag();
+
+    gr_complex curr_stream_item = *i;
 
     switch(computation) {
 
       case 0:
-        real_result += (int)stream[i].real();
-        imag_result += (int)stream[i].imag();
+        real_result += (int)curr_stream_item.real();
+        imag_result += (int)curr_stream_item.imag();
         break;
       
       case 1:
-        real_result -= (int)stream[i].imag();
-        imag_result += (int)stream[i].real();
+        real_result -= (int)curr_stream_item.imag();
+        imag_result += (int)curr_stream_item.real();
         break;
 
       case 2:
-        real_result += (int)stream[i].imag();
-        imag_result -= (int)stream[i].real();
+        real_result += (int)curr_stream_item.imag();
+        imag_result -= (int)curr_stream_item.real();
         break;
 
       case 3:
-        real_result -= (int)stream[i].real();
-        imag_result -= (int)stream[i].imag();
+        real_result -= (int)curr_stream_item.real();
+        imag_result -= (int)curr_stream_item.imag();
         break;
 
       default:
         std::cerr << "wth coefficient is this?" << computation << std::endl;
         exit(-1);
     }
-
+    index++;
   }
 
   return gr_complex(real_result,imag_result);
@@ -133,6 +139,8 @@ int main(int argc, char *argv[])
   // Read coeffs and rotate them
   std::string coeff_filename(argv[1]);
   std::vector<gr_complex> coeffs = read_coeffs(coeff_filename);
+  // Time reverse
+  std::reverse(coeffs.begin(), coeffs.end());
   rotate_coeffs(coeffs);
 
   // Read in short complex data from USRP dump
@@ -147,11 +155,11 @@ int main(int argc, char *argv[])
   int16_t real, imag;
 
   // Read in a buffer of ncoeffs to start the pipeline
-  std::vector<gr_complex> stream;
+  std::list<gr_complex> stream;
   for(int i=0; i<coeffs.size(); i++) {
     dfile.read((char *)&real, sizeof(real));
     dfile.read((char *)&imag, sizeof(imag));
-    stream.push_back(gr_complex(real>>8, imag>>8));
+    stream.push_front(gr_complex(real>>8, imag>>8));
   }
 
   // Start the pipeline...
@@ -182,10 +190,10 @@ int main(int argc, char *argv[])
     std::cout << final_result << std::endl;
 
     // Erase the 0th element and push a new element on to the back
-    stream.erase(stream.begin()); 
+    stream.pop_back();
     dfile.read((char *)&real, sizeof(real));
     dfile.read((char *)&imag, sizeof(imag));
-    stream.push_back(gr_complex(real>>8, imag>>8));
+    stream.push_front(gr_complex(real>>8, imag>>8));
   }
 
   dfile.close();
