@@ -37,7 +37,8 @@ std::vector<gr_complex> read_coeffs(std::string filename)
 
 void rotate_coeffs(std::vector<gr_complex> &coeffs)
 {
-
+  std::ofstream rcoeff_fh;
+  rcoeff_fh.open("coeffs_rotated");
   for(int i=0; i < coeffs.size(); i++) {
 
     float real = coeffs[i].real();
@@ -48,22 +49,27 @@ void rotate_coeffs(std::vector<gr_complex> &coeffs)
     if(real>0 && imag>=0) {         // Shift Q1 to (0,1) = 1 = 0b01
       opt_real = 0;
       opt_imag = 1;
+      rcoeff_fh << "0 1\n";
     }
     else if(real<=0 && imag>0) {    // Shift Q2 to (-1,0) = 3 = 0b11
       opt_real = 1;
       opt_imag = 1;
+      rcoeff_fh << "-1 0\n";
     }
     else if(real<0 && imag<=0) {    // Shift Q3 to (0,-1) = 2 = 0b10
       opt_real = 1;
       opt_imag = 0;
+      rcoeff_fh << "0 -1\n";
     }
     else if(real>=0 && imag<0) {    // Shift Q4 to (1,0) = 0 = 0b00
       opt_real = 0;
       opt_imag = 0;
+      rcoeff_fh << "1 0\n";
     }
     
     coeffs[i] = gr_complex(opt_real, opt_imag);
   }
+  rcoeff_fh.close();
 }
 
 gr_complex compute(std::vector<gr_complex> &coeffs, std::vector<gr_complex> &stream)
@@ -158,7 +164,8 @@ int main(int argc, char *argv[])
   for(int i=0; i<coeffs.size(); i++) {
     dfile.read((char *)&real, sizeof(real));
     dfile.read((char *)&imag, sizeof(imag));
-    stream.push_back(gr_complex(real>>8, imag>>8));
+    //stream.push_back(gr_complex(real>>8, imag>>8));
+    stream.push_back(gr_complex(real,imag));
   }
 
   // Start the pipeline...
@@ -192,7 +199,8 @@ int main(int argc, char *argv[])
     stream.erase(stream.begin()); 
     dfile.read((char *)&real, sizeof(real));
     dfile.read((char *)&imag, sizeof(imag));
-    stream.push_back(gr_complex(real>>8, imag>>8));
+//    stream.push_back(gr_complex(real>>8, imag>>8));
+    stream.push_back(gr_complex(real,imag));
   }
 
   dfile.close();
