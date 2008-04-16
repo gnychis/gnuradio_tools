@@ -5,34 +5,36 @@ module match_filter
   
     genvar  g;
     integer i;
+    
+    reg [2:0]  in_state;
 
     //setting up parameters  
-    reg [15:0] threshhold;
-    reg [2:0] co_len_state;
-    reg [3:0] co_len_residual; 
+    reg signed [15:0] threshhold;
+    reg [3:0] offset;
+    reg [2:0] residual;
    
     always @(posedge clk)
         if(reset)
           begin
             threshhold      <= 0;
-            co_len_state    <= 3'd1;
-            co_len_residual <= 0;
+            offset          <= 0;
+            residual        <= 3'd2;
           end
         else if (cwrite && cstate == 0)
           begin
             threshhold      <= cdata[31:15];
-            co_len_state    <= cdata[6:4] + 3'd2;
-            co_len_residual <= cdata[3:0];
+            offset          <= cdata[6:3]; 
+            residual        <= cdata[2:0] + 3'd2;
           end   
 
     //computation block
     reg signed [15:0] in_16_real   [15:0];
     reg signed [15:0] in_16_img    [15:0];
 
-    wire [15:0] in_4_real          [3:0] ;
-    wire [15:0] in_4_img           [3:0] ;
-    wire [15:0] in_1_real                ;
-    wire [15:0] in_1_img                 ;
+    wire signed [15:0] in_4_real          [3:0] ;
+    wire signed [15:0] in_4_img           [3:0] ;
+    wire signed [15:0] in_1_real                ;
+    wire signed [15:0] in_1_img                 ;
     
     reg in_16_valid;
     reg in_4_valid;
@@ -73,7 +75,8 @@ module match_filter
     wire [2:0] ram_addr;
 
     assign ram_addr = (cwrite) ? cstate : in_state;
-    true_dual_port_ram_single_clock ram
+
+    true_dual_port_ram_single_clock ram
     (.data_a(cdata[31:16]), .data_b(cdata[15:0]), .addr_a({ram_addr, 1'b0}), 
      .addr_b({ram_addr, 1'b1}), .we_a(cwrite), .we_b(cwrite), .clk(clk), 
      .q_a(cout_real), .q_b(cout_img));   
@@ -81,15 +84,15 @@ module match_filter
 
     //data block
     
-    wire [7:0] bridge_real[16:0];
-    wire [7:0] bridge_img [16:0];
-    wire [7:0] data_real[15:0];
-    wire [7:0] data_img [15:0];
+    wire signed [7:0] bridge_real[16:0];
+    wire signed [7:0] bridge_img [16:0];
+    wire signed [7:0] data_real[15:0];
+    wire signed [7:0] data_img [15:0];
     wire [2:0]  sel;
 
     assign sel = in_state;
-    assign bridge_real[0] = r_input[15:8];
-    assign bridge_img[0]  = i_input[15:8];
+    assign bridge_real[0] = r_input[7:0];
+    assign bridge_img[0]  = i_input[7:0];
 
     generate for (g = 0; g< 16; g = g + 1)
       begin : generate_shift_regs_real
@@ -108,12 +111,7 @@ module match_filter
                       .sel(sel), .data(data_img[g]));
       end
     endgenerate
-    
-
-    wire state_check_under;
-    wire state_check_equal;
-    assign state_check_under = (in_state < co_len_state) || (co_len_state == 0);
-    assign state_check_equal = (in_state == co_len_state); 
+            
     
     //data selection block   
     always @ (posedge clk)
@@ -129,34 +127,33 @@ module match_filter
           begin
             for (i = 0; i < 16; i = i + 1)
               begin
-                if ((state_check_equal && i < co_len_residual) || 
-                    state_check_under)
+                if ((i < offset) || (i==offset)&&(in_state < residual))
                   begin
-					case({cout_real[i], cout_img[i]})
-						2'b00:
-						begin
-							in_16_real[i] <= data_real[i];
-							in_16_img[i]  <= data_img[i];
-						end
-						
-						2'b01:
-						begin
-							in_16_real[i] <= -data_img[i];
-							in_16_img[i]  <= data_real[i];
-						end
-						
-						2'b10:
-						begin
-							in_16_real[i] <= data_img[i];
-							in_16_img[i]  <= -data_real[i];
-						end
-						
-						2'b11:
-						begin
-							in_16_real[i] <= -data_real[i];
-							in_16_img[i]  <= -data_img[i];
-						end
-					endcase
+			case({cout_real[i], cout_img[i]})
+			2'b00:
+			begin
+			in_16_real[i] <= data_real[i];
+			in_16_img[i]  <= data_img[i];
+			end
+
+			2'b01:
+			begin
+			in_16_real[i] <= -data_img[i];
+			in_16_img[i]  <= data_real[i];
+			end
+
+			2'b10:
+			begin
+			in_16_real[i] <= data_img[i];
+			in_16_img[i]  <= -data_real[i];
+			end
+
+			2'b11:
+			begin
+			in_16_real[i] <= -data_real[i];
+			in_16_img[i]  <= -data_img[i];
+			end
+			endcase
                   end
                 else
                   begin
@@ -167,7 +164,6 @@ module match_filter
           end
   
     //logic block
-    reg [2:0]  in_state;
     reg signed [15:0] real_result; 
     reg signed [15:0] img_result;
     reg sum_valid;
@@ -224,9 +220,9 @@ module match_filter
           end                
 
     reg signed [15:0] final_result;
-    wire [15:0] real_result_abs;
-    wire [15:0] img_result_abs;
-    reg final_result_valid;
+    wire signed [15:0] real_result_abs;
+    wire signed [15:0] img_result_abs;
+    reg signed final_result_valid;
     
     assign real_result_abs = (real_result > 0) ? real_result : (-real_result);
     assign img_result_abs  = (img_result > 0)  ? img_result  : (-img_result) ;
@@ -266,10 +262,6 @@ module match_filter
             match <= 0;
             valid <= 0;
           end
-    wire [15:0] test;
-    wire [7:0]  checksum;
-    assign test = in_16_real[0];
-    assign checksum = test[15:8] + {7'd0, test[7]};
  
-    assign debugbus = {clk, match, valid, threshhold[7:4], r_input[15:8], (checksum==0)};    
+    assign debugbus = {clk, match, valid, cout_real[4:0], final_result[6:2], in_state[2:0]};    
 endmodule

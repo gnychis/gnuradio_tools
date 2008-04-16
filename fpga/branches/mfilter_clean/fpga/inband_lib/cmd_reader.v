@@ -311,20 +311,18 @@ module cmd_reader
 			
             MF_SET :
               begin
-                lines_in_total <= (value0[3:0] == 0) ? (value0[7:4] + 4'd2) : 
-                                                       (value0[7:4] + 4'd3) ;
                 if (pending)
                     pending <= 0;
                 else
                   begin	
-	                if (lines_in == 4'd1)
+	            if (lines_in == 4'd1)
                       begin
                         lines_in     <= lines_in + 4'd1;
                         cwrite       <= 1;
                         cstate       <= 0;
                         reg_data_in  <= {fifodata[15:0], 8'd0, value0[7:0]};
                       end
-                    else if (lines_in == lines_in_total)
+                    else if (lines_in == 4'd8)
                       begin
                         rdreq        <= 0;
                         state        <= TEST;
