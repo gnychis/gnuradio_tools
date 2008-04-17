@@ -91,6 +91,7 @@ class mac : public mb_mblock
   
   virtual void handle_mac_message(mb_message_sptr msg);   // MAC overridable
   virtual void usrp_initialized();                        // MAC overridable
+  virtual void packet_transmitted(pmt_t data);            // MAC overridable
   void enable_rx();
   void disable_rx();
   

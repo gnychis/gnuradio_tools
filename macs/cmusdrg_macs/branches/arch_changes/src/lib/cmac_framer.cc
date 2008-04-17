@@ -237,7 +237,7 @@ void cmac::framer_have_frame(pmt_t uvec)
   pmt_dict_set(pkt_properties, pmt_intern("ack"), PMT_F);     // Not an ACK
 
  exit_framer_have_frame:
-//  d_cs->send(s_response_demod, pmt_list2(uvec, pkt_properties));
+  incoming_frame(pmt_list2(uvec, pkt_properties));
   d_payload_bits.clear();   // Clear the payload bits
   d_framer_state = SYNC_SEARCH;    // Go back to searching for the framing bits
 
@@ -245,3 +245,55 @@ void cmac::framer_have_frame(pmt_t uvec)
     std::cout << "[CMAC] Pushing up demoded data\n";
 }
 
+void cmac::build_frame(pmt_t data)
+{
+  size_t n_payload_bytes, ignore;
+
+  // Frame properties
+  pmt_t invocation_handle = pmt_nth(0, data);
+  long src = pmt_to_long(pmt_nth(1, data));
+  long dst = pmt_to_long(pmt_nth(2, data));
+  const void *payload = pmt_uniform_vector_elements(pmt_nth(3, data), n_payload_bytes);
+  pmt_t pkt_properties = pmt_nth(4, data);
+  
+  // Frame header
+  d_frame_hdr_t frame_hdr;
+  memset(&frame_hdr, '\0', sizeof(frame_hdr));
+  frame_hdr.src_addr = src;
+  frame_hdr.dst_addr = dst;
+  frame_hdr.payload_len = n_payload_bytes;
+
+  // Compute the CRC using boost library
+  boost::crc_32_type bcrc;
+  bcrc.process_bytes(payload, n_payload_bytes);
+  frame_hdr.crc = bcrc.checksum();
+
+  // Set ACK if specified
+  if(pmt_is_dict(pkt_properties)) {
+    if(pmt_t ack = pmt_dict_ref(pkt_properties,
+                                pmt_intern("ack"),
+                                PMT_NIL)) {
+      if(pmt_eqv(ack, PMT_T))
+        frame_hdr.ack = true;
+      else
+        frame_hdr.ack = false;
+    }
+  }
+
+  // Don't carrier sense ACKs at all
+  if(!frame_hdr.ack && carrier_sense_pkt(pkt_properties))
+      pmt_dict_set(pkt_properties, pmt_intern("carrier-sense"), PMT_T);
+
+  // Copy full data (header + payload)
+  long total_bytes = sizeof(frame_hdr) + n_payload_bytes;
+  pmt_t data_vec = pmt_make_u8vector(total_bytes, 0);
+  char *complete_data = (char *) pmt_u8vector_writeable_elements(data_vec, ignore);
+
+  memcpy(complete_data, &frame_hdr, sizeof(frame_hdr));
+  memcpy(complete_data+sizeof(frame_hdr), payload, n_payload_bytes);
+
+  pmt_t pdata = pmt_list3(invocation_handle, data_vec, pkt_properties);
+  d_phy_cs->send(s_cmd_mod, pdata); 
+
+  d_last_frame = data;
+}

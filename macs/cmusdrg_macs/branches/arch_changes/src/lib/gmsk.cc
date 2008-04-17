@@ -224,9 +224,8 @@ void gmsk::mod(pmt_t data) {
 
   // Frame properties
   pmt_t invocation_handle = pmt_nth(0, data);
-  long src = pmt_to_long(pmt_nth(1, data));
-  long dst = pmt_to_long(pmt_nth(2, data));
-  pmt_t pkt_properties = pmt_nth(4, data);
+  const void *payload = pmt_uniform_vector_elements(pmt_nth(1, data), n_bytes);
+  pmt_t pkt_properties = pmt_nth(1, data);
 
   // Access code and pre-amble
   std::vector<unsigned char>    b_access_code(d_access_code.length()/8);
@@ -236,48 +235,21 @@ void gmsk::mod(pmt_t data) {
   std::vector<unsigned char>    b_postamble(d_postamble.length()/8);
   conv_to_binary(d_postamble, b_postamble);
 
-  const void *payload = pmt_uniform_vector_elements(pmt_nth(3, data), n_bytes);
-
   // Take data from file
   std::ofstream nrz_ofile;
   std::ofstream gf_ofile;
   std::ofstream fm_ofile;
 
-  // Frame header
-//  d_frame_hdr_t frame_hdr;
-//  memset(&frame_hdr, '\0', sizeof(frame_hdr));
-//  frame_hdr.src_addr = src;
-//  frame_hdr.dst_addr = dst;
-//  frame_hdr.payload_len = n_bytes;
-
-  // Compute the CRC using boost library
-//  boost::crc_32_type bcrc;
-//  bcrc.process_bytes(payload, n_bytes);
-//  frame_hdr.crc = bcrc.checksum();
-
-  // Set ACK if specified
-//  if(pmt_is_dict(pkt_properties)) {
-//    if(pmt_t ack = pmt_dict_ref(pkt_properties,
-//                                pmt_intern("ack"),
-//                                PMT_NIL)) {
-//      if(pmt_eqv(ack, PMT_T))
-//        frame_hdr.ack = true;
-//      else
-//        frame_hdr.ack = false;
-//    }
-//  }
-
   // The full premod data is the preamble (to help with clock synchronization),
   // the start of frame bits (access code), the frame header, and the payload.
-  long dsize = b_preamble.size()+b_access_code.size();//+sizeof(d_frame_hdr_t)+n_bytes+b_postamble.size();
+  long dsize = b_preamble.size()+b_access_code.size()+n_bytes+b_postamble.size();
   unsigned char *full_premod_data = (unsigned char *) calloc(1, dsize);
 
   // Copy in everything
   memcpy(full_premod_data, &b_preamble[0], 1);
   memcpy(full_premod_data+b_preamble.size(), &b_access_code[0], b_access_code.size());
-//  memcpy(full_premod_data+b_preamble.size()+b_access_code.size(), &frame_hdr, sizeof(frame_hdr));
-//  memcpy(full_premod_data+b_preamble.size()+b_access_code.size()+sizeof(frame_hdr), payload, n_bytes);
-//  memcpy(full_premod_data+b_preamble.size()+b_access_code.size()+sizeof(frame_hdr)+n_bytes, &b_postamble[0], 1);
+  memcpy(full_premod_data+b_preamble.size()+b_access_code.size(), payload, n_bytes);
+  memcpy(full_premod_data+b_preamble.size()+b_access_code.size()+n_bytes, &b_postamble[0], 1);
 
   // Where to store the NRZ output
   long bts_nout = dsize*BITS_PER_BYTE;

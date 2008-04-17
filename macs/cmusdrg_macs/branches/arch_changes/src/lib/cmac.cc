@@ -75,8 +75,7 @@ void cmac::initialize_cmac()
   d_cs->send(s_response_cmac_initialized,   // Notify the application that
              pmt_list2(PMT_NIL, PMT_T));    // the MAC is initialized
 
-  if(verbose)
-    std::cout << "[CMAC] Initialized, and idle\n";
+  std::cout << "[CMAC] Initialized, and idle\n";
 }
 
 // This is the crux of the MAC layer.  The general architecture is to have
@@ -119,7 +118,7 @@ void cmac::handle_mac_message(mb_message_sptr msg)
       if(pmt_eq(d_tx->port_symbol(), port_id)) {
 
         if(pmt_eq(event, s_cmd_tx_pkt)) {
-          d_phy_cs->send(s_cmd_mod, data);           // Modulate the data
+          build_frame(data); 
         }
         return;
       }
@@ -148,15 +147,6 @@ void cmac::handle_mac_message(mb_message_sptr msg)
         return;
       }
 
-      //---- Port: USRP TX -------------- State: IDLE -----------------------//
-      if(pmt_eq(d_us_tx->port_symbol(), port_id)) {
-
-        if(pmt_eq(event, s_response_xmit_raw_frame)) {
-          packet_transmitted(data);                   // Transmission successful
-        }
-        return;
-      }
-      
       //---- Port: GMSK CS -------------- State: IDLE -----------------------//
       if(pmt_eq(d_phy_cs->port_symbol(), port_id)) {
         
@@ -182,24 +172,15 @@ void cmac::handle_mac_message(mb_message_sptr msg)
       if(pmt_eq(event, s_timeout)) {
         std::cout << "x";
         fflush(stdout);
-        d_us_tx->send(s_cmd_xmit_raw_frame, d_last_frame);
+        build_frame(d_last_frame);
         return;
       }
       
-      //---- Port: USRP RX -------------- State: ACK_WAIT -------------------//
-      if(pmt_eq(d_us_rx->port_symbol(), port_id)) {
-
-        if(pmt_eq(event, s_response_recv_raw_samples)) {
-          d_phy_cs->send(s_cmd_demod, data);         // Demod incoming samples
-        }
-        return;
-      }
-
       //---- Port: GMSK CS -------------- State: ACK_WAIT -------------------//
       if(pmt_eq(d_phy_cs->port_symbol(), port_id)) {
 
         if(pmt_eq(event, s_response_demod)) {
-          incoming_data(data);                       // Incoming frame! ACK?
+          incoming_data(data);                       // Incoming data
         }
         return;
       }
@@ -207,29 +188,9 @@ void cmac::handle_mac_message(mb_message_sptr msg)
 
     
     //---------------------------- SEND ACK ----------------------------------//
-    // In this state, we only expect our modulated ACK data to get back from
-    // the PHY layer, and then we ship it to usrp_server, and wait for a
-    // response back before enabled RX again.
+    // Expect nothing in this state, we get a packet_transmitted() once we get
+    // a response that the ACK has left the host.
     case SEND_ACK:
-
-      //---- Port: GMSK CS -------------- State: SEND_ACK -------------------//
-      if(pmt_eq(d_phy_cs->port_symbol(), port_id)) {
-        
-        if(pmt_eq(event, s_response_mod)) {
-          //transmit_pkt(data);                         // Incoming mod'ed ACK
-        }
-        return;
-      }
-        
-      //---- Port: USRP TX -------------- State: SEND_ACK -------------------//
-      if(pmt_eq(d_us_tx->port_symbol(), port_id)) {
-
-        if(pmt_eq(event, s_response_xmit_raw_frame)) {
-          enable_rx();                                // Response from ACK trans,
-          d_state = IDLE;                             // enable RX and enter idle
-        }
-        return;
-      }
       goto unhandled;
 
   } // End of switch()
@@ -283,6 +244,17 @@ void cmac::packet_transmitted(pmt_t data)
   pmt_t status = pmt_nth(1, data);
 
   enable_rx();  // Need to listen for ACKs
+
+  // If we are already in the SEND_ACK state, we were waiting for an ACK to be
+  // transmitted, once successful we assume it was received and go to IDLE
+  if(d_state == SEND_ACK) {
+    d_state = IDLE;
+    return;
+  }
+
+  // If we were in the ACK_WAIT state, we don't need to schedule another timeout
+  if(d_state == ACK_WAIT)
+    return;
   
   // Schedule an ACK timeout to fire every timeout period. This should be user
   // settable.  The first timeout is now+TIMEOUT_PERIOD
@@ -500,7 +472,7 @@ void cmac::build_and_send_ack(long dst)
                           uvec,                           // With data.
                           tx_properties);                 // It's an ACK!
 
-  d_phy_cs->send(s_cmd_mod, pdata);    // Modulate the ACK
+  build_frame(pdata);
   
   d_state = SEND_ACK;                   // Switch MAC states
   
@@ -508,6 +480,16 @@ void cmac::build_and_send_ack(long dst)
     std::cout << "[CMAC] Transmitted ACK from " << d_local_address
               << " to " << dst
               << std::endl;
+}
+
+// Entrance of new incoming data
+void cmac::incoming_data(pmt_t data)
+{
+  pmt_t bits = pmt_nth(0, data);
+  pmt_t demod_properties = pmt_nth(1, data);
+  std::vector<unsigned char> bit_data = boost::any_cast<std::vector<unsigned char> >(pmt_any_ref(bits));
+
+  framer(bit_data, demod_properties);
 }
 
 REGISTER_MBLOCK_CLASS(cmac);

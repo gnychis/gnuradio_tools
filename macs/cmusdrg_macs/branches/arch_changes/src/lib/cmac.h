@@ -135,6 +135,7 @@ class cmac : public mac
   void framer_have_header();
   void framer_have_payload();
   void framer_have_frame(pmt_t uvec);
+  void build_frame(pmt_t data);
 };
 
 #endif // INCLUDED_CMAC_H

@@ -72,6 +72,16 @@ void mac::handle_message(mb_message_sptr msg)
       return;
     }
       
+    //---- Port: USRP TX -------------- State: IDLE -----------------------//
+    if(pmt_eq(d_us_tx->port_symbol(), port_id)) {
+
+      if(pmt_eq(event, s_response_xmit_raw_frame)) {
+        packet_transmitted(data);                   // Transmission successful
+      }
+      return;
+    }
+      
+      
     //---- Port: GMSK CS -------------- State: IDLE -----------------------//
     if(pmt_eq(d_phy_cs->port_symbol(), port_id)) {
       
@@ -130,6 +140,10 @@ void mac::transmit_pkt(pmt_t data)
 
 // User implementation will override this method to handle messages to the MAC.
 void mac::handle_mac_message(mb_message_sptr msg)
+{
+}
+
+void mac::packet_transmitted(pmt_t data)
 {
 }
 
