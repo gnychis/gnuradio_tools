@@ -84,6 +84,10 @@ cmusdrg_acquisition_filter_ccc::work(int noutput_items,
         max_matching_magnitude = magnitude;
         window_searched++;      
       }
+      if (window_searched == d_window) {
+        out1[best_match] = 1;
+        window_searched  = 0;
+      }
     }
     else if (window_searched < d_window) {
       if (magnitude > max_matching_magnitude) {
