@@ -15,10 +15,10 @@
 
 GR_SWIG_BLOCK_MAGIC(cmusdrg,acquisition_filter_ccc);
 
-cmusdrg_acquisition_filter_ccc_sptr cmusdrg_make_acquisition_filter_ccc ();
+cmusdrg_acquisition_filter_ccc_sptr cmusdrg_make_acquisition_filter_ccc (long threshold, long window);
 
 class cmusdrg_acquisition_filter_ccc : public gr_block
 {
 private:
-  cmusdrg_acquisition_filter_ccc ();
+  cmusdrg_acquisition_filter_ccc (long threshold, long window);
 };
