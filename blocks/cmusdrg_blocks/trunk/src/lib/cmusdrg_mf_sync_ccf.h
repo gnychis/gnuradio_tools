@@ -30,19 +30,14 @@ class cmusdrg_mf_sync_ccf;
 typedef boost::shared_ptr<cmusdrg_mf_sync_ccf> cmusdrg_mf_sync_ccf_sptr;
 
 cmusdrg_mf_sync_ccf_sptr
-cmusdrg_make_mf_sync_ccf (long threshold, long window);
+cmusdrg_make_mf_sync_ccf (const std::vector<gr_complex> &coeffs);
 
 class cmusdrg_mf_sync_ccf : public gr_sync_block
 {
  private:
-  friend cmusdrg_mf_sync_ccf_sptr cmusdrg_make_mf_sync_ccf (long threshold, long window);
+  friend cmusdrg_mf_sync_ccf_sptr cmusdrg_make_mf_sync_ccf (const std::vector<gr_complex> &coeffs);
 
-  long d_threshold;
-  long d_window;
-
-  cmusdrg_mf_sync_ccf(long threshold, long window);
-
-  float compute_magnitude(gr_complex input);
+  cmusdrg_mf_sync_ccf(const std::vector<gr_complex> &coeffs);
 
  public:
   ~cmusdrg_mf_sync_ccf();
