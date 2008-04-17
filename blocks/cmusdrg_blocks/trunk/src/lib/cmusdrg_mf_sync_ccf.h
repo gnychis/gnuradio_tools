@@ -25,6 +25,8 @@
 
 #include <gr_sync_block.h>
 #include <gr_io_signature.h>
+#include <gr_fir_util.h>
+#include <gr_fir_ccc.h>
 
 class cmusdrg_mf_sync_ccf;
 typedef boost::shared_ptr<cmusdrg_mf_sync_ccf> cmusdrg_mf_sync_ccf_sptr;
@@ -39,12 +41,17 @@ class cmusdrg_mf_sync_ccf : public gr_sync_block
 
   cmusdrg_mf_sync_ccf(const std::vector<gr_complex> &coeffs);
 
+  float compute_magnitude(gr_complex input);
+
  public:
   ~cmusdrg_mf_sync_ccf();
 
   int work(int noutput_items,
     gr_vector_const_void_star &input_items,
     gr_vector_void_star &output_items);
+ 
+ protected:
+  std::vector<gr_fir_ccc *>     filters;
 };
 
 #endif

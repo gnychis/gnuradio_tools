@@ -29,8 +29,13 @@
 #include <math.h>
 #include <assert.h>
 #include <stdexcept>
+#include <gr_fir_util.h>
+#include <gr_fir_ccc.h>
 
 #include <iostream>
+
+const static int NFILTERS = 16;
+const static int COEFFS_PER_CHIPSEQ = 64;
 
 cmusdrg_mf_sync_ccf_sptr
 cmusdrg_make_mf_sync_ccf(const std::vector<gr_complex> &coeffs)
@@ -43,11 +48,29 @@ cmusdrg_mf_sync_ccf::cmusdrg_mf_sync_ccf (const std::vector<gr_complex> &coeffs)
       gr_make_io_signature(2, 2, sizeof(gr_complex)),
       gr_make_io_signature(1, 1, sizeof(float)))
 {
-  // Build match filters
+
+  // Extract the coefficients
+  for(int i=0; i<NFILTERS; i++) {
+
+    std::vector<gr_complex> filter_coeffs;
+    for(int j=i*COEFFS_PER_CHIPSEQ; j<((i+1)*COEFFS_PER_CHIPSEQ); j++)
+      filter_coeffs.push_back(coeffs[j]);
+    
+    filters[i] = gr_fir_util::create_gr_fir_ccc (filter_coeffs);
+  }
 }
 
 cmusdrg_mf_sync_ccf::~cmusdrg_mf_sync_ccf()
 {
+  for(int i=0; i<NFILTERS; i++)
+    delete filters[i];
+}
+
+float
+cmusdrg_mf_sync_ccf::compute_magnitude(gr_complex input)
+{
+  float result = sqrt(input.real()*input.real() + input.imag()*input.imag());
+  return result;
 }
 
 int
