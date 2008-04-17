@@ -68,6 +68,39 @@ cmusdrg_acquisition_filter_ccc::work(int noutput_items,
   gr_complex *out1 = (gr_complex *) output_items[0];
   gr_complex *out2 = (gr_complex *) output_items[1];
 
+  float magnitude = 0;
+  float max_matching_magnitude = 0;
+  int   best_match = -1;
+  int   window_searched = 0;
+  
+  for (int i = 0; i< noutput_items; i++) {
+    out1[i] = 0;
+    out2[i] = in2[i];  
+    magnitude = compute_magnitude(in1[i]);
+    // try to find a mag > threshold
+    if (window_searched == 0) {
+      if (magnitude > d_threshold) {
+        best_match = i;
+        max_matching_magnitude = magnitude;
+        window_searched++;      
+      }
+    }
+    else if (window_searched < d_window) {
+      if (magnitude > max_matching_magnitude) {
+        best_match = i;
+        max_matching_magnitude = magnitude;
+        window_searched++;
+      }
+      if (window_searched == d_window) {
+        out1[best_match] = 1;
+        window_searched  = 0;
+      }
+    }
+  }
 
+  if (window_searched > 0) {
+    out1[best_match] = 1;
+  }
+  
   return noutput_items;
 }
