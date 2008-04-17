@@ -1,6 +1,6 @@
 Index: usrp/host/lib/inband/symbols_usrp_low_level_cs.h
 ===================================================================
---- usrp/host/lib/inband/symbols_usrp_low_level_cs.h	(revision 8149)
+--- usrp/host/lib/inband/symbols_usrp_low_level_cs.h	(revision 8178)
 +++ usrp/host/lib/inband/symbols_usrp_low_level_cs.h	(working copy)
 @@ -43,5 +43,6 @@
  static pmt_t s_op_spi_read = pmt_intern("op-spi-read");
@@ -11,9 +11,9 @@ Index: usrp/host/lib/inband/symbols_usrp_low_level_cs.h
  #endif /* INCLUDED_SYMBOLS_USRP_LOW_LEVEL_CS_H */
 Index: usrp/host/lib/inband/usrp_inband_usb_packet.cc
 ===================================================================
---- usrp/host/lib/inband/usrp_inband_usb_packet.cc	(revision 8149)
+--- usrp/host/lib/inband/usrp_inband_usb_packet.cc	(revision 8178)
 +++ usrp/host/lib/inband/usrp_inband_usb_packet.cc	(working copy)
-@@ -592,6 +592,48 @@
+@@ -592,6 +592,53 @@
  }
  
  /*!
@@ -21,7 +21,7 @@ Index: usrp/host/lib/inband/usrp_inband_usb_packet.cc
 + *
 + * \returns true if the command was added to the packet, false otherwise.
 + */
-+bool usrp_inband_usb_packet::cs_mf_set(long threshold, long ncoeff, uint32_t *mf_data, size_t data_len)
++bool usrp_inband_usb_packet::cs_mf_set(long threshold, long ncoeff, int32_t *mf_data, size_t data_len)
 +{
 +  if(!align32())
 +    return false;
@@ -29,6 +29,11 @@ Index: usrp/host/lib/inband/usrp_inband_usb_packet.cc
 +  int p_len = payload_len();
 +
 +  int mf_len = data_len + 2 + 4;   // 2 bytes between mbz and addr + 4 for threshold
++
++  int nco_div_6 = ncoeff / 6;
++  int nco_mod_6 = ncoeff % 6;
++  int nco_bits = (nco_div_6<<3) | nco_mod_6;
++  std::cout << "nco_div_6: " << nco_div_6 << "  nco_mod_6: " << nco_mod_6 << "  nco_bits: " << nco_bits << std::endl;
 +
 +  if((MAX_PAYLOAD - p_len) < (mf_len + CS_FIXED_LEN))
 +    return false;
@@ -38,7 +43,7 @@ Index: usrp/host/lib/inband/usrp_inband_usb_packet.cc
 +  word0 = (
 +      ((OP_MF_SET & CS_OPCODE_MASK) << CS_OPCODE_SHIFT)
 +    | ((mf_len & CS_LEN_MASK) << CS_LEN_SHIFT)
-+    | ((ncoeff & CS_MFNCOEFF_MASK) << CS_MFNCOEFF_SHIFT)
++    | ((nco_bits & CS_MFNCOEFF_MASK) << CS_MFNCOEFF_SHIFT)
 +  );
 +
 +  uint32_t *payload = (uint32_t *) (d_payload + p_len);
@@ -50,7 +55,7 @@ Index: usrp/host/lib/inband/usrp_inband_usb_packet.cc
 +   // Jump over the first word and write the data
 +   // FIXME: Should the data be changed to usrp byte order?
 +   payload += 1;
-+   memcpy(payload, mf_data, data_len);
++   memcpy(payload, mf_data, data_len*4);
 +
 +  // Update payload length
 +  incr_header_len(CS_FIXED_LEN + mf_len);
@@ -62,7 +67,7 @@ Index: usrp/host/lib/inband/usrp_inband_usb_packet.cc
   * \brief Since all control packets contain subpackets which have the length of
   * the subpacket at a uniform location in the subpacket, this will return the
   * subpacket length given a byte offset of the start of the subpacket from the beginning of the packet.
-@@ -783,7 +825,12 @@
+@@ -783,7 +830,12 @@
  
        return pmt_list2(s_op_delay, ticks);
      }
@@ -76,9 +81,22 @@ Index: usrp/host/lib/inband/usrp_inband_usb_packet.cc
      default:
        return PMT_NIL;
  
+Index: usrp/host/lib/inband/usrp_rx.cc
+===================================================================
+--- usrp/host/lib/inband/usrp_rx.cc	(revision 8178)
++++ usrp/host/lib/inband/usrp_rx.cc	(working copy)
+@@ -44,7 +44,7 @@
+ 
+ usrp_rx::usrp_rx(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
+   : mb_mblock(rt, instance_name, user_arg),
+-    d_disk_write(false),
++    d_disk_write(true),
+     d_disk_write_pkt(false)   // if true, writes full packet, else just the payload
+ {
+   d_cs = define_port("cs", "usrp-rx-cs", true, mb_port::EXTERNAL);
 Index: usrp/host/lib/inband/usrp_inband_usb_packet.h
 ===================================================================
---- usrp/host/lib/inband/usrp_inband_usb_packet.h	(revision 8149)
+--- usrp/host/lib/inband/usrp_inband_usb_packet.h	(revision 8178)
 +++ usrp/host/lib/inband/usrp_inband_usb_packet.h	(working copy)
 @@ -50,13 +50,14 @@
      OP_WRITE_REG_MASKED   = 0x03,
@@ -111,15 +129,31 @@ Index: usrp/host/lib/inband/usrp_inband_usb_packet.h
    bool cs_spi_write(long enables, long format, long opt_header_bytes, uint8_t *spi_data, long spi_data_len);
    bool cs_spi_read(long rid, long enables, long format, long opt_header_bytes, long n_bytes);
    bool cs_spi_read_reply(long rid, uint8_t *spi_data, long spi_data_len);
-+  bool cs_mf_set(long threshold, long ncoeff, uint32_t *mf_data, size_t data_len);
++  bool cs_mf_set(long threshold, long ncoeff, int32_t *mf_data, size_t data_len);
    int cs_len(int payload_offset);
    pmt_t read_subpacket(int payload_offset);
  };
 Index: usrp/host/lib/inband/usrp_server.cc
 ===================================================================
---- usrp/host/lib/inband/usrp_server.cc	(revision 8149)
+--- usrp/host/lib/inband/usrp_server.cc	(revision 8178)
 +++ usrp/host/lib/inband/usrp_server.cc	(working copy)
-@@ -1087,7 +1087,89 @@
+@@ -30,6 +30,7 @@
+ #include <usrp_usb_interface.h>
+ #include <fpga_regs_common.h>
+ #include <fpga_regs_standard.h>
++#include <complex>
+ 
+ #include <symbols_usrp_server_cs.h>
+ #include <symbols_usrp_channel.h>
+@@ -40,6 +41,7 @@
+ static pmt_t s_shutdown = pmt_intern("%shutdown");
+ 
+ typedef usrp_inband_usb_packet transport_pkt;   // makes conversion to gigabit easy
++typedef std::complex<float>     gr_complex;
+ 
+ const static bool verbose = false;
+ 
+@@ -1087,7 +1089,87 @@
        if(verbose)
          std::cout << "[USRP_SERVER] Received SPI read\n";
      }
@@ -132,62 +166,58 @@ Index: usrp/host/lib/inband/usrp_server.cc
 +      long threshold = pmt_to_long(pmt_nth(0, subp_data));
 +      pmt_t data = pmt_nth(1, subp_data);
  
-+      // Get a readable address to the raw matched filter data, which is 16-bit
-+      // I and 16-bit Q
-+      size_t raw_len, data_len;
-+      uint16_t *raw_mf_data = (uint16_t *) pmt_u16vector_writeable_elements(data, raw_len);
++      // From pmt_any to gr_complex vector
++      std::vector<gr_complex> coeffs = boost::any_cast<std::vector<gr_complex> > (pmt_any_ref(data));
++
++      // Reverse the coefficients
++      std::reverse(coeffs.begin(), coeffs.end());
 +
 +      // New data to store the 2-bit coefficient version
-+      // FIXME: using the max number for now, 0 values don't matter
-+      pmt_t v_mf_data = pmt_make_u8vector(96/4, 0);
-+      uint32_t *mf_data = (uint32_t *) pmt_u32vector_writeable_elements(v_mf_data, data_len);
++      size_t data_len;
++      pmt_t v_mf_data = pmt_make_u32vector((96*2)/32, 0);
++      int32_t *mf_data = (int32_t *) pmt_u32vector_writeable_elements(v_mf_data, data_len);
 +
-+      // A raw sample is 4 bytes, so we use this to calculate the number of
-+      // coefficients
-+      long ncoeff = raw_len / 4;
++      long ncoeff = coeffs.size();
 +
 +      // Convert from full coefficient set to 2-bit rotated version
-+      uint32_t *curr_word = mf_data;
++      int32_t *curr_word = mf_data;
 +      for(int i=0; i < ncoeff; i++) {
 +
-+        if(i!=0 && i%32==0)
-+          curr_word++;
++        curr_word = mf_data + i%6;
 +
-+        int real = raw_mf_data[2*i];
-+        int imag = raw_mf_data[2*i+1];
++        float real = coeffs[i].real();
++        float imag = -coeffs[i].imag(); // Need to take the complex conjugate
 +
 +        int opt_real, opt_imag;
 +
-+        if(real>0 && imag>0) {         // Shift Q1 to (0,1) = 1 = 0b00
++        if(real>0 && imag>=0) {         // Shift Q1 to (0,1) = 1 = 0b01
 +          opt_real = 0;
 +          opt_imag = 1;
 +        }
-+        else if(real<0 && imag>0) {    // Shift Q2 to (-1,0) = 3 = 0b11
++        else if(real<=0 && imag>0) {    // Shift Q2 to (-1,0) = 3 = 0b11
 +          opt_real = 1;
 +          opt_imag = 1;
 +        }
-+        else if(real<0 && imag<0) {    // Shift Q3 to (0,-1) = 2 = 0b10
++        else if(real<0 && imag<=0) {    // Shift Q3 to (0,-1) = 2 = 0b10
 +          opt_real = 1;
 +          opt_imag = 0;
 +        }
-+        else if(real>0 && imag<0) {    // Shift Q4 to (1,0) = 0 = 0b00
++        else if(real>=0 && imag<0) {    // Shift Q4 to (1,0) = 0 = 0b00
 +          opt_real = 0;
 +          opt_imag = 0;
 +        }
 +
-+        // The first 2 bytes of a word are for real, the last 2 bytes of a word
-+        // are for imaginary, like: rrrrrrrrrrrrrrrriiiiiiiiiiiiiiii
-+        //
-+        // Imagine if we were doing a bit-wise access:
-+        //   word[31], which is real, coincides with, word[15] which is
-+        //   imaginary, and makes up the first coefficient
-+        //
 +        // This is done for reducing complexity in the FPGA
-+        int real_shift = 32-(i%16);
-+        int imag_shift = 16-(i%16);
++        int real_shift = 32-(16-(i/6));
++        int imag_shift = 16-(16-(i/6));
++
++        std::cout << "  optreal: " << opt_real
++                  << "  optimag: " << opt_imag
++                  << std::endl;
 +
 +        *curr_word |= opt_real << real_shift;
 +        *curr_word |= opt_imag << imag_shift;
++        
 +      }
 +
 +
@@ -203,9 +233,122 @@ Index: usrp/host/lib/inband/usrp_server.cc
 +      }
 +      
 +      if(verbose)
-+        std::cout << "[USRP_SERVER] Received matched filter set\n";
++        std::cout << "[USRP_SERVER] Received matched filter set\n"
++                  << "  ncoeffs: " << ncoeff
++                  << std::endl;
 +    }
 +
    subpkt_bail:
      curr_subpkt++;
  
+Index: usrp/host/lib/inband/usrp_usb_interface.cc
+===================================================================
+--- usrp/host/lib/inband/usrp_usb_interface.cc	(revision 8178)
++++ usrp/host/lib/inband/usrp_usb_interface.cc	(working copy)
+@@ -362,12 +362,14 @@
+ 
+   if (verbose)
+     std::cout << "[USRP_USB_INTERFACE] Setup RX channel\n";
++
++  d_urx->start();
+     
+-//  d_utx->_write_fpga_reg(FR_DEBUG_EN,0xf);
+-//  d_utx->_write_oe(0, 0xffff, 0xffff);
+-//  d_urx->_write_oe(0, 0xffff, 0xffff);
+-//  d_utx->_write_oe(1, 0xffff, 0xffff);
+-//  d_urx->_write_oe(1, 0xffff, 0xffff);
++  d_utx->_write_fpga_reg(FR_DEBUG_EN,0xf);
++  d_utx->_write_oe(0, 0xffff, 0xffff);
++  d_urx->_write_oe(0, 0xffff, 0xffff);
++  d_utx->_write_oe(1, 0xffff, 0xffff);
++  d_urx->_write_oe(1, 0xffff, 0xffff);
+ 
+   d_cs->send(s_response_usrp_open, pmt_list2(invocation_handle, PMT_T));
+ }
+Index: usrp/host/apps-inband/test_usrp_inband_tx.cc
+===================================================================
+--- usrp/host/apps-inband/test_usrp_inband_tx.cc	(revision 8178)
++++ usrp/host/apps-inband/test_usrp_inband_tx.cc	(working copy)
+@@ -37,6 +37,7 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <iostream>
++#include <fstream>
+ 
+ #include <ui_nco.h>
+ #include <symbols_usrp_server_cs.h>
+@@ -119,7 +120,7 @@
+   // Specify the RBF to use
+   pmt_dict_set(usrp_dict,
+                pmt_intern("rbf"),
+-               pmt_intern("inband_1rxhb_1tx.rbf"));
++               pmt_intern("mftest23.rbf"));
+ 
+   // Set TX and RX interpolations
+   pmt_dict_set(usrp_dict,
+@@ -302,7 +303,42 @@
+   
+   if(verbose)
+     std::cout << "[TEST_USRP_INBAND_TX] Transmitting...\n";
+-  
++
++  ///////////////////////////
++  std::vector<gr_complex> complex_coeffs;
++  std::string line;
++  std::ifstream coeffs("coeffs");
++  if(coeffs.is_open()) {
++    while(!coeffs.eof()) {
++      getline(coeffs,line);
++      if(line=="") break;
++      std::istringstream in(line);
++      std::vector<std::string> tokens;
++      for(std::string each; std::getline(in,each,' '); tokens.push_back(each));
++      std::istringstream sreal(tokens[0]), simag(tokens[1]);
++      float real, imag;
++      sreal >> real;
++      simag >> imag;
++      complex_coeffs.push_back(gr_complex(real, imag));
++    }
++    coeffs.close();
++  } else {
++    std::cout << "coeffs missing\n";
++    shutdown_all(PMT_NIL);
++  }
++
++  pmt_t v_coeff_data = pmt_make_any(complex_coeffs);
++
++  d_tx->send(s_cmd_to_control_channel,
++             pmt_list2(PMT_NIL,
++                       pmt_list1(
++                          pmt_list2(s_op_mf_set,
++                                    pmt_list2(pmt_from_long(50),
++                                              v_coeff_data)))));
++  std::cout << "coeffs sent from app\n";
++  fflush(stdout);
++  ////////////////////////////
++
+   build_and_send_next_frame();	// fire off 4 to start pipeline
+   build_and_send_next_frame();
+   build_and_send_next_frame();
+Index: usrp/host/apps-inband/test_usrp_inband_registers.cc
+===================================================================
+--- usrp/host/apps-inband/test_usrp_inband_registers.cc	(revision 8178)
++++ usrp/host/apps-inband/test_usrp_inband_registers.cc	(working copy)
+@@ -119,7 +119,7 @@
+   // Specify the RBF to use
+   pmt_dict_set(usrp_dict,
+                pmt_intern("rbf"),
+-               pmt_intern("inband_1rxhb_1tx.rbf"));
++               pmt_intern("mftest9.rbf"));
+ 
+   // Set TX and RX interpolations
+   pmt_dict_set(usrp_dict,
+@@ -373,7 +373,7 @@
+ {
+   d_state = WRITE_REGISTER;
+ 
+-  long reg = 0;
++  long reg = 9;
+ 
+   d_tx->send(s_cmd_to_control_channel,    // C/S packet
+              pmt_list2(PMT_NIL,           // invoc handle
