@@ -57,10 +57,75 @@ void mac::define_usrp_ports()
 // user-overrided method which MAC's implement.
 void mac::handle_message(mb_message_sptr msg)
 {
-  if(d_usrp_state==CONNECTED)
+  pmt_t event = msg->signal();      // type of message
+  pmt_t data = msg->data();         // the associated data
+  pmt_t port_id = msg->port_id();   // the port the msg was received on
+
+  if(d_usrp_state==CONNECTED) {
+
+    //---- Port: USRP RX --------------------------------------------------//
+    if(pmt_eq(d_us_rx->port_symbol(), port_id)) {
+
+      if(pmt_eq(event, s_response_recv_raw_samples)) {
+        d_phy_cs->send(s_cmd_demod, data);         // Demod incoming samples
+      }
+      return;
+    }
+      
+    //---- Port: GMSK CS -------------- State: IDLE -----------------------//
+    if(pmt_eq(d_phy_cs->port_symbol(), port_id)) {
+      
+      if(pmt_eq(event, s_response_mod)) {
+        transmit_pkt(data);                         // Data done being mod'ed
+      }
+      return;
+    }
+    
     handle_mac_message(msg);
-  else
+  } else {
     handle_usrp_message(msg);
+  }
+}
+
+// Handles the transmission of a pkt from the application.  The invocation
+// handle is passed on but a response is not given back to the application until
+// the response is passed from usrp_server.  This ensures that the MAC passes
+// back the success or failure. 
+void mac::transmit_pkt(pmt_t data)
+{
+  pmt_t invocation_handle = pmt_nth(0, data);
+  pmt_t samples = pmt_nth(1, data);
+  pmt_t pkt_properties = pmt_nth(2, data);
+
+  // A dictionary (a hash like structure) that is used to pass packet properties
+  // down the layers.
+  pmt_t us_tx_properties = pmt_make_dict();
+  
+  if(pmt_is_dict(pkt_properties)) {
+    if(pmt_t pkt_cs = pmt_dict_ref(pkt_properties,
+                                   pmt_intern("carrier-sense"),
+                                   PMT_NIL)) {
+      if(pmt_eqv(pkt_cs, PMT_T))                    // carrier sense the packet?
+        pmt_dict_set(us_tx_properties,              // set it in our dictionary
+                     pmt_intern("carrier-sense"),   // the 'hash'
+                     PMT_T);                        // true, but assumed false if no
+    }
+  }
+
+                                                // dictionary setting
+
+  pmt_t timestamp = pmt_from_long(0xffffffff);	// 0xffffffff == transmit NOW!
+
+  pmt_t pdata = pmt_list5(invocation_handle,    // Invocation handle is passed back.
+		                      d_us_tx_chan,         // Destined for our TX channel.
+		                      samples,              // The modulated data (samples).
+                          timestamp,            // The time to send the packet.
+                          us_tx_properties);    // Our per-packet properties.
+
+  d_us_tx->send(s_cmd_xmit_raw_frame, pdata);   // Finally, send!
+
+  if(verbose && 0)
+    std::cout << "[CMAC] Transmitted packet\n";
 }
 
 // User implementation will override this method to handle messages to the MAC.

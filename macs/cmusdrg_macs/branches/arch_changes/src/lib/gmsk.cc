@@ -169,8 +169,7 @@ gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
 
   d_slicer = gr_make_binary_slicer_fb();
 
-  // Setup the correlation block (bit sequence finder).  Most of the constants
-  // are defined within gmsk_framer.h
+  // Setup the correlation block (bit sequence finder). 
   d_preamble = PREAMBLE;                // Preamble to help synchronization
   d_access_code = FRAMING_BITS;         // Framing bits to detect frame
   d_postamble = POSTAMBLE;              // Post amble to pad end of frame
@@ -595,7 +594,12 @@ void gmsk::demod(pmt_t data)
     std::cout << " t_samples: " << t_samples << std::endl;
 
   // Frame!
-  framer(corr_output, timestamp);
+  pmt_t demod_properties = pmt_make_dict();
+  pmt_dict_set(demod_properties, pmt_intern("timestamp"), pmt_from_long(timestamp));
+  // RSSI
+
+  pmt_t p_corr_output = pmt_make_any(corr_output);
+  d_cs->send(s_response_demod, pmt_list2(p_corr_output, demod_properties));
 
 }
 

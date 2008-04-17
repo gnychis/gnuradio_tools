@@ -63,11 +63,13 @@
 #include <boost/crc.hpp>
 #include <boost/cstdint.hpp>
 
-#include <gmsk_framer.h>
-
 static const int BITS_PER_BYTE = 8;
 static const int BITS_PER_SYMBOL = 1;
 static const int SAMPLES_PER_SYMBOL = 2;
+
+static const std::string PREAMBLE = "1010010011110010";
+static const std::string FRAMING_BITS = "1010110011011101101001001110001011110010100011000010000011111100";
+static const std::string POSTAMBLE = "1010010011110010";
 
 class gmsk;
 
@@ -171,15 +173,6 @@ class gmsk : public mb_mblock
   void convolve(float X[],float Y[], float Z[], int lenx, int leny);
   void demod(pmt_t data);
   void conv_to_binary(std::string code, std::vector<unsigned char> &output);
-
-  void framer(const std::vector<unsigned char> input, unsigned long timestamp);
-  void framer_calculate_timestamp(unsigned long timestamp, int bit, int nbits);
-  void framer_found_sync();
-  void framer_new_header_bit(unsigned char bit);
-  void framer_new_payload_bit(unsigned char bit);
-  void framer_have_header();
-  void framer_have_payload();
-  void framer_have_frame(pmt_t uvec);
 };
 
-#endif // INCLUDED_CMAC_H
+#endif // INCLUDED_GMSK_H

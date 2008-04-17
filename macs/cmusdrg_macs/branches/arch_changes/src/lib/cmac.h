@@ -63,9 +63,6 @@ class cmac : public mac
   // Ports used for applications to connect to this block
   mb_port_sptr		  d_tx, d_rx, d_cs;
 
-  // Ports to connect to gmsk (us)
-  mb_port_sptr      d_gmsk_cs;
-
   pmt_t d_ack_timeout;
   pmt_t d_last_frame;
   long d_last_frame_dst;
@@ -91,8 +88,8 @@ class cmac : public mac
   void initialize_cmac();
 
   // Crucial CSMA methods
-  void transmit_pkt(pmt_t data);
   void packet_transmitted(pmt_t data);
+  void incoming_data(pmt_t data);
   void incoming_frame(pmt_t data);
   void build_and_send_ack(long dst);
   void handle_ack(long src, long dst);
@@ -104,7 +101,16 @@ class cmac : public mac
   void set_carrier_sense_deadline(pmt_t data);
   void set_carrier_sense_threshold(pmt_t data);
   bool carrier_sense_pkt(pmt_t pkt_properties);
- 
+
+  // Framer
+  void framer(const std::vector<unsigned char> input, unsigned long timestamp);
+  void framer_calculate_timestamp(unsigned long timestamp, int bit, int nbits);
+  void framer_found_sync();
+  void framer_new_header_bit(unsigned char bit);
+  void framer_new_payload_bit(unsigned char bit);
+  void framer_have_header();
+  void framer_have_payload();
+  void framer_have_frame(pmt_t uvec);
 };
 
 #endif // INCLUDED_CMAC_H

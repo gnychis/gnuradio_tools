@@ -42,6 +42,8 @@
 #include <symbols_usrp_tx.h>
 #include <symbols_usrp_rx.h>
 
+#include <gmsk_symbols.h>
+
 class mac;
 
 class mac : public mb_mblock
@@ -63,6 +65,9 @@ class mac : public mb_mblock
     RX_CHANNEL,
     TX_CHANNEL,
   };
+
+  // Port to the PHY, MAC must make the connection
+  mb_port_sptr      d_phy_cs;
 
   // Ports to connect to usrp_server (us)
   mb_port_sptr      d_us_tx, d_us_rx, d_us_cs;
@@ -111,6 +116,8 @@ class mac : public mb_mblock
   
   void allocate_channels();
   void allocate_channels_response(pmt_t data, channel_type chan, bool success);
+
+  void transmit_pkt(pmt_t data);
 };
 
 #endif // INCLUDED_MAC_H

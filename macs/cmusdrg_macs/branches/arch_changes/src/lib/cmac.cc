@@ -50,7 +50,7 @@ void cmac::define_mac_ports()
 
   // Connect to physical layer
   define_component("GMSK", "gmsk", phy_dict);
-  d_gmsk_cs = define_port("phy-cs", "gmsk-cs", false, mb_port::INTERNAL);
+  d_phy_cs = define_port("phy-cs", "gmsk-cs", false, mb_port::INTERNAL);
   connect("self", "phy-cs", "GMSK", "cs0");
 
   // Define ports for the application to connect to us
@@ -118,7 +118,7 @@ void cmac::handle_mac_message(mb_message_sptr msg)
       if(pmt_eq(d_tx->port_symbol(), port_id)) {
 
         if(pmt_eq(event, s_cmd_tx_pkt)) {
-          d_gmsk_cs->send(s_cmd_mod, data);           // Modulate the data
+          d_phy_cs->send(s_cmd_mod, data);           // Modulate the data
         }
         return;
       }
@@ -156,23 +156,11 @@ void cmac::handle_mac_message(mb_message_sptr msg)
         return;
       }
       
-      //---- Port: USRP RX -------------- State: IDLE -----------------------//
-      if(pmt_eq(d_us_rx->port_symbol(), port_id)) {
-
-        if(pmt_eq(event, s_response_recv_raw_samples)) {
-          d_gmsk_cs->send(s_cmd_demod, data);         // Demod incoming samples
-        }
-        return;
-      }
-
       //---- Port: GMSK CS -------------- State: IDLE -----------------------//
-      if(pmt_eq(d_gmsk_cs->port_symbol(), port_id)) {
+      if(pmt_eq(d_phy_cs->port_symbol(), port_id)) {
         
-        if(pmt_eq(event, s_response_mod)) {
-          transmit_pkt(data);                         // Data done being mod'ed
-        }
-        else if(pmt_eq(event, s_response_demod)) {
-          incoming_frame(data);                       // Incoming frame!
+        if(pmt_eq(event, s_response_demod)) {
+          incoming_data(data);                       // Incoming frame!
         }
         return;
       }
@@ -201,16 +189,16 @@ void cmac::handle_mac_message(mb_message_sptr msg)
       if(pmt_eq(d_us_rx->port_symbol(), port_id)) {
 
         if(pmt_eq(event, s_response_recv_raw_samples)) {
-          d_gmsk_cs->send(s_cmd_demod, data);         // Demod incoming samples
+          d_phy_cs->send(s_cmd_demod, data);         // Demod incoming samples
         }
         return;
       }
 
       //---- Port: GMSK CS -------------- State: ACK_WAIT -------------------//
-      if(pmt_eq(d_gmsk_cs->port_symbol(), port_id)) {
+      if(pmt_eq(d_phy_cs->port_symbol(), port_id)) {
 
         if(pmt_eq(event, s_response_demod)) {
-          incoming_frame(data);                       // Incoming frame! ACK?
+          incoming_data(data);                       // Incoming frame! ACK?
         }
         return;
       }
@@ -224,10 +212,10 @@ void cmac::handle_mac_message(mb_message_sptr msg)
     case SEND_ACK:
 
       //---- Port: GMSK CS -------------- State: SEND_ACK -------------------//
-      if(pmt_eq(d_gmsk_cs->port_symbol(), port_id)) {
+      if(pmt_eq(d_phy_cs->port_symbol(), port_id)) {
         
         if(pmt_eq(event, s_response_mod)) {
-          transmit_pkt(data);                         // Incoming mod'ed ACK
+          //transmit_pkt(data);                         // Incoming mod'ed ACK
         }
         return;
       }
@@ -281,43 +269,6 @@ void cmac::set_carrier_sense(bool toggle, long threshold, long deadline, pmt_t i
               << "\n ... threshold: " << d_cs_thresh
               << "\n ... deadline:  " << d_cs_deadline
               << std::endl;
-}
-
-
-// Handles the transmission of a pkt from the application.  The invocation
-// handle is passed on but a response is not given back to the application until
-// the response is passed from usrp_server.  This ensures that the MAC passes
-// back the success or failure. 
-void cmac::transmit_pkt(pmt_t data)
-{
-  pmt_t invocation_handle = pmt_nth(0, data);
-  pmt_t samples = pmt_nth(1, data);
-  pmt_t pkt_properties = pmt_nth(2, data);
-
-  // A dictionary (a hash like structure) that is used to pass packet properties
-  // down the layers.
-  pmt_t us_tx_properties = pmt_make_dict();
-
-  if(carrier_sense_pkt(pkt_properties))         // carrier sense the packet?
-    pmt_dict_set(us_tx_properties,              // set it in our dictionary
-                 pmt_intern("carrier-sense"),   // the 'hash'
-                 PMT_T);                        // true, but assumed false if no
-                                                // dictionary setting
-
-  pmt_t timestamp = pmt_from_long(0xffffffff);	// 0xffffffff == transmit NOW!
-
-  pmt_t pdata = pmt_list5(invocation_handle,    // Invocation handle is passed back.
-		                      d_us_tx_chan,         // Destined for our TX channel.
-		                      samples,              // The modulated data (samples).
-                          timestamp,            // The time to send the packet.
-                          us_tx_properties);    // Our per-packet properties.
-
-  d_us_tx->send(s_cmd_xmit_raw_frame, pdata);   // Finally, send!
-
-  d_last_frame = pdata;   // Save incase of a re-transmission
-
-  if(verbose && 0)
-    std::cout << "[CMAC] Transmitted packet\n";
 }
 
 // Invoked when we get a response that a packet was written to the USRP USB bus,
@@ -548,7 +499,7 @@ void cmac::build_and_send_ack(long dst)
                           uvec,                           // With data.
                           tx_properties);                 // It's an ACK!
 
-  d_gmsk_cs->send(s_cmd_mod, pdata);    // Modulate the ACK
+  d_phy_cs->send(s_cmd_mod, pdata);    // Modulate the ACK
   
   d_state = SEND_ACK;                   // Switch MAC states
   
