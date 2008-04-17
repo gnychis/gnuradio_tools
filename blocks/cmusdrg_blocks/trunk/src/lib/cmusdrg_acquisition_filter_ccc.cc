@@ -39,7 +39,7 @@ cmusdrg_make_acquisition_filter_ccc(long threshold, long window)
 }
 
 cmusdrg_acquisition_filter_ccc::cmusdrg_acquisition_filter_ccc (long threshold, long window)
-  : gr_block ("cmusdrg_acquisition_filter_ccc",
+  : gr_sync_block ("cmusdrg_acquisition_filter_ccc",
       gr_make_io_signature(2, 2, sizeof(gr_complex)),
       gr_make_io_signature(2, 2, sizeof(gr_complex))),
     d_threshold(threshold),
@@ -53,8 +53,9 @@ cmusdrg_acquisition_filter_ccc::~cmusdrg_acquisition_filter_ccc()
 
 float
 cmusdrg_acquisition_filter_ccc::compute_magnitude(gr_complex input)
-
-  return sqrt(input.real()*input.real() + input.imag()*input.imag());
+{
+  float result = sqrt(input.real()*input.real() + input.imag()*input.imag());
+  return result;
 }
 
 int

@@ -32,7 +32,7 @@ typedef boost::shared_ptr<cmusdrg_acquisition_filter_ccc> cmusdrg_acquisition_fi
 cmusdrg_acquisition_filter_ccc_sptr
 cmusdrg_make_acquisition_filter_ccc (long threshold, long window);
 
-class cmusdrg_acquisition_filter_ccc : public gr_block
+class cmusdrg_acquisition_filter_ccc : public gr_sync_block
 {
  private:
   friend cmusdrg_acquisition_filter_ccc_sptr cmusdrg_make_acquisition_filter_ccc (long threshold, long window);
