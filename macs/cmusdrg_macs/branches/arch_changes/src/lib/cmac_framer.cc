@@ -121,6 +121,7 @@ void cmac::framer_calculate_timestamp(unsigned long timestamp, int bit, int nbit
 void cmac::framer_found_sync() 
 {
   d_framer_state = WAIT_HEADER;  // Wait for header number of bits.
+  d_squelch=false;        // No need to squelch on an incoming frame
   d_hdr_bits.clear();     // Prepare header bits
 
   if(verbose)
@@ -169,6 +170,7 @@ void cmac::framer_have_header()
   if(!(d_cframe_hdr.payload_len>0) || !(d_cframe_hdr.payload_len <= (MAX_FRAME_SIZE-max_frame_payload()))) {
     if(verbose)
       std::cout << "[CMAC] Improper payload detected\n";
+    d_squelch=true;           // start to squelch again
     d_framer_state = SYNC_SEARCH;    // On failure, let's go back to looking for the framing bits
     return;
   }
@@ -239,6 +241,7 @@ void cmac::framer_have_frame(pmt_t uvec)
  exit_framer_have_frame:
   incoming_frame(pmt_list2(uvec, pkt_properties));
   d_payload_bits.clear();   // Clear the payload bits
+  d_squelch=true;           // start to squelch again
   d_framer_state = SYNC_SEARCH;    // Go back to searching for the framing bits
 
   if(verbose)

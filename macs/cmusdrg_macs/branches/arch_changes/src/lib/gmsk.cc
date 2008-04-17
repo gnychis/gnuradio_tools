@@ -34,6 +34,8 @@ std::ofstream cr_ofile;
 std::ofstream sl_ofile;
 std::ofstream corr_ofile;
 
+bool d_squelch;
+
 long t_samples;
 
 gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
@@ -46,7 +48,6 @@ gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   d_omega_relative_limit(0.005),
   d_amplitude(12000),
   d_low_pass(false),
-  d_squelch(true),
   d_corr_thresh(12),
   d_fmdemod_last(0),
   d_disk_write(false),
@@ -59,6 +60,8 @@ gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   sl_ofile.open("slicer.dat", std::ios::binary|std::ios::out);
   corr_ofile.open("corr.dat", std::ios::binary|std::ios::out);
   }
+
+  d_squelch = true;
 
   t_samples =0;
 

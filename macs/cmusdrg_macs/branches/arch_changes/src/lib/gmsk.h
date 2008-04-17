@@ -71,6 +71,8 @@ static const std::string PREAMBLE = "1010010011110010";
 static const std::string FRAMING_BITS = "1010110011011101101001001110001011110010100011000010000011111100";
 static const std::string POSTAMBLE = "1010010011110010";
 
+extern bool d_squelch;
+
 class gmsk;
 
 class gmsk : public mb_mblock
@@ -94,7 +96,6 @@ class gmsk : public mb_mblock
   long d_amplitude;
 
   bool d_low_pass;
-  bool d_squelch;
 
   long d_corr_thresh;
 

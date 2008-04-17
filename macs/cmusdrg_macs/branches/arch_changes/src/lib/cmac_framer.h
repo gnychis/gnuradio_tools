@@ -25,6 +25,7 @@
 #include <string>
 #include <boost/crc.hpp>
 #include <boost/cstdint.hpp>
+#include <gmsk.h>
 
 // Lengths in bits of our fields used for timestamp calculation
 static const long PREAMBLE_LEN=16;

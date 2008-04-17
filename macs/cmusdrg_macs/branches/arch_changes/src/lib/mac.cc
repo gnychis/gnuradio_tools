@@ -87,8 +87,8 @@ void mac::handle_message(mb_message_sptr msg)
       
       if(pmt_eq(event, s_response_mod)) {
         transmit_pkt(data);                         // Data done being mod'ed
+        return;
       }
-      return;
     }
     
     handle_mac_message(msg);
