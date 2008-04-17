@@ -60,8 +60,8 @@ ourlib_LTLIBRARIES = _cmusdrg.la
 
 # These are the source files that go into the shared library
 _cmusdrg_la_SOURCES = 			\
-	cmusdrg.cc			
-#	cmusdrg_mfilteropt_ccc.cc	
+	cmusdrg.cc			\
+	cmusdrg_acquisition_filter_ccc.cc	
 
 # magic flags
 _cmusdrg_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
