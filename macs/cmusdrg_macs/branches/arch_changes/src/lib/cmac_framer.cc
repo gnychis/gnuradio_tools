@@ -23,21 +23,26 @@
 #include <config.h>
 #endif
 
-#include <gmsk.h>
-#include <gmsk_framer.h>
+#include <cmac.h>
+#include <cmac_framer.h>
 
 static bool verbose = false;
 
 // The framer will use the special flag bit to detect the incoming frame.  To be
 // clean this should be a new block, but for performance reasons I'm keeping it
 // here.
-void gmsk::framer(const std::vector<unsigned char> input, unsigned long timestamp)
+void cmac::framer(const std::vector<unsigned char> input, pmt_t demod_properties)
 {
   int bit=0;
   int nbits=(int)input.size();
 
+  // Properties are set in the physical layer framing code
+  long timestamp = pmt_to_long(pmt_dict_ref(demod_properties, pmt_intern("timestamp"), PMT_NIL));
+  long sps = pmt_to_long(pmt_dict_ref(demod_properties, pmt_intern("sps"), PMT_NIL));
+  long bps = pmt_to_long(pmt_dict_ref(demod_properties, pmt_intern("bps"), PMT_NIL));
+
   while(bit < nbits) {
-    switch(d_state)
+    switch(d_framer_state)
     {
       //-------------------------- SYNC_SEARCH -----------------------------//
       // The gr_correlate_access_code block sets the second bit of its output
@@ -46,7 +51,7 @@ void gmsk::framer(const std::vector<unsigned char> input, unsigned long timestam
       // bits.
       case SYNC_SEARCH:
         if(input[bit] & 0x2) {    // Start of frame marker
-          framer_calculate_timestamp(timestamp, bit, nbits);
+          framer_calculate_timestamp(timestamp, bit, nbits, sps, bps);
           framer_found_sync();
           break;
         }
@@ -96,11 +101,11 @@ void gmsk::framer(const std::vector<unsigned char> input, unsigned long timestam
 // The timestamp corresponds to the last sample in the USB block, so we need to
 // backcalculate from the total number of bits to the current bit, and then
 // backwards further to the synchronization bits.
-void gmsk::framer_calculate_timestamp(unsigned long timestamp, int bit, int nbits)
+void cmac::framer_calculate_timestamp(unsigned long timestamp, int bit, int nbits, long sps, long bps)
 {
   // The number of clock ticks for a single bit is how many samples are needed
   // to construct a single bit, and the spacing between samples (decimation).
-  int clock_ticks_per_bit = (d_usrp_decim * d_samples_per_symbol) / BITS_PER_SYMBOL;
+  int clock_ticks_per_bit = (d_usrp_decim * sps) / bps;
 
   // The time of the start of the frame header (not transmission)
   unsigned long start_of_frame = 
@@ -113,44 +118,43 @@ void gmsk::framer_calculate_timestamp(unsigned long timestamp, int bit, int nbit
 }
 
 // We have found the framing bits and are now synchronized.
-void gmsk::framer_found_sync() 
+void cmac::framer_found_sync() 
 {
-  d_state = WAIT_HEADER;  // Wait for header number of bits.
-  d_squelch=false;        // No need to squelch on an incoming frame
+  d_framer_state = WAIT_HEADER;  // Wait for header number of bits.
   d_hdr_bits.clear();     // Prepare header bits
 
   if(verbose)
-    std::cout << "[GMSK] Found framing bits found\n";
+    std::cout << "[CMAC] Found framing bits found\n";
 }
 
 // A new bit has arrived, place it in a queue and we will pack all of the bits
 // layer into a buffer.
-void gmsk::framer_new_header_bit(unsigned char bit)
+void cmac::framer_new_header_bit(unsigned char bit)
 {
   d_hdr_bits.push_back(bit);
 
   if(d_hdr_bits.size() == (sizeof(d_frame_hdr_t)*8))
-    d_state = HAVE_HEADER;
+    d_framer_state = HAVE_HEADER;
 }
 
 // A new payload bit has arrived.
-void gmsk::framer_new_payload_bit(unsigned char bit)
+void cmac::framer_new_payload_bit(unsigned char bit)
 {
   d_payload_bits.push_back(bit);
 
   if((int)d_payload_bits.size() == (d_cframe_hdr.payload_len * 8)) {
-    d_state = HAVE_PAYLOAD;
+    d_framer_state = HAVE_PAYLOAD;
     if(verbose)
-      std::cout << "[GMSK] Have payload\n";
+      std::cout << "[CMAC] Have payload\n";
   }
 }
 
-void gmsk::framer_have_header()
+void cmac::framer_have_header()
 {
   unsigned char *frame_bp = (unsigned char *)&d_cframe_hdr;
 
   if(verbose)
-    std::cout << "[GMSK] Header's worth of bits\n";
+    std::cout << "[CMAC] Header's worth of bits\n";
 
   // Mask out the actual bits from the 'unsigned char' representation and stuff
   // them into the frame.
@@ -164,14 +168,13 @@ void gmsk::framer_have_header()
   // that it's less than the maximum frame size
   if(!(d_cframe_hdr.payload_len>0) || !(d_cframe_hdr.payload_len <= (MAX_FRAME_SIZE-max_frame_payload()))) {
     if(verbose)
-      std::cout << "[GMSK] Improper payload detected\n";
-    d_squelch=true;           // start to squelch again
-    d_state = SYNC_SEARCH;    // On failure, let's go back to looking for the framing bits
+      std::cout << "[CMAC] Improper payload detected\n";
+    d_framer_state = SYNC_SEARCH;    // On failure, let's go back to looking for the framing bits
     return;
   }
 
   if(verbose)
-    std::cout << "[GMSK] Have header:"
+    std::cout << "[CMAC] Have header:"
               << "\n        src: " << d_cframe_hdr.src_addr
               << "\n        dst: " << d_cframe_hdr.dst_addr
               << "\n        payload_len: " << d_cframe_hdr.payload_len
@@ -179,10 +182,10 @@ void gmsk::framer_have_header()
               << "\n        ack: " << d_cframe_hdr.ack
               << std::endl;
 
-  d_state = WAIT_PAYLOAD;   // On success, wait for payload_len worth of bits
+  d_framer_state = WAIT_PAYLOAD;   // On success, wait for payload_len worth of bits
 }
 
-void gmsk::framer_have_payload()
+void cmac::framer_have_payload()
 {
   pmt_t uvec;
   char *vdata;
@@ -201,7 +204,7 @@ void gmsk::framer_have_payload()
 }
 
 
-void gmsk::framer_have_frame(pmt_t uvec)
+void cmac::framer_have_frame(pmt_t uvec)
 {
   pmt_t pkt_properties;
   pkt_properties = pmt_make_dict();
@@ -234,12 +237,11 @@ void gmsk::framer_have_frame(pmt_t uvec)
   pmt_dict_set(pkt_properties, pmt_intern("ack"), PMT_F);     // Not an ACK
 
  exit_framer_have_frame:
-  d_cs->send(s_response_demod, pmt_list2(uvec, pkt_properties));
+//  d_cs->send(s_response_demod, pmt_list2(uvec, pkt_properties));
   d_payload_bits.clear();   // Clear the payload bits
-  d_squelch=true;           // start to squelch again
-  d_state = SYNC_SEARCH;    // Go back to searching for the framing bits
+  d_framer_state = SYNC_SEARCH;    // Go back to searching for the framing bits
 
   if(verbose)
-    std::cout << "[GMSK] Pushing up demoded data\n";
+    std::cout << "[CMAC] Pushing up demoded data\n";
 }
 

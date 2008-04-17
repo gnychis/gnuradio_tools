@@ -75,16 +75,6 @@ class gmsk;
 
 class gmsk : public mb_mblock
 {
-  d_frame_hdr_t d_frame_hdr;
-
-  enum state_t {
-    SYNC_SEARCH,
-    WAIT_HEADER,
-    HAVE_HEADER,
-    WAIT_PAYLOAD,
-    HAVE_PAYLOAD
-  };
-  state_t	d_state;
 
   // Ports used for applications to connect to this block
   mb_port_sptr		  d_cs;
@@ -107,7 +97,6 @@ class gmsk : public mb_mblock
   bool d_squelch;
 
   long d_corr_thresh;
-  unsigned long d_frame_timestamp;
 
   long d_usrp_decim;
   long d_usrp_interp;
@@ -127,9 +116,6 @@ class gmsk : public mb_mblock
   std::queue<gr_complex>  d_filterq;
   std::queue<float>       d_crq;
 
-  std::vector<unsigned char> d_hdr_bits;
-  std::vector<unsigned char> d_payload_bits;
-
   std::vector<float> d_gf_history;
   std::vector<gr_complex> d_fm_history;
 
@@ -146,8 +132,6 @@ class gmsk : public mb_mblock
 
   bool d_disk_write;
 
-  d_frame_hdr_t d_cframe_hdr;
-
   long d_nframes_recvd;
   
  public:
@@ -159,12 +143,6 @@ class gmsk : public mb_mblock
   }
   static int samples_per_symbol() {
     return(SAMPLES_PER_SYMBOL);
-  }
-  static int max_frame_size() {
-    return(MAX_FRAME_SIZE);
-  }
-  static int max_frame_payload() {
-    return(sizeof(d_frame_hdr_t));
   }
 
  private:

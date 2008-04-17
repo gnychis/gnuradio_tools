@@ -31,7 +31,8 @@ static pmt_t s_timeout = pmt_intern("%timeout");
 
 cmac::cmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   : mac(rt, instance_name, user_arg),
-  d_state(INIT_CMAC)
+  d_state(INIT_CMAC),
+  d_framer_state(SYNC_SEARCH)
 {
   define_mac_ports();   // Initialize ports for message passing
   d_local_address = pmt_to_long(pmt_nth(1, user_arg));

@@ -19,10 +19,12 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef INCLUDED_GMSK_FRAMER_H
-#define INCLUDED_GMSK_FRAMER_H
+#ifndef INCLUDED_CMAC_FRAMER_H
+#define INCLUDED_CMAC_FRAMER_H
 
 #include <string>
+#include <boost/crc.hpp>
+#include <boost/cstdint.hpp>
 
 // Lengths in bits of our fields used for timestamp calculation
 static const long PREAMBLE_LEN=16;
