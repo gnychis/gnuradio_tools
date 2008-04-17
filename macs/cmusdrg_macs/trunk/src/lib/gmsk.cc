@@ -34,11 +34,12 @@ std::ofstream cr_ofile;
 std::ofstream sl_ofile;
 std::ofstream corr_ofile;
 
+bool d_squelch;
+
 long t_samples;
 
 gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(rt, instance_name, user_arg),
-  d_state(SYNC_SEARCH),
   d_samples_per_symbol(SAMPLES_PER_SYMBOL),
   d_bt(0.35),
   d_gain_mu(0.175),
@@ -47,7 +48,6 @@ gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   d_omega_relative_limit(0.005),
   d_amplitude(12000),
   d_low_pass(false),
-  d_squelch(true),
   d_corr_thresh(12),
   d_fmdemod_last(0),
   d_disk_write(false),
@@ -60,6 +60,8 @@ gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   sl_ofile.open("slicer.dat", std::ios::binary|std::ios::out);
   corr_ofile.open("corr.dat", std::ios::binary|std::ios::out);
   }
+
+  d_squelch = true;
 
   t_samples =0;
 
@@ -169,8 +171,7 @@ gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
 
   d_slicer = gr_make_binary_slicer_fb();
 
-  // Setup the correlation block (bit sequence finder).  Most of the constants
-  // are defined within gmsk_framer.h
+  // Setup the correlation block (bit sequence finder). 
   d_preamble = PREAMBLE;                // Preamble to help synchronization
   d_access_code = FRAMING_BITS;         // Framing bits to detect frame
   d_postamble = POSTAMBLE;              // Post amble to pad end of frame
@@ -226,9 +227,8 @@ void gmsk::mod(pmt_t data) {
 
   // Frame properties
   pmt_t invocation_handle = pmt_nth(0, data);
-  long src = pmt_to_long(pmt_nth(1, data));
-  long dst = pmt_to_long(pmt_nth(2, data));
-  pmt_t pkt_properties = pmt_nth(4, data);
+  const void *payload = pmt_uniform_vector_elements(pmt_nth(1, data), n_bytes);
+  pmt_t pkt_properties = pmt_nth(1, data);
 
   // Access code and pre-amble
   std::vector<unsigned char>    b_access_code(d_access_code.length()/8);
@@ -238,57 +238,21 @@ void gmsk::mod(pmt_t data) {
   std::vector<unsigned char>    b_postamble(d_postamble.length()/8);
   conv_to_binary(d_postamble, b_postamble);
 
-  const void *payload = pmt_uniform_vector_elements(pmt_nth(3, data), n_bytes);
-
-  if(n_bytes + sizeof(d_frame_hdr_t) > (int)MAX_FRAME_SIZE) {
-    std::cout << "[GMSK] Data is greater than MAX frame: " 
-              << n_bytes + sizeof(d_frame_hdr_t) 
-              << " with n_bytes: " << n_bytes 
-              << " max: " << gmsk::max_frame_payload() << std::endl;
-    assert(0);  // FIXME: return proper error
-    return;
-  }
-  
   // Take data from file
   std::ofstream nrz_ofile;
   std::ofstream gf_ofile;
   std::ofstream fm_ofile;
 
-  // Frame header
-  d_frame_hdr_t frame_hdr;
-  memset(&frame_hdr, '\0', sizeof(frame_hdr));
-  frame_hdr.src_addr = src;
-  frame_hdr.dst_addr = dst;
-  frame_hdr.payload_len = n_bytes;
-
-  // Compute the CRC using boost library
-  boost::crc_32_type bcrc;
-  bcrc.process_bytes(payload, n_bytes);
-  frame_hdr.crc = bcrc.checksum();
-
-  // Set ACK if specified
-  if(pmt_is_dict(pkt_properties)) {
-    if(pmt_t ack = pmt_dict_ref(pkt_properties,
-                                pmt_intern("ack"),
-                                PMT_NIL)) {
-      if(pmt_eqv(ack, PMT_T))
-        frame_hdr.ack = true;
-      else
-        frame_hdr.ack = false;
-    }
-  }
-
   // The full premod data is the preamble (to help with clock synchronization),
   // the start of frame bits (access code), the frame header, and the payload.
-  long dsize = b_preamble.size()+b_access_code.size()+sizeof(d_frame_hdr_t)+n_bytes+b_postamble.size();
+  long dsize = b_preamble.size()+b_access_code.size()+n_bytes+b_postamble.size();
   unsigned char *full_premod_data = (unsigned char *) calloc(1, dsize);
 
   // Copy in everything
   memcpy(full_premod_data, &b_preamble[0], 1);
   memcpy(full_premod_data+b_preamble.size(), &b_access_code[0], b_access_code.size());
-  memcpy(full_premod_data+b_preamble.size()+b_access_code.size(), &frame_hdr, sizeof(frame_hdr));
-  memcpy(full_premod_data+b_preamble.size()+b_access_code.size()+sizeof(frame_hdr), payload, n_bytes);
-  memcpy(full_premod_data+b_preamble.size()+b_access_code.size()+sizeof(frame_hdr)+n_bytes, &b_postamble[0], 1);
+  memcpy(full_premod_data+b_preamble.size()+b_access_code.size(), payload, n_bytes);
+  memcpy(full_premod_data+b_preamble.size()+b_access_code.size()+n_bytes, &b_postamble[0], 1);
 
   // Where to store the NRZ output
   long bts_nout = dsize*BITS_PER_BYTE;
@@ -595,7 +559,14 @@ void gmsk::demod(pmt_t data)
     std::cout << " t_samples: " << t_samples << std::endl;
 
   // Frame!
-  framer(corr_output, timestamp);
+  pmt_t demod_properties = pmt_make_dict();
+  pmt_dict_set(demod_properties, pmt_intern("timestamp"), pmt_from_long(timestamp));
+  pmt_dict_set(demod_properties, pmt_intern("sps"), pmt_from_long(d_samples_per_symbol));
+  pmt_dict_set(demod_properties, pmt_intern("bps"), pmt_from_long(BITS_PER_SYMBOL));
+  // RSSI
+
+  pmt_t p_corr_output = pmt_make_any(corr_output);
+  d_cs->send(s_response_demod, pmt_list2(p_corr_output, demod_properties));
 
 }
 

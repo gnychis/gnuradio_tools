@@ -19,19 +19,18 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef INCLUDED_GMSK_FRAMER_H
-#define INCLUDED_GMSK_FRAMER_H
+#ifndef INCLUDED_CMAC_FRAMER_H
+#define INCLUDED_CMAC_FRAMER_H
 
 #include <string>
+#include <boost/crc.hpp>
+#include <boost/cstdint.hpp>
+#include <gmsk.h>
 
 // Lengths in bits of our fields used for timestamp calculation
 static const long PREAMBLE_LEN=16;
 static const long FRAMING_BITS_LEN=64;
 static const long POSTAMBLE_LEN=16;
-
-static const std::string PREAMBLE = "1010010011110010";
-static const std::string FRAMING_BITS = "1010110011011101101001001110001011110010100011000010000011111100";
-static const std::string POSTAMBLE = "1010010011110010";
 
 static const int MAX_FRAME_SIZE = 1500;
 

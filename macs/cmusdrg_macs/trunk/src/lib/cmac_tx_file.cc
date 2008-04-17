@@ -38,7 +38,6 @@
 #include <fstream>
 #include <sys/time.h>
 
-#include <gmsk.h>
 #include <cmac.h>
 #include <cmac_symbols.h>
 
@@ -238,7 +237,7 @@ cmac_tx_file::build_and_send_next_frame()
   d_cs->send(s_cmd_rx_disable, pmt_list1(PMT_NIL));
 
   // Let's read in as much as possible to fit in a frame
-  char data[MAX_FRAME_SIZE-gmsk::max_frame_payload()];
+  char data[MAX_FRAME_SIZE-cmac::max_frame_payload()];
   d_ifile.read((char *)&data[0], sizeof(data));
 
   // Use gcount() and test if end of stream was met

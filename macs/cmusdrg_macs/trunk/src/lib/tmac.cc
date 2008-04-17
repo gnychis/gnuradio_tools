@@ -364,7 +364,7 @@ void tmac::calculate_parameters()
   d_clock_ticks_per_bit = (d_usrp_decim * gmsk::samples_per_symbol()) / BITS_PER_SYMBOL;
 
   // The slot time is fixed to the maximum frame time over the air.
-  d_slot_time = (gmsk::max_frame_size() * BITS_PER_BYTE) * d_clock_ticks_per_bit;
+  d_slot_time = (cmac::max_frame_size() * BITS_PER_BYTE) * d_clock_ticks_per_bit;
 
   // The local slot offset depends on the local address and slot/guard times.
   // The local address defines the node's slot assignment.  Slot 0 is for the

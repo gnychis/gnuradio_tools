@@ -63,26 +63,20 @@
 #include <boost/crc.hpp>
 #include <boost/cstdint.hpp>
 
-#include <gmsk_framer.h>
-
 static const int BITS_PER_BYTE = 8;
 static const int BITS_PER_SYMBOL = 1;
 static const int SAMPLES_PER_SYMBOL = 2;
+
+static const std::string PREAMBLE = "1010010011110010";
+static const std::string FRAMING_BITS = "1010110011011101101001001110001011110010100011000010000011111100";
+static const std::string POSTAMBLE = "1010010011110010";
+
+extern bool d_squelch;
 
 class gmsk;
 
 class gmsk : public mb_mblock
 {
-  d_frame_hdr_t d_frame_hdr;
-
-  enum state_t {
-    SYNC_SEARCH,
-    WAIT_HEADER,
-    HAVE_HEADER,
-    WAIT_PAYLOAD,
-    HAVE_PAYLOAD
-  };
-  state_t	d_state;
 
   // Ports used for applications to connect to this block
   mb_port_sptr		  d_cs;
@@ -102,10 +96,8 @@ class gmsk : public mb_mblock
   long d_amplitude;
 
   bool d_low_pass;
-  bool d_squelch;
 
   long d_corr_thresh;
-  unsigned long d_frame_timestamp;
 
   long d_usrp_decim;
   long d_usrp_interp;
@@ -125,9 +117,6 @@ class gmsk : public mb_mblock
   std::queue<gr_complex>  d_filterq;
   std::queue<float>       d_crq;
 
-  std::vector<unsigned char> d_hdr_bits;
-  std::vector<unsigned char> d_payload_bits;
-
   std::vector<float> d_gf_history;
   std::vector<gr_complex> d_fm_history;
 
@@ -144,8 +133,6 @@ class gmsk : public mb_mblock
 
   bool d_disk_write;
 
-  d_frame_hdr_t d_cframe_hdr;
-
   long d_nframes_recvd;
   
  public:
@@ -158,12 +145,6 @@ class gmsk : public mb_mblock
   static int samples_per_symbol() {
     return(SAMPLES_PER_SYMBOL);
   }
-  static int max_frame_size() {
-    return(MAX_FRAME_SIZE);
-  }
-  static int max_frame_payload() {
-    return(sizeof(d_frame_hdr_t));
-  }
 
  private:
   void define_ports();
@@ -171,15 +152,6 @@ class gmsk : public mb_mblock
   void convolve(float X[],float Y[], float Z[], int lenx, int leny);
   void demod(pmt_t data);
   void conv_to_binary(std::string code, std::vector<unsigned char> &output);
-
-  void framer(const std::vector<unsigned char> input, unsigned long timestamp);
-  void framer_calculate_timestamp(unsigned long timestamp, int bit, int nbits);
-  void framer_found_sync();
-  void framer_new_header_bit(unsigned char bit);
-  void framer_new_payload_bit(unsigned char bit);
-  void framer_have_header();
-  void framer_have_payload();
-  void framer_have_frame(pmt_t uvec);
 };
 
-#endif // INCLUDED_CMAC_H
+#endif // INCLUDED_GMSK_H

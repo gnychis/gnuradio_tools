@@ -45,8 +45,8 @@ LOCAL_IFILES = 				\
 	$(top_srcdir)/src/lib/cmusdrg.i				
 
 EXTRA_DIST = 		\
-	cmac.mbh			\
-	tmac.mbh
+	cmac.mbh			
+#	tmac.mbh
 
 #GUILE_LOAD_PATH="../scheme/pmt:../scheme/mblock" /usr/bin/guile -e main -s ../scheme/mblock/gnuradio/compile-mbh.scm ./cmac.mbh cmac_mbh.cc
 
@@ -60,14 +60,14 @@ GUILE=/usr/bin/guile -e main -s $(top_srcdir)/src/scheme/mblock/gnuradio/compile
 BUILT_SOURCES = 			\
 	cmusdrg.cc			\
 	cmusdrg.py			\
-	cmac_mbh.cc			\
-	tmac_mbh.cc
+	cmac_mbh.cc			
+#	tmac_mbh.cc
 
 cmac_mbh.cc : cmac.mbh
 	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/cmac.mbh $(srcdir)/cmac_mbh.cc
 
-tmac_mbh.cc : tmac.mbh
-	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/tmac.mbh $(srcdir)/tmac_mbh.cc
+#tmac_mbh.cc : tmac.mbh
+#	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/tmac.mbh $(srcdir)/tmac_mbh.cc
 
 # This gets cmusdrg.py installed in the right place
 ourpython_PYTHON =			\
@@ -81,14 +81,14 @@ _cmusdrg_la_SOURCES = 			\
 	cmusdrg_mblock_bootstrap.cc	\
 	mac.cc \
 	cmac.cc	\
-	tmac.cc \
 	gmsk.cc	\
-	gmsk_framer.cc \
+	cmac_framer.cc \
 	cmac_mbh.cc	\
-	tmac_mbh.cc \
 	gmsk_mbh.cc	\
 	cmac_tx_file.cc	\
 	cmac_rx_file.cc
+#	tmac_mbh.cc 
+#	tmac.cc 
 
 # magic flags
 _cmusdrg_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
@@ -112,9 +112,9 @@ grinclude_HEADERS =			\
 	cmusdrg_mblock_bootstrap.h	\
 	mac.h \
 	cmac.h	\
-	tmac.h	\
 	gmsk.h	\
-	gmsk_framer.h
+	cmac_framer.h
+#	tmac.h	
 
 
 # These swig headers get installed in ${prefix}/include/gnuradio/swig

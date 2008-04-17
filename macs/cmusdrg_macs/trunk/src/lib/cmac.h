@@ -44,6 +44,7 @@
 
 #include <cmac_symbols.h>
 #include <gmsk_symbols.h>
+#include <cmac_framer.h>
 
 #include <mac.h>
 
@@ -59,12 +60,19 @@ class cmac : public mac
     IDLE,
   };
   cmac_state_t	d_state;
+  
+  enum state_t {
+    SYNC_SEARCH,
+    WAIT_HEADER,
+    HAVE_HEADER,
+    WAIT_PAYLOAD,
+    HAVE_PAYLOAD
+  };
+  state_t	d_framer_state;
+
 
   // Ports used for applications to connect to this block
   mb_port_sptr		  d_tx, d_rx, d_cs;
-
-  // Ports to connect to gmsk (us)
-  mb_port_sptr      d_gmsk_cs;
 
   pmt_t d_ack_timeout;
   pmt_t d_last_frame;
@@ -76,6 +84,13 @@ class cmac : public mac
 
   // Local user address
   long d_local_address;
+
+  // Framer
+  d_frame_hdr_t d_frame_hdr;
+  d_frame_hdr_t d_cframe_hdr;
+  std::vector<unsigned char> d_hdr_bits;
+  std::vector<unsigned char> d_payload_bits;
+  unsigned long d_frame_timestamp;
   
  protected:
   void handle_mac_message(mb_message_sptr msg);   // overriding MAC method
@@ -84,6 +99,12 @@ class cmac : public mac
  public:
   cmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg);
   ~cmac();
+  static int max_frame_size() {
+    return(MAX_FRAME_SIZE);
+  }
+  static int max_frame_payload() {
+    return(sizeof(d_frame_hdr_t));
+  }
 
  private:
   // CMAC initialization
@@ -91,8 +112,8 @@ class cmac : public mac
   void initialize_cmac();
 
   // Crucial CSMA methods
-  void transmit_pkt(pmt_t data);
   void packet_transmitted(pmt_t data);
+  void incoming_data(pmt_t data);
   void incoming_frame(pmt_t data);
   void build_and_send_ack(long dst);
   void handle_ack(long src, long dst);
@@ -104,7 +125,17 @@ class cmac : public mac
   void set_carrier_sense_deadline(pmt_t data);
   void set_carrier_sense_threshold(pmt_t data);
   bool carrier_sense_pkt(pmt_t pkt_properties);
- 
+
+  // Framer
+  void framer(const std::vector<unsigned char> input, pmt_t demod_properties);
+  void framer_calculate_timestamp(unsigned long timestamp, int bit, int nbits, long sps, long bps);
+  void framer_found_sync();
+  void framer_new_header_bit(unsigned char bit);
+  void framer_new_payload_bit(unsigned char bit);
+  void framer_have_header();
+  void framer_have_payload();
+  void framer_have_frame(pmt_t uvec);
+  void build_frame(pmt_t data);
 };
 
 #endif // INCLUDED_CMAC_H
