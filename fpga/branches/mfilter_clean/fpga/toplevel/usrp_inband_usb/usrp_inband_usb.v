@@ -131,6 +131,7 @@ module usrp_inband_usb
 wire [1:0] tx_underrun;
 wire cwrite;
 wire [2:0] cstate;
+wire mf_match;
 
 `ifdef TX_IN_BAND
  	tx_buffer_inband tx_buffer
@@ -152,7 +153,7 @@ wire [2:0] cstate;
        .reg_data_out(reg_data_out),
        .reg_data_in(reg_data_in),
        .reg_io_enable(reg_io_enable),
-       .debugbus(tx_debugbus),
+       .debugbus(tx_debugbus), .mf_match(mf_match),
        .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), 
        .rssi_3(rssi_3), .threshhold(rssi_threshhold), .rssi_wait(rssi_wait),
        .stop(stop), .stop_time(stop_time),
@@ -275,7 +276,7 @@ wire [2:0] cstate;
        .rx_databus(rx_databus),
        .rx_WR_done(rx_WR_done),
        .rx_WR_enabled(rx_WR_enabled),
-       .debugbus(rx_debugbus),
+       .debugbus(rx_debugbus), .mf_match(mf_match),
        .rssi_0(rssi_0), .rssi_1(rssi_1), .rssi_2(rssi_2), .rssi_3(rssi_3),
        .tx_underrun(tx_underrun), .cwrite(cwrite), .cstate(cstate), 
        .cdata(reg_data_in));

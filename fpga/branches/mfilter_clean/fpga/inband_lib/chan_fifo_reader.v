@@ -1,7 +1,7 @@
 module chan_fifo_reader 
    (reset, tx_clock, tx_strobe, timestamp_clock, samples_format,
     fifodata, pkt_waiting, rdreq, skip, tx_q, tx_i,
-    underrun, tx_empty, debug, rssi, threshhold, rssi_wait) ;
+    underrun, tx_empty, debug, rssi, threshhold, rssi_wait, mf_match) ;
 
    input   wire                     reset ;
    input   wire                     tx_clock ;
@@ -19,6 +19,7 @@ module chan_fifo_reader
    input   wire		     [31:0] rssi;
    input   wire		     [31:0] threshhold;
    input   wire		     [31:0] rssi_wait;
+   input   wire                     mf_match;
 
    output wire [14:0] debug;
    assign debug = {7'd0, rdreq, skip, reader_state, pkt_waiting, tx_strobe, tx_clock};
@@ -32,14 +33,16 @@ module chan_fifo_reader
    parameter HEADER         =     3'd1;
    parameter TIMESTAMP      =     3'd2;
    parameter WAIT           =     3'd3;
-   parameter WAITSTROBE     =     3'd4;
-   parameter SEND           =     3'd5;
+   parameter MF_WAIT        =     3'd4;
+   parameter WAITSTROBE     =     3'd5;
+   parameter SEND           =     3'd6;
 
    // Header format
    `define PAYLOAD                  8:2
    `define ENDOFBURST               27
    `define STARTOFBURST             28
    `define RSSI_FLAG                26
+   `define MF_FLAG                  25
 	
 
    /* State registers */
@@ -51,6 +54,7 @@ module chan_fifo_reader
    reg                              burst;
    reg                              trash;
    reg                              rssi_flag;
+   reg                              mf_flag;
    reg			     [31:0] time_wait;
    
    always @(posedge tx_clock)
@@ -68,6 +72,7 @@ module chan_fifo_reader
            trash <= 0;
            rssi_flag <= 0;
            time_wait <= 0;
+           mf_flag   <= 0;
          end
        else 
          begin
@@ -101,6 +106,9 @@ module chan_fifo_reader
                        tx_empty <= 1 ;
                    
                    rssi_flag <= fifodata[`RSSI_FLAG]&fifodata[`STARTOFBURST];
+                   if (fifodata[`STARTOFBURST])
+                       mf_flag <= fifodata[`MF_FLAG];
+
                    //Check Start/End burst flag
                    if  (fifodata[`STARTOFBURST] == 1 
                        && fifodata[`ENDOFBURST] == 1)
@@ -128,7 +136,7 @@ module chan_fifo_reader
                TIMESTAMP: 
                  begin
                    timestamp <= fifodata;
-                   reader_state <= WAIT;
+                   reader_state <= (mf_flag) ? MF_WAIT : WAIT;
                    if (tx_strobe == 1)
                        tx_empty <= 1 ;
                    rdreq <= 0;
@@ -163,6 +171,12 @@ module chan_fifo_reader
                      end
                    else
                        reader_state <= WAIT;
+                 end
+ 
+               // Need to wait for match to be found
+               MF_WAIT:
+                 begin
+                   reader_state <= (mf_match) ? WAITSTROBE : MF_WAIT;
                  end
                  
                // Wait for the transmit chain to be ready

@@ -18,6 +18,7 @@ module tx_buffer_inband
     //input characteristic signals
     input wire [31:0] rssi_0, input wire [31:0] rssi_1, input wire [31:0] rssi_2, 
     input wire [31:0] rssi_3, input wire [31:0] rssi_wait, input wire [31:0] threshhold, 
+    input wire mf_match,
     output wire [1:0] tx_underrun, 
     //system stop
     output wire stop, output wire [15:0] stop_time,
@@ -126,7 +127,7 @@ module tx_buffer_inband
         .skip(chan_skip[i]), .rdreq(chan_rdreq[i]),
         .fifodata(chan_fifodata[i]), .pkt_waiting(chan_pkt_waiting[i]),
         .tx_empty(chan_txempty[i]), .rssi(rssi[i]), .debug(debug[i]),
-        .threshhold(threshhold), .rssi_wait(rssi_wait));	         
+        .threshhold(threshhold), .rssi_wait(rssi_wait), .mf_match(mf_match));	         
     end
     endgenerate
 

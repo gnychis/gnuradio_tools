@@ -25,7 +25,7 @@ module rx_buffer_inband
     input [31:0] serial_data, 
     input serial_strobe,
     output wire [15:0] debugbus,
-	
+    output wire mf_match,	
     //Connection with tx_inband
     input rx_WR,
     input [15:0] rx_databus,
@@ -205,10 +205,15 @@ module rx_buffer_inband
   assign chan_empty[NUM_CHAN] = cmd_empty | rx_WR_enabled;
   assign chan_fifodata = dataout[rd_select];
   assign chan_usedw = usedw[rd_select];
+
+
+  wire valid;
+  wire match;
   
   match_filter mf
    (.clk(rxclk), .reset(reset), .r_input(ch_0), .i_input(ch_1), 
     .rxstrobe(rxstrobe), .cdata(cdata),  .cstate(cstate), .cwrite(cwrite), 
-    .debugbus(debugbus), .valid(), .match());
-
+    .debugbus(debugbus), .valid(valid), .match(match));
+  
+  assign mf_match = match&valid;
 endmodule

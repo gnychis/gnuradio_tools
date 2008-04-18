@@ -10,7 +10,7 @@ module match_filter
 
     //setting up parameters  
     reg signed [15:0] threshhold;
-    reg [3:0] offset;
+    reg [4:0] offset;
     reg [2:0] residual;
    
     always @(posedge clk)
@@ -20,10 +20,10 @@ module match_filter
             offset          <= 0;
             residual        <= 3'd2;
           end
-        else if (cwrite && cstate == 0)
+        else if (cwrite && cstate == 3'd1)
           begin
             threshhold      <= cdata[31:15];
-            offset          <= cdata[6:3]; 
+            offset          <= cdata[7:3]; 
             residual        <= cdata[2:0] + 3'd2;
           end   
 
