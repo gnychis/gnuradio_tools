@@ -36,14 +36,20 @@ module match_filter_test();
       
       #40 reset = 1'b0;
 
-      file_co  = $fopen("coefficients.dat", "rb");
+      file_co  = $fopen("tx_cs.dat", "rb");
+
+      if(!file_co) begin
+        $display("Error opening coefficients\n");
+        $finish;
+      end
 
       repeat (7)
       begin
       @(posedge rxclk)
         cwrite = 1;
         cstate = cstate + 1;
-        $fscanf(file_co, "%h %h\n", cdata[31:16], cdata[15:0]);;
+        $fread(cdata[31:16], file_co);;
+        $fread(cdata[15:0], file_co);;
       end
 
       $fclose(file_co);
@@ -52,11 +58,16 @@ module match_filter_test();
         cwrite = 0;
 
       file_dat = $fopen("data.dat", "rb");
+      if(!file_dat) begin
+        $display("Error opening data\n");
+        $finish;
+      end
       
       while ($feof(file_dat) == 0)
         begin
           @(posedge rxstrobe)
-            $fscanf(file_dat, "%h %h\n", ch_0[31:16], ch_1[31:16]); 
+            $fread(ch_0[31:16], file_dat);
+            $fread(ch_1[31:15], file_dat);
         end 
       $fclose(file_dat);  
     end
