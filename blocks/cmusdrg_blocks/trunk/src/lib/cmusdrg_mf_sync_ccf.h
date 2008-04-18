@@ -23,7 +23,7 @@
 #ifndef INCLUDED_CMUSDRG_MF_SYNC_CCF_H
 #define INCLUDED_CMUSDRG_MF_SYNC_CCF_H
 
-#include <gr_sync_block.h>
+#include <gr_block.h>
 #include <gr_io_signature.h>
 #include <gr_fir_util.h>
 #include <gr_fir_ccc.h>
@@ -34,7 +34,7 @@ typedef boost::shared_ptr<cmusdrg_mf_sync_ccf> cmusdrg_mf_sync_ccf_sptr;
 cmusdrg_mf_sync_ccf_sptr
 cmusdrg_make_mf_sync_ccf (const std::vector<gr_complex> &coeffs);
 
-class cmusdrg_mf_sync_ccf : public gr_sync_block
+class cmusdrg_mf_sync_ccf : public gr_block
 {
  private:
   friend cmusdrg_mf_sync_ccf_sptr cmusdrg_make_mf_sync_ccf (const std::vector<gr_complex> &coeffs);
@@ -46,7 +46,10 @@ class cmusdrg_mf_sync_ccf : public gr_sync_block
  public:
   ~cmusdrg_mf_sync_ccf();
 
-  int work(int noutput_items,
+  void forecast(int noutput_items, gr_vector_int &ninput_items_required);
+
+  int general_work(int noutput_items,
+    gr_vector_int &ninput_items,
     gr_vector_const_void_star &input_items,
     gr_vector_void_star &output_items);
  

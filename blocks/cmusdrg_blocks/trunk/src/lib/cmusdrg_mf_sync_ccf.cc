@@ -44,20 +44,34 @@ cmusdrg_make_mf_sync_ccf(const std::vector<gr_complex> &coeffs)
 }
 
 cmusdrg_mf_sync_ccf::cmusdrg_mf_sync_ccf (const std::vector<gr_complex> &coeffs)
-  : gr_sync_block ("cmusdrg_mf_sync_ccf",
+  : gr_block ("cmusdrg_mf_sync_ccf",
       gr_make_io_signature(2, 2, sizeof(gr_complex)),
-      gr_make_io_signature(1, 1, sizeof(float)))
+      gr_make_io_signature(1, 1, sizeof(char)))
 {
 
   // Extract the coefficients
   for(int i=0; i<NFILTERS; i++) {
 
+    // Split the filters up into COEFFS_PER_CHIPSEQ
     std::vector<gr_complex> filter_coeffs;
     for(int j=i*COEFFS_PER_CHIPSEQ; j<((i+1)*COEFFS_PER_CHIPSEQ); j++)
       filter_coeffs.push_back(coeffs[j]);
     
+    // Need to time reverse the coefficients for the filter
+    std::reverse(filter_coeffs.begin(), filter_coeffs.end());
     filters[i] = gr_fir_util::create_gr_fir_ccc (filter_coeffs);
   }
+}
+
+// The number of input items required for a single output bit sequence is
+// the number of complex samples needed to represent a single chip sequence
+void
+cmusdrg_mf_sync_ccf::forecast (int noutput_items,
+                    gr_vector_int &ninput_items_required)
+{
+  unsigned ninputs = ninput_items_required.size ();
+  for (unsigned i = 0; i < ninputs; i++)
+    ninput_items_required[i] = noutput_items*COEFFS_PER_CHIPSEQ;
 }
 
 cmusdrg_mf_sync_ccf::~cmusdrg_mf_sync_ccf()
@@ -74,13 +88,16 @@ cmusdrg_mf_sync_ccf::compute_magnitude(gr_complex input)
 }
 
 int
-cmusdrg_mf_sync_ccf::work(int noutput_items,
+cmusdrg_mf_sync_ccf::general_work(int noutput_items,
+      gr_vector_int &ninput_items,
       gr_vector_const_void_star &input_items,
       gr_vector_void_star &output_items)
 {
   gr_complex *in1 = (gr_complex *) input_items[0];
   gr_complex *in2 = (gr_complex *) input_items[1];
-  float *out = (float *) output_items[0];
+  char *out = (char *) output_items[0];
+
+  consume_each(noutput_items);
 
   return noutput_items;
 }
