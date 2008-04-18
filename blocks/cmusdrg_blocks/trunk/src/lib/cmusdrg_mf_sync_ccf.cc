@@ -46,7 +46,8 @@ cmusdrg_make_mf_sync_ccf(const std::vector<gr_complex> &coeffs)
 cmusdrg_mf_sync_ccf::cmusdrg_mf_sync_ccf (const std::vector<gr_complex> &coeffs)
   : gr_block ("cmusdrg_mf_sync_ccf",
       gr_make_io_signature(2, 2, sizeof(gr_complex)),
-      gr_make_io_signature(1, 1, sizeof(char)))
+      gr_make_io_signature(1, 1, sizeof(char))),
+      d_have_sync(false)
 {
 
   // Extract the coefficients
@@ -97,7 +98,37 @@ cmusdrg_mf_sync_ccf::general_work(int noutput_items,
   gr_complex *in2 = (gr_complex *) input_items[1];
   char *out = (char *) output_items[0];
 
-  consume_each(noutput_items);
+  int ninput = ninput_items[0];
+
+  // If we do not have sync we use our complex component to look for
+  // the sync value being set, once it is we set our symbol boundary
+  // synchronization and start to use the filters.
+  if(!d_have_sync) {
+    for(int i=0; i<ninput; i++) {
+      if(in1[i].real()==1) {
+        in1 += i;   // Skip through our input to the sync point
+        in2 += i;
+        d_have_sync=true;
+        break;
+      }
+    }
+  }
+
+  // If we still have not found sync, let's consume all of the input
+  // and just return, the output will be 0's.
+  if(!d_have_sync) {
+    consume_each(ninput);
+    return noutput_items;
+  }
+
+  // Run each of the NFILTERS, putting its complex output into a vector
+  std::vector<gr_complex> filter_outputs;
+  for(int i=0; i<NFILTERS; i++) {
+    gr_complex filter_out = filters[i]->filter (in2);
+    filter_outputs.push_back( filter_out );
+  }
+
+  consume_each(noutput_items*COEFFS_PER_CHIPSEQ);
 
   return noutput_items;
 }
