@@ -4,6 +4,7 @@ module match_filter_test();
   reg reset;
   reg [15:0] ch_0;
   reg [15:0] ch_1;
+  reg [31:0] ch;
   wire rxstrobe;
   reg [31:0] cdata;
   reg [2:0] cstate;
@@ -47,8 +48,7 @@ module match_filter_test();
       @(posedge rxclk)
         cwrite = 1;
         cstate = cstate + 1;
-        $fread(cdata[31:16], file_co);;
-        $fread(cdata[15:0], file_co);;
+        $fread(cdata, file_co);;
       end
 
       $fclose(file_co);
@@ -64,8 +64,9 @@ module match_filter_test();
       while ($feof(file_dat) == 0)
         begin
           @(posedge rxstrobe)
-            $fread(ch_0[31:16], file_dat);
-            $fread(ch_1[31:15], file_dat);
+            $fread(ch, file_dat);;
+            ch_0 = {ch[31:16], 16'd0};
+            ch_1 = {ch[15:0], 16'd0};
         end 
       $fclose(file_dat);  
     end
