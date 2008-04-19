@@ -37,7 +37,7 @@ module match_filter_test();
       
       #40 reset = 1'b0;
 
-      file_co  = $fopen("simulation\tx_cs.dat", "rb");
+      file_co  = $fopen("z:\fpga\inband_lib\simulation\tx_cs.dat", "rb");
 
       if(!file_co) begin
         $display("Error opening coefficients\n");
@@ -56,7 +56,7 @@ module match_filter_test();
       @(posedge rxclk)
         cwrite = 0;
 
-      file_dat = $fopen("simulation\rx_data_clear.dat", "rb");
+      file_dat = $fopen("z:\fpga\inband_lib\simulation\rx_data_clear.dat", "rb");
       if(!file_dat) begin
         $display("Error opening data\n");
       end
