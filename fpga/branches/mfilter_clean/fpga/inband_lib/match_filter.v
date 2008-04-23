@@ -22,7 +22,7 @@ module match_filter
           end
         else if (cwrite && cstate == 3'd1)
           begin
-            threshhold      <= cdata[31:15];
+            threshhold      <= cdata[31:16];
             offset          <= cdata[7:3]; 
             residual        <= cdata[2:0] + 3'd2;
           end   
@@ -91,8 +91,8 @@ module match_filter
     wire [2:0]  sel;
 
     assign sel = in_state;
-    assign bridge_real[0] = r_input[7:0];
-    assign bridge_img[0]  = i_input[7:0];
+    assign bridge_real[0] = r_input[15:8];
+    assign bridge_img[0]  = i_input[15:8];
 
     generate for (g = 0; g< 16; g = g + 1)
       begin : generate_shift_regs_real
@@ -127,7 +127,8 @@ module match_filter
           begin
             for (i = 0; i < 16; i = i + 1)
               begin
-                if ((i < offset) || (i==offset)&&(in_state < residual))
+                  if(1)
+                //if ((i < offset) || (i==offset)&&(in_state < residual))
                   begin
 			case({cout_real[i], cout_img[i]})
 			2'b00:
