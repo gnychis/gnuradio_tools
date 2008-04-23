@@ -20,7 +20,7 @@ module match_filter
             offset          <= 0;
             residual        <= 3'd2;
           end
-        else if (cwrite && cstate == 3'd1)
+        else if (cwrite && cstate == 3'd0)
           begin
             threshhold      <= cdata[31:16];
             offset          <= cdata[7:3]; 
