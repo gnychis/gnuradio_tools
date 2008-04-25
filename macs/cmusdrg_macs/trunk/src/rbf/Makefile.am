@@ -1,5 +1,5 @@
 #
-# Copyright 2004 Free Software Foundation, Inc.
+# Copyright 2005,2006 Free Software Foundation, Inc.
 # 
 # This file is part of GNU Radio
 # 
@@ -19,4 +19,27 @@
 # Boston, MA 02110-1301, USA.
 # 
 
-SUBDIRS = lib python rbf
+include $(top_srcdir)/Makefile.common
+
+datadir = $(prefix)/share/usrp
+
+rbfs = 				\
+	rev2/cmusdrg_1rxhb_1tx.rbf	\
+	rev4/cmusdrg_1rxhb_1tx.rbf
+
+
+EXTRA_DIST = 			\
+	$(rbfs)
+
+
+install-data-local:
+	@for file in $(rbfs); do \
+		echo "$(INSTALL_DATA) $(srcdir)/$$file $(DESTDIR)$(datadir)/$$file"; \
+		$(INSTALL_DATA) $(srcdir)/$$file $(DESTDIR)$(datadir)/$$file; \
+	done
+
+uninstall-local:
+	@for file in $(rbfs); do \
+		echo "$(RM) $(DESTDIR)$(datadir)/$$file"; \
+		$(RM) $(DESTDIR)$(datadir)/$$file; \
+	done
