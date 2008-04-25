@@ -95,7 +95,8 @@ AC_CONFIG_FILES([\
 	  src/Makefile \
 	  src/lib/Makefile \
 	  src/python/Makefile \
-	  src/python/run_tests \
+    src/python/run_tests \
+	  src/rbf/Makefile \
 	])
 
 dnl run_tests is created from run_tests.in.  Make it executable.
