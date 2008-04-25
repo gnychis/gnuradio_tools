@@ -89,7 +89,7 @@ module match_filter_test();
       @(posedge rxclk)
         cwrite = 0;
 
-      file_dat = $fopen("z:/fpga/inband_lib/simulation/rx_data_clear.dat", "rb");
+      file_dat = $fopen("z:/fpga/inband_lib/simulation/rx_data_match.dat", "rb");
       if(!file_dat) begin
         $display("Error opening data\n");
       end

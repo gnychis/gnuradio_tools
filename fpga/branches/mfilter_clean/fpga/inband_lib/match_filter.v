@@ -9,20 +9,20 @@ module match_filter
     reg [2:0]  in_state;
 
     //setting up parameters  
-    reg signed [15:0] threshhold;
+    reg signed [15:0] threshold;
     reg [4:0] offset;
     reg [2:0] residual;
    
     always @(posedge clk)
         if(reset)
           begin
-            threshhold      <= 0;
+            threshold      <= 0;
             offset          <= 0;
             residual        <= 3'd2;
           end
         else if (cwrite && cstate == 3'd0)
           begin
-            threshhold      <= cdata[31:16];
+            threshold      <= cdata[31:16];
             offset          <= cdata[7:3]; 
             residual        <= cdata[2:0] + 3'd2;
           end   
@@ -175,7 +175,7 @@ module match_filter
           begin
             in_state <= 0;
           end 
-        else if (rxstrobe && !cwrite)
+        else if (rxstrobe && !cwrite && threshold > 0)
           begin
             in_state <= 3'd1;
           end  
@@ -244,7 +244,10 @@ module match_filter
             final_result_valid <= 1;    
           end
         else
-            final_result_valid <= 0; 
+          begin
+            final_result_valid <= 0;
+            final_result <= 0;
+          end 
 
     //output evaluation
     always @ (posedge clk)
@@ -255,7 +258,7 @@ module match_filter
           end
         else if (final_result_valid)
           begin
-            match <= (final_result > threshhold);
+            match <= (final_result > threshold);
             valid <= 1'b1;
           end
         else
@@ -264,5 +267,5 @@ module match_filter
             valid <= 0;
           end
  
-    assign debugbus = {clk, match, valid, cout_real[4:0], final_result[6:2], in_state[2:0]};    
+    assign debugbus = {clk, (match&valid), in_state[2:0], cout_real[10:0]};    
 endmodule
