@@ -49,6 +49,8 @@ cmusdrg_mf_sync_ccf::cmusdrg_mf_sync_ccf (const std::vector<gr_complex> &coeffs)
       gr_make_io_signature(1, 1, sizeof(char))),
       d_have_sync(false)
 {
+   set_history(COEFFS_PER_CHIPSEQ);
+   d_buffer_size = 0;
 
   // Extract the coefficients
   for(int i=0; i<NFILTERS; i++) {
@@ -100,35 +102,74 @@ cmusdrg_mf_sync_ccf::general_work(int noutput_items,
 
   int ninput = ninput_items[0];
 
-  // If we do not have sync we use our complex component to look for
-  // the sync value being set, once it is we set our symbol boundary
-  // synchronization and start to use the filters.
-  if(!d_have_sync) {
-    for(int i=0; i<ninput; i++) {
-      if(in1[i].real()==1) {
-        in1 += i;   // Skip through our input to the sync point
-        in2 += i;
-        d_have_sync=true;
+  //the earliest valid sample in the buffer is left offset
+  //|1 left off||64 samples||1 right off|
+  int items_out = 0;
+  int data_left = ninput + d_buffer_size; 
+  in1 -= d_buffer_size;
+  in2 -= d_buffer_size;
+
+  gr_complex filter_out;
+  float max_magnitude;
+  float cur_magnitude;
+  int decoded_result;
+  int freq_offset_correction;
+
+  //samples + offset
+  while (data_left >= COEFFS_PER_CHIPSEQ + 1) {
+    bool found_sync = false;
+    //note sync if there is any
+    for (int i = 0; i< (COEFFS_PER_CHIPSEQ+1); i++) {
+      if(in1[i].real() == 1) {
+        in1 += i-1;
+        in2 += i-1;
+        data_left -= i-1;
+        found_sync = true;
         break;
       }
     }
+        
+    //may not have enough sample now
+    if (data_left < COEFFS_PER_CHIPSEQ + 1)
+      break;
+    
+    freq_offset_correction = 0;
+    max_magnitude = 0;
+    decoded_result = 0;
+    //start decoding
+    // Run each of the NFILTERS to find the best fit
+    for(int i=0; i<NFILTERS; i++) {
+      filter_out = filters[i]->filter (in2 + 1);
+      cur_magnitude = compute_magnitude(filter_out);
+      if (cur_magnitude > max_magnitude) {
+        max_magnitude = cur_magnitude;
+        decoded_result = i;
+      }
+    }
+    //perform offset correction
+    filter_out = filters[decoded_result]->filter (in2);
+    cur_magnitude = compute_magnitude(filter_out);
+    if (cur_magnitude > max_magnitude) {
+      max_magnitude = cur_magnitude;
+      freq_offset_correction = -1;
+    }
+    filter_out = (data_left >= COEFFS_PER_CHIPSEQ + 2) ? filters[decoded_result]->filter (in2 + 2) : 0;
+    cur_magnitude = compute_magnitude(filter_out);
+    if (cur_magnitude > max_magnitude) {
+      max_magnitude = cur_magnitude;
+      freq_offset_correction = 1;
+    }    
+
+    data_left       -= COEFFS_PER_CHIPSEQ + freq_offset_correction;
+    in1             += COEFFS_PER_CHIPSEQ + freq_offset_correction;
+    in2             += COEFFS_PER_CHIPSEQ + freq_offset_correction;
+    //mark the output if found_sync
+    out[items_out++] = (found_sync) ? (char)decoded_result + 16 : (char)decoded_result;
   }
 
-  // If we still have not found sync, let's consume all of the input
-  // and just return, the output will be 0's.
-  if(!d_have_sync) {
-    consume_each(ninput);
-    return noutput_items;
-  }
-
-  // Run each of the NFILTERS, putting its complex output into a vector
-  std::vector<gr_complex> filter_outputs;
-  for(int i=0; i<NFILTERS; i++) {
-    gr_complex filter_out = filters[i]->filter (in2);
-    filter_outputs.push_back( filter_out );
-  }
-
+  d_buffer_size = data_left; 
   consume_each(noutput_items*COEFFS_PER_CHIPSEQ);
-
+  while (noutput_items - items_out > 0)
+        out[items_out++] = -1;
   return noutput_items;
 }

@@ -42,8 +42,8 @@ class cmusdrg_mf_sync_ccf : public gr_block
   cmusdrg_mf_sync_ccf(const std::vector<gr_complex> &coeffs);
 
   float compute_magnitude(gr_complex input);
-
-  bool d_have_sync;
+  
+  int  d_buffer_size;
 
  public:
   ~cmusdrg_mf_sync_ccf();
