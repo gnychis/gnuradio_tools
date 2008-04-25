@@ -81,19 +81,6 @@ Index: usrp/host/lib/inband/usrp_inband_usb_packet.cc
      default:
        return PMT_NIL;
  
-Index: usrp/host/lib/inband/usrp_rx.cc
-===================================================================
---- usrp/host/lib/inband/usrp_rx.cc	(revision 8178)
-+++ usrp/host/lib/inband/usrp_rx.cc	(working copy)
-@@ -44,7 +44,7 @@
- 
- usrp_rx::usrp_rx(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
-   : mb_mblock(rt, instance_name, user_arg),
--    d_disk_write(false),
-+    d_disk_write(true),
-     d_disk_write_pkt(false)   // if true, writes full packet, else just the payload
- {
-   d_cs = define_port("cs", "usrp-rx-cs", true, mb_port::EXTERNAL);
 Index: usrp/host/lib/inband/usrp_inband_usb_packet.h
 ===================================================================
 --- usrp/host/lib/inband/usrp_inband_usb_packet.h	(revision 8178)
@@ -115,7 +102,18 @@ Index: usrp/host/lib/inband/usrp_inband_usb_packet.h
    };
  
    enum flags {
-@@ -132,6 +133,9 @@
+@@ -66,8 +67,9 @@
+     FL_START_OF_BURST = 0x10000000,
+     FL_END_OF_BURST   = 0x08000000,
+     FL_CARRIER_SENSE  = 0x04000000,
++    FL_MATCH_FILTER   = 0x02000000,
+ 
+-    FL_ALL_FLAGS      = 0xfc000000
++    FL_ALL_FLAGS      = 0xff000000
+   };
+ 
+   static const int FL_OVERRUN_SHIFT = 31;
+@@ -132,6 +134,9 @@
    static const int CS_SPINBYTES_MASK = 0xff;
    static const int CS_SPINBYTES_SHIFT = 24;
  
@@ -125,7 +123,7 @@ Index: usrp/host/lib/inband/usrp_inband_usb_packet.h
  public:
    
    void set_timestamp(uint32_t timestamp){
-@@ -233,6 +237,7 @@
+@@ -233,6 +238,7 @@
    bool cs_spi_write(long enables, long format, long opt_header_bytes, uint8_t *spi_data, long spi_data_len);
    bool cs_spi_read(long rid, long enables, long format, long opt_header_bytes, long n_bytes);
    bool cs_spi_read_reply(long rid, uint8_t *spi_data, long spi_data_len);
@@ -153,7 +151,59 @@ Index: usrp/host/lib/inband/usrp_server.cc
  
  const static bool verbose = false;
  
-@@ -1087,7 +1089,87 @@
+@@ -697,7 +699,7 @@
+     return;
+ 
+   // Read information from the properties of the packet
+-  bool carrier_sense = false;
++  bool carrier_sense = false, mf_wait = false;
+   if(pmt_is_dict(properties)) {
+ 
+     // Check if carrier sense is enabled for the frame
+@@ -707,9 +709,16 @@
+       if(pmt_eqv(p_carrier_sense, PMT_T)) 
+         carrier_sense = true;
+     }
++
++    // Check if carrier sense is enabled for the frame
++    if(pmt_t p_mf_wait = pmt_dict_ref(properties, 
++                                      pmt_intern("mf-wait"), 
++                                      PMT_NIL)) {
++      if(pmt_eqv(p_mf_wait, PMT_T)) 
++        mf_wait = true;
++    }
+   }
+ 
+-  
+   // Determine the number of packets to allocate contiguous memory for
+   // bursting over the USB and get a pointer to the memory to be used in
+   // building the packets
+@@ -727,14 +736,19 @@
+       std::min((long)(n_bytes-(n*max_payload_len)), (long)max_payload_len);
+   
+     if(n == 0) { // first packet gets start of burst flag and timestamp
++
++      int flags = 0;
++
++      flags |= pkts[n].FL_START_OF_BURST;
+       
+       if(carrier_sense)
+-        pkts[n].set_header(pkts[n].FL_START_OF_BURST 
+-                           | pkts[n].FL_CARRIER_SENSE, 
+-                           channel, 0, payload_len);
+-      else
+-        pkts[n].set_header(pkts[n].FL_START_OF_BURST, channel, 0, payload_len);
++        flags |= pkts[n].FL_CARRIER_SENSE;
+ 
++      if(mf_wait) 
++        flags |= pkts[n].FL_MATCH_FILTER;
++
++      pkts[n].set_header(flags, channel, 0, payload_len);
++
+       pkts[n].set_timestamp(timestamp);
+     
+     } else {
+@@ -1087,7 +1101,87 @@
        if(verbose)
          std::cout << "[USRP_SERVER] Received SPI read\n";
      }
@@ -241,114 +291,3 @@ Index: usrp/host/lib/inband/usrp_server.cc
    subpkt_bail:
      curr_subpkt++;
  
-Index: usrp/host/lib/inband/usrp_usb_interface.cc
-===================================================================
---- usrp/host/lib/inband/usrp_usb_interface.cc	(revision 8178)
-+++ usrp/host/lib/inband/usrp_usb_interface.cc	(working copy)
-@@ -362,12 +362,14 @@
- 
-   if (verbose)
-     std::cout << "[USRP_USB_INTERFACE] Setup RX channel\n";
-+
-+  d_urx->start();
-     
--//  d_utx->_write_fpga_reg(FR_DEBUG_EN,0xf);
--//  d_utx->_write_oe(0, 0xffff, 0xffff);
--//  d_urx->_write_oe(0, 0xffff, 0xffff);
--//  d_utx->_write_oe(1, 0xffff, 0xffff);
--//  d_urx->_write_oe(1, 0xffff, 0xffff);
-+  d_utx->_write_fpga_reg(FR_DEBUG_EN,0xf);
-+  d_utx->_write_oe(0, 0xffff, 0xffff);
-+  d_urx->_write_oe(0, 0xffff, 0xffff);
-+  d_utx->_write_oe(1, 0xffff, 0xffff);
-+  d_urx->_write_oe(1, 0xffff, 0xffff);
- 
-   d_cs->send(s_response_usrp_open, pmt_list2(invocation_handle, PMT_T));
- }
-Index: usrp/host/apps-inband/test_usrp_inband_tx.cc
-===================================================================
---- usrp/host/apps-inband/test_usrp_inband_tx.cc	(revision 8178)
-+++ usrp/host/apps-inband/test_usrp_inband_tx.cc	(working copy)
-@@ -37,6 +37,7 @@
- #include <stdio.h>
- #include <string.h>
- #include <iostream>
-+#include <fstream>
- 
- #include <ui_nco.h>
- #include <symbols_usrp_server_cs.h>
-@@ -119,7 +120,7 @@
-   // Specify the RBF to use
-   pmt_dict_set(usrp_dict,
-                pmt_intern("rbf"),
--               pmt_intern("inband_1rxhb_1tx.rbf"));
-+               pmt_intern("mftest23.rbf"));
- 
-   // Set TX and RX interpolations
-   pmt_dict_set(usrp_dict,
-@@ -302,7 +303,42 @@
-   
-   if(verbose)
-     std::cout << "[TEST_USRP_INBAND_TX] Transmitting...\n";
--  
-+
-+  ///////////////////////////
-+  std::vector<gr_complex> complex_coeffs;
-+  std::string line;
-+  std::ifstream coeffs("coeffs");
-+  if(coeffs.is_open()) {
-+    while(!coeffs.eof()) {
-+      getline(coeffs,line);
-+      if(line=="") break;
-+      std::istringstream in(line);
-+      std::vector<std::string> tokens;
-+      for(std::string each; std::getline(in,each,' '); tokens.push_back(each));
-+      std::istringstream sreal(tokens[0]), simag(tokens[1]);
-+      float real, imag;
-+      sreal >> real;
-+      simag >> imag;
-+      complex_coeffs.push_back(gr_complex(real, imag));
-+    }
-+    coeffs.close();
-+  } else {
-+    std::cout << "coeffs missing\n";
-+    shutdown_all(PMT_NIL);
-+  }
-+
-+  pmt_t v_coeff_data = pmt_make_any(complex_coeffs);
-+
-+  d_tx->send(s_cmd_to_control_channel,
-+             pmt_list2(PMT_NIL,
-+                       pmt_list1(
-+                          pmt_list2(s_op_mf_set,
-+                                    pmt_list2(pmt_from_long(50),
-+                                              v_coeff_data)))));
-+  std::cout << "coeffs sent from app\n";
-+  fflush(stdout);
-+  ////////////////////////////
-+
-   build_and_send_next_frame();	// fire off 4 to start pipeline
-   build_and_send_next_frame();
-   build_and_send_next_frame();
-Index: usrp/host/apps-inband/test_usrp_inband_registers.cc
-===================================================================
---- usrp/host/apps-inband/test_usrp_inband_registers.cc	(revision 8178)
-+++ usrp/host/apps-inband/test_usrp_inband_registers.cc	(working copy)
-@@ -119,7 +119,7 @@
-   // Specify the RBF to use
-   pmt_dict_set(usrp_dict,
-                pmt_intern("rbf"),
--               pmt_intern("inband_1rxhb_1tx.rbf"));
-+               pmt_intern("mftest9.rbf"));
- 
-   // Set TX and RX interpolations
-   pmt_dict_set(usrp_dict,
-@@ -373,7 +373,7 @@
- {
-   d_state = WRITE_REGISTER;
- 
--  long reg = 0;
-+  long reg = 9;
- 
-   d_tx->send(s_cmd_to_control_channel,    // C/S packet
-              pmt_list2(PMT_NIL,           // invoc handle
