@@ -105,7 +105,7 @@ class mac : public mb_mblock
 
  private:
   void define_usrp_ports();
-  void initialize_usrp(pmt_t usrp_ref);
+  void initialize_usrp();
   void handle_usrp_message(mb_message_sptr msg);
 
   void open_usrp();

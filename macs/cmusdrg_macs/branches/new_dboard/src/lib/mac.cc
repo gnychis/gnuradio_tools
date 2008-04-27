@@ -34,9 +34,7 @@ mac::mac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
     d_usrp_decim(64), d_usrp_interp(128)
 {
   define_usrp_ports();    // Initialize the ports to connect to the USRP
-
-  pmt_t usrp_references = pmt_nth(0, user_arg);
-  initialize_usrp(usrp_references);
+  initialize_usrp();
 }
 
 mac::~mac()
@@ -250,7 +248,7 @@ void mac::handle_usrp_message(mb_message_sptr msg)
               << "in state "<< d_usrp_state << std::endl;
 }
 
-void mac::initialize_usrp(pmt_t usrp_ref)
+void mac::initialize_usrp()
 {
 
   if(verbose)
@@ -261,16 +259,12 @@ void mac::initialize_usrp(pmt_t usrp_ref)
   pmt_t usrp_dict = pmt_make_dict();
 
   // Specify important parameters like the RBF and frequency
-  pmt_dict_set(usrp_dict, pmt_intern("rbf"), pmt_intern("local_rssi5.rbf"));
-  pmt_dict_set(usrp_dict, pmt_intern("rf-freq"), pmt_from_long((long)10e6));
+  pmt_dict_set(usrp_dict, pmt_intern("rbf"), pmt_intern("cmusdrg_1rxhb_1tx.rbf"));
+  pmt_dict_set(usrp_dict, pmt_intern("rf-freq"), pmt_from_long(2450000000));
   pmt_dict_set(usrp_dict, pmt_intern("interp-tx"), pmt_from_long(d_usrp_interp));
   pmt_dict_set(usrp_dict, pmt_intern("decim-rx"), pmt_from_long(d_usrp_decim));
   pmt_dict_set(usrp_dict, pmt_intern("fake-usrp"), PMT_F);
   
-  // FIXME: RFX2400 hack
-  pmt_dict_set(usrp_dict, pmt_intern("usrp-tx-reference"), pmt_nth(0,usrp_ref));
-  pmt_dict_set(usrp_dict, pmt_intern("usrp-rx-reference"), pmt_nth(1,usrp_ref));
-
   // Default is to use USRP considered '0' (incase of multiple)
   d_which_usrp = pmt_from_long(0);
   

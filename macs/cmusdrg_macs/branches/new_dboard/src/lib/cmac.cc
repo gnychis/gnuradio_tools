@@ -35,7 +35,7 @@ cmac::cmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   d_framer_state(SYNC_SEARCH)
 {
   define_mac_ports();   // Initialize ports for message passing
-  d_local_address = pmt_to_long(pmt_nth(1, user_arg));
+  d_local_address = pmt_to_long(pmt_nth(0, user_arg));
 }
 
 cmac::~cmac()

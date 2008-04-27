@@ -29,7 +29,6 @@ EXTRA_DIST =				\
 	cmac.mbh			\
 	gmsk.mbh
 
-
 lib_LTLIBRARIES = 			\
 	libcmusdrg_macs.la	
 
@@ -59,9 +58,11 @@ libcmusdrg_macs_la_SOURCES =		\
 libcmusdrg_macs_la_LDFLAGS = $(NO_UNDEFINED) -version-info 0:0:0
 
 libcmusdrg_macs_la_LIBADD =		\
-	$(MBLOCK_LA)			\
 	$(USRP_LA)	  		\
-	-lstdc++
+	-lstdc++					\
+	-lusrp \
+	-lusrp_inband		\
+	-lmblock
 
 include_HEADERS =			\
 	mac.h \
