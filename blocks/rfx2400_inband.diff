@@ -2,7 +2,7 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.cc
 ===================================================================
 --- usrp/host/lib/inband/db_flexrf_mimo.cc	(revision 0)
 +++ usrp/host/lib/inband/db_flexrf_mimo.cc	(revision 0)
-@@ -0,0 +1,239 @@
+@@ -0,0 +1,237 @@
 +
 +
 +#include "db_flexrf_mimo.h"
@@ -201,8 +201,6 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.cc
 +    else
 +      tx_is_configured=true;
 +
-+    cout << "actual freq: " << actual_freq << std::endl;
-+
 +    return actual_freq;
 +
 +
@@ -242,6 +240,19 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.cc
 +};
 +
 +
+Index: usrp/host/lib/inband/usrp_usb_interface.h
+===================================================================
+--- usrp/host/lib/inband/usrp_usb_interface.h	(revision 8280)
++++ usrp/host/lib/inband/usrp_usb_interface.h	(working copy)
+@@ -49,7 +49,7 @@
+   long d_interp_tx;
+   long d_decim_rx;
+ 
+-  long d_rf_freq;
++  unsigned long d_rf_freq;
+ 
+   std::string d_rbf;
+ 
 Index: usrp/host/lib/inband/db_flexrf_mimo.h
 ===================================================================
 --- usrp/host/lib/inband/db_flexrf_mimo.h	(revision 0)
