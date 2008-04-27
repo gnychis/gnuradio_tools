@@ -29,8 +29,12 @@ INCLUDES = 	\
 bin_PROGRAMS =				
 
 noinst_PROGRAMS =			\
-	cmac_tx_file
+	cmac_tx_file	\
+	cmac_rx_file
 
 
 cmac_tx_file_SOURCES 	= cmac_tx_file.cc 
 cmac_tx_file_LDADD   	= $(USRP_LA) $(USRP_INBAND_LA) ../lib/libcmusdrg_macs.la
+
+cmac_rx_file_SOURCES 	= cmac_rx_file.cc 
+cmac_rx_file_LDADD   	= $(USRP_LA) $(USRP_INBAND_LA) ../lib/libcmusdrg_macs.la

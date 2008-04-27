@@ -85,19 +85,9 @@ cmac_rx_file::cmac_rx_file(mb_runtime *runtime, const std::string &instance_name
     d_nframes_xmitted(0),
     d_done_sending(false)
 { 
-  
   // Extract USRP information from python and the arguments to the python script
-  pmt_t usrp = pmt_nth(0, user_arg);
-  pmt_t args = pmt_nth(1, user_arg);
-  std::vector<std::string> argv;
-  argv = boost::any_cast<std::vector<std::string> >(pmt_any_ref(args));
-
-  // Pull in file name
-  std::string file = argv[0];
-
-  // Local node address
-  std::istringstream ss_laddr(argv[1]);
-  ss_laddr >> d_local_addr;
+  std::string file = pmt_symbol_to_string(pmt_nth(0, user_arg));
+  d_local_addr = pmt_to_long(pmt_nth(1, user_arg));
 
   // Open a stream to the input file and ensure it's open
   d_ofile.open(file.c_str(), std::ios::binary|std::ios::out);
@@ -108,7 +98,7 @@ cmac_rx_file::cmac_rx_file(mb_runtime *runtime, const std::string &instance_name
     return;
   }
 
-  pmt_t cmac_data = pmt_list2(usrp, pmt_from_long(d_local_addr));
+  pmt_t cmac_data = pmt_list1(pmt_from_long(d_local_addr));
   
   define_component("CMAC", "cmac", cmac_data); 
   d_tx = define_port("tx0", "cmac-tx", false, mb_port::INTERNAL);
@@ -219,6 +209,22 @@ cmac_rx_file::handle_response_rx_pkt(pmt_t data)
   std::cout << ".";
   fflush(stdout);
 
+}
+
+int
+main (int argc, char **argv)
+{
+  mb_runtime_sptr rt = mb_make_runtime();
+  pmt_t result = PMT_NIL;
+
+  if(argc!=3) {
+    std::cout << "usage: ./cmac_rx_file output_file local_addr\n";
+    return -1;
+  }
+
+  pmt_t args = pmt_list2(pmt_intern(argv[1]), pmt_from_long(strtol(argv[2],NULL,10)));
+
+  rt->run("top", "cmac_rx_file", args, &result);
 }
 
 REGISTER_MBLOCK_CLASS(cmac_rx_file);
