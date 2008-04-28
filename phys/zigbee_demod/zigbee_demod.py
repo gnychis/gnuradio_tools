@@ -72,6 +72,8 @@ def build_graph(input, output, acq_coeffs, sync_coeffs, sync_thresh, sync_window
 
   # Two file sinks for the output
   fsink = gr.file_sink (gr.sizeof_char, output+"_sync")
+  fsink2 = gr.file_sink (gr.sizeof_gr_complex, output+"_acq")
+  fg.connect((acq,0), fsink2)
   fg.connect(sync, fsink)
 
   return fg
