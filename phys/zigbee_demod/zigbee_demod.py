@@ -50,7 +50,7 @@ def build_graph(input, output, acq_coeffs, sync_coeffs, sync_thresh, sync_window
   for line in dfile:
     data.append(complex(*map(float,line.strip().strip("()").split(" "))).conjugate())
   dfile.close()
-  sync = gr.mf_sync_ccf(data)    # Sync block!
+  sync = cmusdrg.mf_sync_ccf(data)    # Sync block!
 
   # Delay component, to sync the original complex with MF output
   delay = gr.delay(gr.sizeof_gr_complex, len(data)-1)
@@ -71,7 +71,7 @@ def build_graph(input, output, acq_coeffs, sync_coeffs, sync_thresh, sync_window
   fg.connect((acq, 1), (sync, 1))
 
   # Two file sinks for the output
-  fsink = gr.file_sink (gr.sizeof_float, output+"_sync")
+  fsink = gr.file_sink (gr.sizeof_char, output+"_sync")
   fg.connect(sync, fsink)
 
   return fg
