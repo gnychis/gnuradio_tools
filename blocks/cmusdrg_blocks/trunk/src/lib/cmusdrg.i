@@ -28,10 +28,10 @@ private:
 
 GR_SWIG_BLOCK_MAGIC(cmusdrg,mf_sync_ccf);
 
-cmusdrg_mf_sync_ccf_sptr cmusdrg_make_mf_sync_ccf (std::vector<gr_complex> &coeffs);
+cmusdrg_mf_sync_ccf_sptr cmusdrg_make_mf_sync_ccf (const std::vector<gr_complex> &coeffs);
 
 class cmusdrg_mf_sync_ccf : public gr_block
 {
 private:
-  cmusdrg_mf_sync_ccf (std::vector<gr_complex> &coeffs);
+  cmusdrg_mf_sync_ccf (const std::vector<gr_complex> &coeffs);
 };

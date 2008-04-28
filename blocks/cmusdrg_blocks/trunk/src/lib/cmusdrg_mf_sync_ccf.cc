@@ -46,12 +46,11 @@ cmusdrg_make_mf_sync_ccf(const std::vector<gr_complex> &coeffs)
 cmusdrg_mf_sync_ccf::cmusdrg_mf_sync_ccf (const std::vector<gr_complex> &coeffs)
   : gr_block ("cmusdrg_mf_sync_ccf",
       gr_make_io_signature(2, 2, sizeof(gr_complex)),
-      gr_make_io_signature(1, 1, sizeof(char))),
-      d_have_sync(false)
+      gr_make_io_signature(1, 1, sizeof(char)))
 {
    set_history(COEFFS_PER_CHIPSEQ);
    d_buffer_size = 0;
-
+   filters.resize(NFILTERS);
   // Extract the coefficients
   for(int i=0; i<NFILTERS; i++) {
 
@@ -96,11 +95,13 @@ cmusdrg_mf_sync_ccf::general_work(int noutput_items,
       gr_vector_const_void_star &input_items,
       gr_vector_void_star &output_items)
 {
+
   gr_complex *in1 = (gr_complex *) input_items[0];
   gr_complex *in2 = (gr_complex *) input_items[1];
   char *out = (char *) output_items[0];
 
   int ninput = ninput_items[0];
+
 
   //the earliest valid sample in the buffer is left offset
   //|1 left off||64 samples||1 right off|
@@ -121,14 +122,14 @@ cmusdrg_mf_sync_ccf::general_work(int noutput_items,
     //note sync if there is any
     for (int i = 0; i< (COEFFS_PER_CHIPSEQ+1); i++) {
       if(in1[i].real() == 1) {
+        printf("Found Sync\n");
         in1 += i-1;
         in2 += i-1;
         data_left -= i-1;
         found_sync = true;
         break;
       }
-    }
-        
+    } 
     //may not have enough sample now
     if (data_left < COEFFS_PER_CHIPSEQ + 1)
       break;
@@ -166,10 +167,19 @@ cmusdrg_mf_sync_ccf::general_work(int noutput_items,
     //mark the output if found_sync
     out[items_out++] = (found_sync) ? (char)decoded_result + 16 : (char)decoded_result;
   }
-
   d_buffer_size = data_left; 
   consume_each(noutput_items*COEFFS_PER_CHIPSEQ);
-  while (noutput_items - items_out > 0)
+  
+  for (int i = 0; i< items_out; i++) {
+    if (out[i] >= 16) {
+      printf("\nStart of frame\n");
+    }
+    printf("%x", out[i]%16);
+  }
+
+  while (noutput_items - items_out > 0) {
         out[items_out++] = -1;
+        std::cout<<"Don't care"<<std::endl;
+  }
   return noutput_items;
 }
