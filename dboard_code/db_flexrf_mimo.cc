@@ -4,6 +4,7 @@
 #include <usrp_standard.h>
 #include <iostream>
 #include <assert.h>
+#include <fpga_regs_common.h>
 
 using namespace std;
 
@@ -97,6 +98,7 @@ float db_flexrf_mimo::configure(float freq,unsigned int gain,unsigned int rxtx) 
       gain=4095;
 
     if (rxtx==0) {
+       set_rx_auto_tr(false);
        set_rx_gain(gain);
 
        d_rx->_write_oe(d_side,POWER_UP|RX2_RX1N|ENABLE,0xffff); 
@@ -105,12 +107,14 @@ float db_flexrf_mimo::configure(float freq,unsigned int gain,unsigned int rxtx) 
 
        d_rx->write_io(d_side,0,RX2_RX1N);
     } else {
+      set_tx_auto_tr(false);
 
       //d_tx->set_pga(d_side*2+0,d_tx->pga_max());
       //d_tx->set_pga(d_side*2+1,d_tx->pga_max());
 
       d_tx->_write_oe(d_side,(POWER_UP|RX_TXN|ENABLE), 0xffff);
       d_tx->write_io(d_side,((~POWER_UP) |RX_TXN), (POWER_UP|RX_TXN|ENABLE));
+      d_tx->write_io(d_side,ENABLE, (RX_TXN|ENABLE));
 
     }
 
@@ -153,19 +157,7 @@ float db_flexrf_mimo::configure(float freq,unsigned int gain,unsigned int rxtx) 
     write_it((control & ~0x3) | 0,d_side*2+rxtx);
     
     // wait 10ms
-
-
-    clockid_t c1=CLOCK_REALTIME;
-    struct timespec *res;
-    struct timespec tp1, tp2;
-    double elapsed_time;
-
-    clock_gettime(CLOCK_REALTIME,&tp1);
-    do {
-      clock_gettime(CLOCK_REALTIME,&tp2);
-      elapsed_time=tp2.tv_sec-tp1.tv_sec + (tp2.tv_nsec-tp1.tv_nsec)/1e9;
-    } while (elapsed_time < 0.010);
-
+    usleep(10000);
 
     write_it((N & ~0x3) | 2, d_side*2+rxtx);
 
@@ -180,14 +172,73 @@ float db_flexrf_mimo::configure(float freq,unsigned int gain,unsigned int rxtx) 
       exit(1);
     };
 
-    if (rxtx==0)
+    if (rxtx==0) {
+//      d_rx->set_rx_freq(0, -4000000.0);
       rx_is_configured=true;
-    else
+    } else {
+//      d_tx->set_tx_freq(0, -4000000.0);
       tx_is_configured=true;
+    }
 
     return actual_freq;
 
 
+}
+
+void db_flexrf_mimo::set_tx_auto_tr(bool on)
+{
+  if(on) {
+    set_tx_atr_mask (RX_TXN | ENABLE);
+    set_tx_atr_txval(0      | ENABLE);
+    set_tx_atr_rxval(RX_TXN | 0);
+  } else {
+    set_tx_atr_mask (0);
+    set_tx_atr_txval(0);
+    set_tx_atr_rxval(0);
+  }
+}
+
+void db_flexrf_mimo::set_rx_auto_tr(bool on)
+{
+  if(on) {
+    set_rx_atr_mask (RX_TXN | ENABLE);
+    set_rx_atr_txval(0      | ENABLE);
+    set_rx_atr_rxval(RX_TXN | 0);
+  } else {
+    set_rx_atr_mask (0);
+    set_rx_atr_txval(0);
+    set_rx_atr_rxval(0);
+  }
+}
+
+void db_flexrf_mimo::set_tx_atr_mask(long v)
+{
+  d_tx->_write_fpga_reg(FR_ATR_MASK_0 + 3 * 0, v);
+}
+
+void db_flexrf_mimo::set_tx_atr_txval(long v)
+{
+  d_tx->_write_fpga_reg(FR_ATR_TXVAL_0 + 3 * 0, v);
+}
+
+void db_flexrf_mimo::set_tx_atr_rxval(long v)
+{
+  d_tx->_write_fpga_reg(FR_ATR_RXVAL_0 + 3 * 0, v);
+}
+
+void db_flexrf_mimo::set_rx_atr_mask(long v)
+{
+  d_rx->_write_fpga_reg(FR_ATR_MASK_0 + 3 * 1, v);
+}
+
+void db_flexrf_mimo::set_rx_atr_txval(long v)
+{
+  d_rx->_write_fpga_reg(FR_ATR_TXVAL_0 + 3 * 1, v);
+}
+
+void db_flexrf_mimo::set_rx_atr_rxval(long v)
+{
+  d_rx->_write_fpga_reg(FR_ATR_RXVAL_0 + 3 * 1, v);
 }
 
 void db_flexrf_mimo::set_rx_gain(long gain)

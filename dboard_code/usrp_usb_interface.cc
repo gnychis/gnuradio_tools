@@ -335,7 +335,8 @@ usrp_usb_interface::handle_cmd_open(pmt_t data)
 
   // Two channels ... this really needs to end up being set correctly by
   // querying for what dboards are connected
-  if(!d_urx->set_mux(0x32103210)) {
+  if(!d_urx->set_mux(1)) {
+//  if(!d_urx->set_mux(0x32103210)) {
     if (verbose)
       std::cout << "[USRP_USB_INTERFACE] Failed to set RX mux\n";
     reply_data = pmt_list2(invocation_handle, PMT_F);
@@ -356,9 +357,10 @@ usrp_usb_interface::handle_cmd_open(pmt_t data)
 
   // Tune daughterboards
   db_flexrf_mimo dboards(d_urx, d_utx, 0);
-  dboards.configure(d_rf_freq, 45, 0);
   dboards.configure(d_rf_freq, 0, 1);
+  dboards.configure(d_rf_freq, 45, 0);
   dboards.select_tx();
+  dboards.select_rx2();
   
   d_utx->start();
 

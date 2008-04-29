@@ -104,6 +104,14 @@ class db_flexrf_mimo {
    void set_rx(void);
 
    void set_rx_gain(long);
+   void set_tx_atr_mask(long);
+   void set_tx_atr_txval(long);
+   void set_tx_atr_rxval(long);
+   void set_rx_atr_mask(long);
+   void set_rx_atr_txval(long);
+   void set_rx_atr_rxval(long);
+   void set_tx_auto_tr(bool);
+   void set_rx_auto_tr(bool);
   private: 
 
   void write_it(unsigned int,unsigned int);
