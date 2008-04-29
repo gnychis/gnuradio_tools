@@ -176,7 +176,7 @@ module chan_fifo_reader
                // Need to wait for match to be found
                MF_WAIT:
                  begin
-                   reader_state <= (mf_match) ? WAITSTROBE : MF_WAIT;
+                   reader_state <= (mf_match) ? WAIT : MF_WAIT;
                  end
                  
                // Wait for the transmit chain to be ready

@@ -23,8 +23,8 @@ module rssi (input clock, input reset, input enable,
      if(reset | ~enable)
        rssi_int <= #1 26'd0;
      else
-       rssi_int <= #1 rssi_int + abs_adc - rssi_int[25:10];
+       rssi_int <= #1 rssi_int + abs_adc - rssi_int[25:5];
 
-   assign      rssi = rssi_int[25:10];
+   assign      rssi = rssi_int[25:5];
    
 endmodule // rssi
