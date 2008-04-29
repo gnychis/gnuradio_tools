@@ -44,6 +44,7 @@ class cmusdrg_mf_sync_ccf : public gr_block
   float compute_magnitude(gr_complex input);
   
   int  d_buffer_size;
+  bool found_sync;
 
  public:
   ~cmusdrg_mf_sync_ccf();

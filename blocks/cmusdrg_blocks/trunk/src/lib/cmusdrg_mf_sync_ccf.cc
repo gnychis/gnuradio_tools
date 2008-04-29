@@ -49,6 +49,7 @@ cmusdrg_mf_sync_ccf::cmusdrg_mf_sync_ccf (const std::vector<gr_complex> &coeffs)
       gr_make_io_signature(1, 1, sizeof(char)))
 {
    set_history(COEFFS_PER_CHIPSEQ);
+   found_sync = false;
    d_buffer_size = 0;
    filters.resize(NFILTERS);
   // Extract the coefficients
@@ -102,7 +103,6 @@ cmusdrg_mf_sync_ccf::general_work(int noutput_items,
 
   int ninput = ninput_items[0];
 
-
   //the earliest valid sample in the buffer is left offset
   //|1 left off||64 samples||1 right off|
   int items_out = 0;
@@ -118,11 +118,9 @@ cmusdrg_mf_sync_ccf::general_work(int noutput_items,
 
   //samples + offset
   while (data_left >= COEFFS_PER_CHIPSEQ + 1) {
-    bool found_sync = false;
     //note sync if there is any
     for (int i = 0; i< (COEFFS_PER_CHIPSEQ+1); i++) {
       if(in1[i].real() == 1) {
-        printf("Found Sync\n");
         in1 += i-1;
         in2 += i-1;
         data_left -= i-1;
@@ -130,9 +128,11 @@ cmusdrg_mf_sync_ccf::general_work(int noutput_items,
         break;
       }
     } 
+
     //may not have enough sample now
-    if (data_left < COEFFS_PER_CHIPSEQ + 1)
+    if (data_left < COEFFS_PER_CHIPSEQ + 1) {
       break;
+    }
     
     freq_offset_correction = 0;
     max_magnitude = 0;
@@ -160,15 +160,16 @@ cmusdrg_mf_sync_ccf::general_work(int noutput_items,
       max_magnitude = cur_magnitude;
       freq_offset_correction = 1;
     }    
-
+    freq_offset_correction = 0;
     data_left       -= COEFFS_PER_CHIPSEQ + freq_offset_correction;
     in1             += COEFFS_PER_CHIPSEQ + freq_offset_correction;
     in2             += COEFFS_PER_CHIPSEQ + freq_offset_correction;
     //mark the output if found_sync
     out[items_out++] = (found_sync) ? (char)decoded_result + 16 : (char)decoded_result;
+
+    found_sync = false;
   }
-  d_buffer_size = data_left; 
-  consume_each(noutput_items*COEFFS_PER_CHIPSEQ);
+  d_buffer_size = data_left;
   
   for (int i = 0; i< items_out; i++) {
     if (out[i] >= 16) {
@@ -181,5 +182,6 @@ cmusdrg_mf_sync_ccf::general_work(int noutput_items,
         out[items_out++] = -1;
         std::cout<<"Don't care"<<std::endl;
   }
+  consume_each(ninput);
   return noutput_items;
 }
