@@ -1,5 +1,5 @@
 #
-# Copyright 2004 Free Software Foundation, Inc.
+# Copyright 2003,2006 Free Software Foundation, Inc.
 # 
 # This file is part of GNU Radio
 # 
@@ -19,4 +19,22 @@
 # Boston, MA 02110-1301, USA.
 # 
 
-SUBDIRS = lib python rbf apps
+include $(top_srcdir)/Makefile.common
+
+INCLUDES = 	\
+	$(STD_DEFINES_AND_INCLUDES) $(DEFINES) $(OMNITHREAD_INCLUDES) $(PMT_INCLUDES) $(MBLOCK_INCLUDES) \
+	$(USRP_INCLUDES) $(USRP_INBAND_INCLUDES) $(BOOST_CFLAGS) $(CPPUNIT_INCLUDES) \
+	-I$(srcdir)/../lib
+
+bin_PROGRAMS =				
+
+noinst_PROGRAMS =			\
+	cmac_tx_file	\
+	cmac_rx_file
+
+
+cmac_tx_file_SOURCES 	= cmac_tx_file.cc 
+cmac_tx_file_LDADD   	= $(USRP_LA) $(USRP_INBAND_LA) ../lib/libcmusdrg_macs.la
+
+cmac_rx_file_SOURCES 	= cmac_rx_file.cc 
+cmac_rx_file_LDADD   	= $(USRP_LA) $(USRP_INBAND_LA) ../lib/libcmusdrg_macs.la

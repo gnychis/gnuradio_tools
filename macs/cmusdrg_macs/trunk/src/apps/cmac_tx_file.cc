@@ -87,21 +87,11 @@ cmac_tx_file::cmac_tx_file(mb_runtime *runtime, const std::string &instance_name
     d_nframes_xmitted(0),
     d_done_sending(false)
 { 
-
   // Extract USRP information from python and the arguments to the python script
-  pmt_t usrp = pmt_nth(0, user_arg);
-  pmt_t args = pmt_nth(1, user_arg);
-  std::vector<std::string> argv;
-  argv = boost::any_cast<std::vector<std::string> >(pmt_any_ref(args));
+  std::string file = pmt_symbol_to_string(pmt_nth(0, user_arg));
+  d_local_addr = pmt_to_long(pmt_nth(1, user_arg));
+  d_dst_addr = pmt_to_long(pmt_nth(2, user_arg));
 
-  // Pull in file name
-  std::string file = argv[0];
-
-  // Addresses
-  std::istringstream ss_laddr(argv[1]), ss_daddr(argv[2]);
-  ss_laddr >> d_local_addr;
-  ss_daddr >> d_dst_addr;
-  
   // Open a stream to the input file and ensure it's open
   d_ifile.open(file.c_str(), std::ios::binary|std::ios::in);
 
@@ -110,10 +100,10 @@ cmac_tx_file::cmac_tx_file(mb_runtime *runtime, const std::string &instance_name
     shutdown_all(PMT_F);
     return;
   }
+
+  pmt_t cmac_data = pmt_list1(pmt_from_long(d_local_addr));
   
-  pmt_t cmac_data = pmt_list2(usrp, pmt_from_long(d_local_addr));
-  
-  define_component("CMAC", "cmac", cmac_data);  // FIXME: RFX2400 hack
+  define_component("CMAC", "cmac", cmac_data);
   d_tx = define_port("tx0", "cmac-tx", false, mb_port::INTERNAL);
   d_rx = define_port("rx0", "cmac-rx", false, mb_port::INTERNAL);
   d_cs = define_port("cs", "cmac-cs", false, mb_port::INTERNAL);
@@ -292,6 +282,22 @@ cmac_tx_file::handle_xmit_response(pmt_t handle)
 
   // CMAC has taken care of waiting for the ACK
   build_and_send_next_frame();  
+}
+
+int
+main (int argc, char **argv)
+{
+  mb_runtime_sptr rt = mb_make_runtime();
+  pmt_t result = PMT_NIL;
+
+  if(argc!=4) {
+    std::cout << "usage: ./cmac_tx_file input_file local_addr dst_addr\n";
+    return -1;
+  }
+
+  pmt_t args = pmt_list3(pmt_intern(argv[1]), pmt_from_long(strtol(argv[2],NULL,10)), pmt_from_long(strtol(argv[3],NULL,10)));
+
+  rt->run("top", "cmac_tx_file", args, &result);
 }
 
 REGISTER_MBLOCK_CLASS(cmac_tx_file);
