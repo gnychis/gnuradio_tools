@@ -95,8 +95,6 @@ AC_CONFIG_FILES([\
 	  src/Makefile \
 	  src/lib/Makefile \
     src/apps/Makefile \
-	  src/python/Makefile \
-    src/python/run_tests \
 	  src/rbf/Makefile \
 	])
 
