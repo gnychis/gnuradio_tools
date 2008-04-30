@@ -19,4 +19,4 @@
 # Boston, MA 02110-1301, USA.
 # 
 
-SUBDIRS = lib python rbf apps
+SUBDIRS = lib rbf apps
