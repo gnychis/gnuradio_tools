@@ -2,7 +2,7 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.cc
 ===================================================================
 --- usrp/host/lib/inband/db_flexrf_mimo.cc	(revision 0)
 +++ usrp/host/lib/inband/db_flexrf_mimo.cc	(revision 0)
-@@ -0,0 +1,306 @@
+@@ -0,0 +1,315 @@
 +
 +
 +#include "db_flexrf_mimo.h"
@@ -10,6 +10,7 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.cc
 +#include <iostream>
 +#include <assert.h>
 +#include <fpga_regs_common.h>
++#include <math.h>
 +
 +using namespace std;
 +
@@ -78,6 +79,14 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.cc
 +
 +}
 +
++void db_flexrf_mimo::select_rx(void ) {
++  if (rx_is_configured) {
++    d_rx->write_io(d_side,~RX_TXN,RX_TXN);
++  };
++
++}
++
++
 +float db_flexrf_mimo::configure(float freq,unsigned int gain,unsigned int rxtx) {
 +  
 +
@@ -133,11 +142,9 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.cc
 +      };
 +    };
 +
-+    desired_n=(int) (freq*freq_mult/phdet_freq+0.5);     
++    desired_n= ceil(freq*freq_mult/phdet_freq);     
 +
-+    
-+
-+    float actual_freq=desired_n * phdet_freq;
++    double actual_freq=desired_n * phdet_freq;
 +
 +    int B = (int) (desired_n/prescaler);
 +
@@ -169,13 +176,15 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.cc
 +    int lock_detect;
 +    d_rx->read_io (d_side, &lock_detect);
 +    lock_detect=lock_detect & PLL_LOCK_DETECT;
-+    d_rx->read_io (d_side, &lock_detect);
-+    lock_detect=lock_detect & PLL_LOCK_DETECT;
++    if(lock_detect==0) {
++      d_rx->read_io (d_side, &lock_detect);
++      lock_detect=lock_detect & PLL_LOCK_DETECT;
 +
-+    if (lock_detect==0) {
-+      cout << "lock_detect==0 !! \n";
-+      exit(1);
-+    };
++      if (lock_detect==0) {
++        cout << "lock_detect==0 !! \n";
++        exit(1);
++      }
++    }
 +
 +    if (rxtx==0) {
 +//      d_rx->set_rx_freq(0, -4000000.0);
@@ -326,7 +335,7 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.h
 ===================================================================
 --- usrp/host/lib/inband/db_flexrf_mimo.h	(revision 0)
 +++ usrp/host/lib/inband/db_flexrf_mimo.h	(revision 0)
-@@ -0,0 +1,131 @@
+@@ -0,0 +1,133 @@
 +/* -*- c++ -*- */
 +/*
 + * Copyright 2003,2004 Free Software Foundation, Inc.
@@ -423,6 +432,8 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.h
 +   */
 +  void select_tx(void );
 +
++  void select_rx(void );
++
 +   /*!
 +    * \brief Connect the TX/RX antenna to the transmitter.
 +    */
@@ -514,17 +525,21 @@ Index: usrp/host/lib/inband/usrp_usb_interface.cc
      if (verbose)
        std::cout << "[USRP_USB_INTERFACE] Failed to set RX mux\n";
      reply_data = pmt_list2(invocation_handle, PMT_F);
-@@ -370,6 +354,16 @@
+@@ -370,6 +354,20 @@
  //  d_urx->_write_oe(1, 0xffff, 0xffff);
  
    d_cs->send(s_response_usrp_open, pmt_list2(invocation_handle, PMT_T));
 +
 +  // Tune daughterboards
 +  db_flexrf_mimo dboards(d_urx, d_utx, 0);
-+  dboards.configure(d_rf_freq, 0, 1);
-+  dboards.configure(d_rf_freq, 45, 0);
++  dboards.configure(d_rf_freq+4000000.0, 0, 1);
++  dboards.configure(d_rf_freq-4000000.0, 45, 0);
++  d_utx->set_tx_freq(0,-6e6);
++  d_utx->set_tx_freq(1,-6e6);
++  d_urx->set_rx_freq(0,-2e6);
++  d_urx->set_rx_freq(1,-2e6);
 +  dboards.select_tx();
-+  dboards.select_rx2();
++//  dboards.select_rx();
 +  
 +  d_utx->start();
 +
