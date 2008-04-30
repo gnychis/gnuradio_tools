@@ -2,7 +2,7 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.cc
 ===================================================================
 --- usrp/host/lib/inband/db_flexrf_mimo.cc	(revision 0)
 +++ usrp/host/lib/inband/db_flexrf_mimo.cc	(revision 0)
-@@ -0,0 +1,315 @@
+@@ -0,0 +1,313 @@
 +
 +
 +#include "db_flexrf_mimo.h"
@@ -278,8 +278,6 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.cc
 +  dac_value = (agc_gain*(V_maxgain-V_mingain)/(maxgain-mingain) + V_mingain)*4096/V_fullscale;
 +  assert(dac_value>=0);
 +  assert(dac_value<4096);
-+  std::cout << "dac_value: " << dac_value << std::endl;
-+  std::cout << "pga_gaine: " << pga_gain << std::endl;
 +  d_rx->write_aux_dac(0, 0, (int)dac_value);
 +  d_rx->set_pga(0, (int)pga_gain);
 +}
