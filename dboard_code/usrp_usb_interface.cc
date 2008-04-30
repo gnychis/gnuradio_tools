@@ -304,7 +304,8 @@ usrp_usb_interface::handle_cmd_open(pmt_t data)
     return;
   }
 
-  if(!d_utx->set_mux(0xBA98)) {
+//  if(!d_utx->set_mux(0xBA98)) {
+  if(!d_utx->set_mux(152)) {
     if (verbose)
       std::cout << "[USRP_USB_INTERFACE] Failed to set TX mux\n";
     reply_data = pmt_list2(invocation_handle, PMT_F);
@@ -357,10 +358,16 @@ usrp_usb_interface::handle_cmd_open(pmt_t data)
 
   // Tune daughterboards
   db_flexrf_mimo dboards(d_urx, d_utx, 0);
-  dboards.configure(d_rf_freq, 0, 1);
-  dboards.configure(d_rf_freq, 45, 0);
-  dboards.select_tx();
-  dboards.select_rx2();
+  dboards.configure_tx(0);
+  dboards.configure_rx(45);
+  dboards.tune_tx(d_rf_freq, 0);
+  dboards.tune_rx(d_rf_freq, 45);
+  dboards.enable_tx();
+
+//  dboards.configure(d_rf_freq, 0, 1);
+//  dboards.configure(d_rf_freq, 45, 0);
+//  dboards.select_tx();
+//  dboards.select_rx2();
   
   d_utx->start();
 

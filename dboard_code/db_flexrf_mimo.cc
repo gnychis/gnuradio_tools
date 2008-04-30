@@ -19,7 +19,6 @@ db_flexrf_mimo::db_flexrf_mimo(usrp_standard_rx* rx,usrp_standard_tx* tx, unsign
   rx_is_configured=false;
   tx_is_configured=false;
 
-
   switch (dbid_rx) {
   
      case 39:
@@ -73,116 +72,148 @@ void db_flexrf_mimo::select_tx(void ) {
 
 }
 
-float db_flexrf_mimo::configure(float freq,unsigned int gain,unsigned int rxtx) {
+float db_flexrf_mimo::configure_tx(int gain) 
+{
+  // Disable REF clock
+  d_tx->_write_oe(0,0,0xffff);
+  d_tx->_write_fpga_reg (FR_TX_A_REFCLK, 0);
+
+  // Set PGA to 0
+  d_tx->set_pga(d_side*2+0, 0);
+  d_tx->set_pga(d_side*2+1, 0);
+
+  // No auto TR
+  set_tx_auto_tr(false);
+
+  // Setup
+  d_tx->_write_oe(d_side, (POWER_UP|RX_TXN|ENABLE), 0xffff);
+  d_tx->write_io (d_side, ((~POWER_UP) |RX_TXN), (POWER_UP|RX_TXN|ENABLE));
+
+}
+
+float db_flexrf_mimo::configure_rx(int gain) 
+{
+  // Disable REF clock
+  d_rx->_write_oe(0,0,0xffff);
+  d_rx->_write_fpga_reg (FR_RX_A_REFCLK, 0);
+
+  // Set RX Gain
+  set_rx_gain(gain);
+
+  // Set RX auto TR to false
+  set_rx_auto_tr(false);
   
+  // Setup
+  d_rx->_write_oe(d_side,POWER_UP|RX2_RX1N|ENABLE,0xffff); 
+  d_rx->write_io(d_side, (~POWER_UP) |RX2_RX1N|ENABLE,POWER_UP|RX2_RX1N|ENABLE);
+  d_rx->write_io(d_side,0,RX2_RX1N);
+        
+  // ADC Buffer Bypass
+  // I don't know why 2 3 and are set again, but thats what the python code does
+  d_rx->set_adc_buffer_bypass(0,1);
+  d_rx->set_adc_buffer_bypass(1,1);
+  d_rx->set_adc_buffer_bypass(2,1);
+  d_rx->set_adc_buffer_bypass(3,1);
+  d_rx->set_adc_buffer_bypass(2,1);
+  d_rx->set_adc_buffer_bypass(3,1);
+}
 
-    if (rxtx>1) {
-      cout << "txrx>1 ! \n";
-      exit(1);
-    };
+float db_flexrf_mimo::tune_tx(float freq, int gain)
+{
+  unsigned int rxtx =1; // TX
 
+  // Set TX PGA to 0
+  d_tx->set_pga(d_side*2+0, 0); // FIXME: I think this is unneeded
+  d_tx->set_pga(d_side*2+1, 0); // FIXME: I think this is unneeded
 
-    d_rx->_write_oe(0,0,0xffff);
-    if (d_side==0)
-      if (rxtx==0)
-        d_rx->_write_fpga_reg (FR_RX_A_REFCLK, 0);
-      else
-        d_tx->_write_fpga_reg (FR_TX_A_REFCLK, 0);
-    else
-      if (rxtx==0)
-        d_rx->_write_fpga_reg (FR_RX_B_REFCLK, 0);
-      else
-        d_tx->_write_fpga_reg (FR_TX_B_REFCLK, 0);
-
-    if (gain>4095)
-      gain=4095;
-
-    if (rxtx==0) {
-       set_rx_auto_tr(false);
-       set_rx_gain(gain);
-
-       d_rx->_write_oe(d_side,POWER_UP|RX2_RX1N|ENABLE,0xffff); 
-       d_rx->write_io(d_side,
-		   (~POWER_UP) |RX2_RX1N|ENABLE,POWER_UP|RX2_RX1N|ENABLE);
-
-       d_rx->write_io(d_side,0,RX2_RX1N);
-    } else {
-      set_tx_auto_tr(false);
-
-      //d_tx->set_pga(d_side*2+0,d_tx->pga_max());
-      //d_tx->set_pga(d_side*2+1,d_tx->pga_max());
-
-      d_tx->_write_oe(d_side,(POWER_UP|RX_TXN|ENABLE), 0xffff);
-      d_tx->write_io(d_side,((~POWER_UP) |RX_TXN), (POWER_UP|RX_TXN|ENABLE));
-      d_tx->write_io(d_side,ENABLE, (RX_TXN|ENABLE));
-
-    }
-
-    if (rxtx==0) {
-      if (d_side==0) {
-        d_rx->set_adc_buffer_bypass(0,1);  
-        d_rx->set_adc_buffer_bypass(1,1);
-      } else {
-        d_rx->set_adc_buffer_bypass(2,1);  
-        d_rx->set_adc_buffer_bypass(3,1);
-      };
-    };
-
-    desired_n=(int) (freq*freq_mult/phdet_freq+0.5);     
-
+  // Set RX gain
+  //set_rx_gain(gain);  // FIXME: I think this is unneeded
     
+  // Compute frequency
+  desired_n=(int) (freq*freq_mult/phdet_freq+0.5);     
+  float actual_freq=desired_n * phdet_freq;
+  int B = (int) (desired_n/prescaler);
+  int B_DIV=B;
+  int A=(int) (desired_n - prescaler*B);
+  int A_DIV=A;
 
-    float actual_freq=desired_n * phdet_freq;
+  if (B_DIV<A_DIV) {
+    cout << "B_DIV<<A_DIV !\n";
+    exit(1);
+  };
 
-    int B = (int) (desired_n/prescaler);
+  unsigned int N = (B_DIV << 8) | (A_DIV<<2) | Nconstant;
 
+  write_it((R & ~0x3) | 1,d_side*2+rxtx);
+  write_it((control & ~0x3) | 0,d_side*2+rxtx);
 
-    int B_DIV=B;
-    int A=(int) (desired_n - prescaler*B);
-    int A_DIV=A;
+  // wait 10ms
+  usleep(10000);
 
+  write_it((N & ~0x3) | 2, d_side*2+rxtx);
 
-     if (B_DIV<A_DIV) {
-       cout << "B_DIV<<A_DIV !\n";
-       exit(1);
-     };
+  if(!d_tx->set_tx_freq(0, (double)-4e6)) {
+    std::cout << "Failed to set TX freq\n";
+    exit(-1);
+  }
 
+  tx_is_configured=true;
+}
 
-    unsigned int N = (B_DIV << 8) | (A_DIV<<2) | Nconstant;
+void db_flexrf_mimo::enable_tx()
+{
+  d_tx->write_io (d_side, ENABLE, (RX_TXN|ENABLE));
+}
 
+void db_flexrf_mimo::shutdown()
+{
+  d_tx->write_io (0, -129, 224);
+  d_tx->write_io (0, -129, 128);
 
-    write_it((R & ~0x3) | 1,d_side*2+rxtx);
+  d_rx->write_io (0, -129, 160);
+  d_rx->write_io (0, -129, 128);
+}
 
+float db_flexrf_mimo::tune_rx(float freq, int gain)
+{
+  unsigned int rxtx = 0; // RX
 
-    write_it((control & ~0x3) | 0,d_side*2+rxtx);
+  // Set RX PGA to 0
+  d_rx->set_pga(d_side*2+0, 0); // FIXME: I think this is unneeded
+  d_rx->set_pga(d_side*2+1, 0); // FIXME: I think this is unneeded
+
+  // Set RX gain
+  set_rx_gain(gain);  // FIXME: I think this is unneeded
     
-    // wait 10ms
-    usleep(10000);
+  // Compute frequency
+  desired_n=(int) (freq*freq_mult/phdet_freq+0.5);     
+  float actual_freq=desired_n * phdet_freq;
+  int B = (int) (desired_n/prescaler);
+  int B_DIV=B;
+  int A=(int) (desired_n - prescaler*B);
+  int A_DIV=A;
 
-    write_it((N & ~0x3) | 2, d_side*2+rxtx);
+  if (B_DIV<A_DIV) {
+    cout << "B_DIV<<A_DIV !\n";
+    exit(1);
+  };
 
-    int lock_detect;
-    d_rx->read_io (d_side, &lock_detect);
-    lock_detect=lock_detect & PLL_LOCK_DETECT;
-    d_rx->read_io (d_side, &lock_detect);
-    lock_detect=lock_detect & PLL_LOCK_DETECT;
+  unsigned int N = (B_DIV << 8) | (A_DIV<<2) | Nconstant;
 
-    if (lock_detect==0) {
-      cout << "lock_detect==0 !! \n";
-      exit(1);
-    };
+  write_it((R & ~0x3) | 1,d_side*2+rxtx);
+  write_it((control & ~0x3) | 0,d_side*2+rxtx);
 
-    if (rxtx==0) {
-//      d_rx->set_rx_freq(0, -4000000.0);
-      rx_is_configured=true;
-    } else {
-//      d_tx->set_tx_freq(0, -4000000.0);
-      tx_is_configured=true;
-    }
+  // wait 10ms
+  usleep(10000);
 
-    return actual_freq;
+  write_it((N & ~0x3) | 2, d_side*2+rxtx);
+  
+  if(!d_rx->set_rx_freq(0, (double)-4e6)) {
+    std::cout << "Failed to set RX freq\n";
+    exit(-1);
+  }
 
-
+  rx_is_configured=true;
 }
 
 void db_flexrf_mimo::set_tx_auto_tr(bool on)
@@ -268,6 +299,7 @@ void db_flexrf_mimo::set_rx_gain(long gain)
   std::cout << "pga_gaine: " << pga_gain << std::endl;
   d_rx->write_aux_dac(0, 0, (int)dac_value);
   d_rx->set_pga(0, (int)pga_gain);
+  d_rx->set_pga(1, (int)pga_gain);
 }
 
 
@@ -291,13 +323,13 @@ void db_flexrf_mimo::write_it(unsigned int v,unsigned int slot) {
     d_rx->_write_spi (0,SPI_ENABLE_RX_A,0,str);
     break;
   case 1:
-    d_rx->_write_spi (0,SPI_ENABLE_TX_A,0,str);
+    d_tx->_write_spi (0,SPI_ENABLE_TX_A,0,str);
     break;
   case 2:
     d_rx->_write_spi (0,SPI_ENABLE_RX_B,0,str);
     break;
   case 3:
-    d_rx->_write_spi (0,SPI_ENABLE_TX_B,0,str);
+    d_tx->_write_spi (0,SPI_ENABLE_TX_B,0,str);
     break;
   };  
 

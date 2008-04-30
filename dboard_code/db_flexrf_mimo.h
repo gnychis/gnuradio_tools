@@ -112,6 +112,13 @@ class db_flexrf_mimo {
    void set_rx_atr_rxval(long);
    void set_tx_auto_tr(bool);
    void set_rx_auto_tr(bool);
+
+   float configure_rx(int);
+   float configure_tx(int);
+   float tune_tx(float,int);
+   float tune_rx(float,int);
+   void  enable_tx();
+   void  shutdown();
   private: 
 
   void write_it(unsigned int,unsigned int);
