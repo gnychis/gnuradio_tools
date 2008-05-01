@@ -99,6 +99,6 @@ AC_CONFIG_FILES([\
 	])
 
 dnl run_tests is created from run_tests.in.  Make it executable.
-AC_CONFIG_COMMANDS([run_tests], [chmod +x src/python/run_tests])
+dnl AC_CONFIG_COMMANDS([run_tests], [chmod +x src/python/run_tests])
 
 AC_OUTPUT
