@@ -37,14 +37,11 @@
 #include <iostream>
 #include <fstream>
 
-#include <gmsk.h>
-#include <cmac.h>
-#include <cmac_symbols.h>
 #include <mac_symbols.h>
 
 static bool verbose = false;
 
-class cmac_rx_file : public mb_mblock
+class rx_file : public mb_mblock
 {
   mb_port_sptr 	d_tx;
   mb_port_sptr  d_rx;
@@ -65,8 +62,8 @@ class cmac_rx_file : public mb_mblock
   long d_local_addr;
 
  public:
-  cmac_rx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg);
-  ~cmac_rx_file();
+  rx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg);
+  ~rx_file();
   void handle_message(mb_message_sptr msg);
 
  protected:
@@ -80,7 +77,7 @@ class cmac_rx_file : public mb_mblock
   void enter_closing_channel();
 };
 
-cmac_rx_file::cmac_rx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg)
+rx_file::rx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(runtime, instance_name, user_arg),
     d_state(INIT), 
     d_nframes_xmitted(0),
@@ -117,13 +114,13 @@ cmac_rx_file::cmac_rx_file(mb_runtime *runtime, const std::string &instance_name
 
 }
 
-cmac_rx_file::~cmac_rx_file()
+rx_file::~rx_file()
 {
   d_ofile.close();
 }
 
 void
-cmac_rx_file::handle_message(mb_message_sptr msg)
+rx_file::handle_message(mb_message_sptr msg)
 {
   pmt_t event = msg->signal();
   pmt_t data = msg->data();
@@ -188,14 +185,13 @@ cmac_rx_file::handle_message(mb_message_sptr msg)
 
 // Wait until we get incoming data...
 void
-cmac_rx_file::enter_data_wait()
+rx_file::enter_data_wait()
 {
   d_state = DATA_WAIT;
-  d_cs->send(s_cmd_rx_enable, pmt_list1(PMT_NIL));
 }
 
 void
-cmac_rx_file::handle_response_rx_pkt(pmt_t data)
+rx_file::handle_response_rx_pkt(pmt_t data)
 {
   pmt_t invocation_handle = pmt_nth(0, data);
   pmt_t payload = pmt_nth(1, data);
@@ -219,13 +215,13 @@ main (int argc, char **argv)
   pmt_t result = PMT_NIL;
 
   if(argc!=3) {
-    std::cout << "usage: ./cmac_rx_file output_file local_addr\n";
+    std::cout << "usage: ./rx_file output_file local_addr\n";
     return -1;
   }
 
   pmt_t args = pmt_list2(pmt_intern(argv[1]), pmt_from_long(strtol(argv[2],NULL,10)));
 
-  rt->run("top", "cmac_rx_file", args, &result);
+  rt->run("top", "rx_file", args, &result);
 }
 
-REGISTER_MBLOCK_CLASS(cmac_rx_file);
+REGISTER_MBLOCK_CLASS(rx_file);

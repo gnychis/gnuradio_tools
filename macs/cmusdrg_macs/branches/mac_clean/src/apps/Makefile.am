@@ -30,11 +30,11 @@ bin_PROGRAMS =
 
 noinst_PROGRAMS =			\
 	tx_file	\
-	cmac_rx_file
+	rx_file
 
 
 tx_file_SOURCES 	= tx_file.cc 
 tx_file_LDADD   	= $(USRP_LA) $(USRP_INBAND_LA) ../lib/libcmusdrg_macs.la
 
-cmac_rx_file_SOURCES 	= cmac_rx_file.cc 
-cmac_rx_file_LDADD   	= $(USRP_LA) $(USRP_INBAND_LA) ../lib/libcmusdrg_macs.la
+rx_file_SOURCES 	= rx_file.cc 
+rx_file_LDADD   	= $(USRP_LA) $(USRP_INBAND_LA) ../lib/libcmusdrg_macs.la
