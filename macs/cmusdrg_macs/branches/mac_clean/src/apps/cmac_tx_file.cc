@@ -38,12 +38,11 @@
 #include <fstream>
 #include <sys/time.h>
 
-#include <cmac.h>
-#include <cmac_symbols.h>
+#include <mac_symbols.h>
 
 static bool verbose = false;
 
-class cmac_tx_file : public mb_mblock
+class tx_file : public mb_mblock
 {
   mb_port_sptr 	d_tx;
   mb_port_sptr  d_rx;
@@ -68,8 +67,8 @@ class cmac_tx_file : public mb_mblock
   struct timeval d_start, d_end;
 
  public:
-  cmac_tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg);
-  ~cmac_tx_file();
+  tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg);
+  ~tx_file();
   void handle_message(mb_message_sptr msg);
 
  protected:
@@ -82,7 +81,7 @@ class cmac_tx_file : public mb_mblock
   void enter_closing_channel();
 };
 
-cmac_tx_file::cmac_tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg)
+tx_file::tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(runtime, instance_name, user_arg),
     d_state(INIT), 
     d_nframes_xmitted(0),
@@ -121,14 +120,14 @@ cmac_tx_file::cmac_tx_file(mb_runtime *runtime, const std::string &instance_name
 
 }
 
-cmac_tx_file::~cmac_tx_file()
+tx_file::~tx_file()
 {
 
   d_ifile.close();
 }
 
 void
-cmac_tx_file::handle_message(mb_message_sptr msg)
+tx_file::handle_message(mb_message_sptr msg)
 {
   pmt_t event = msg->signal();
   pmt_t data = msg->data();
@@ -146,7 +145,7 @@ cmac_tx_file::handle_message(mb_message_sptr msg)
     // When CMAC is done initializing, it will send a response
     case INIT:
       
-      if(pmt_eq(event, s_response_cmac_initialized)) {
+      if(pmt_eq(event, s_response_mac_initialized)) {
         handle = pmt_nth(0, data);
         status = pmt_nth(1, data);
         pmt_t mac_properties = pmt_nth(2, data);
@@ -219,30 +218,19 @@ cmac_tx_file::handle_message(mb_message_sptr msg)
 }
 
 void
-cmac_tx_file::enter_transmitting()
+tx_file::enter_transmitting()
 {
   d_state = TRANSMITTING;
-
-  d_cs->send(s_cmd_carrier_sense_deadline,
-             pmt_list2(PMT_NIL,
-                       pmt_from_long(50000000)));
-  
-  // Disable RX to save bandwidth and processing
-  d_cs->send(s_cmd_rx_disable, pmt_list1(PMT_NIL));
 
   build_and_send_next_frame();
 
 }
 
 void
-cmac_tx_file::build_and_send_next_frame()
+tx_file::build_and_send_next_frame()
 {
   size_t ignore;
   long n_bytes;
-
-  // Before we send the frame, we stop the RX port since we are not interested
-  // in decoding while transmitting, and full processing can go to TX
-  d_cs->send(s_cmd_rx_disable, pmt_list1(PMT_NIL));
 
   // Let's read in as much as possible to fit in a frame
   char data[d_mac_max_payload];
@@ -281,7 +269,7 @@ cmac_tx_file::build_and_send_next_frame()
 
 
 void
-cmac_tx_file::handle_xmit_response(pmt_t handle)
+tx_file::handle_xmit_response(pmt_t handle)
 {
   if (d_done_sending && pmt_to_long(handle)==(d_nframes_xmitted-1)){
     gettimeofday(&d_end, NULL);
@@ -305,13 +293,13 @@ main (int argc, char **argv)
   pmt_t result = PMT_NIL;
 
   if(argc!=4) {
-    std::cout << "usage: ./cmac_tx_file input_file local_addr dst_addr\n";
+    std::cout << "usage: ./tx_file input_file local_addr dst_addr\n";
     return -1;
   }
 
   pmt_t args = pmt_list3(pmt_intern(argv[1]), pmt_from_long(strtol(argv[2],NULL,10)), pmt_from_long(strtol(argv[3],NULL,10)));
 
-  rt->run("top", "cmac_tx_file", args, &result);
+  rt->run("top", "tx_file", args, &result);
 }
 
-REGISTER_MBLOCK_CLASS(cmac_tx_file);
+REGISTER_MBLOCK_CLASS(tx_file);

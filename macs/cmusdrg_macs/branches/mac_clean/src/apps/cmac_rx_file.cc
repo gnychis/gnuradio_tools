@@ -40,6 +40,7 @@
 #include <gmsk.h>
 #include <cmac.h>
 #include <cmac_symbols.h>
+#include <mac_symbols.h>
 
 static bool verbose = false;
 
@@ -140,7 +141,7 @@ cmac_rx_file::handle_message(mb_message_sptr msg)
     // When CMAC is done initializing, it will send a response
     case INIT:
       
-      if(pmt_eq(event, s_response_cmac_initialized)) {
+      if(pmt_eq(event, s_response_mac_initialized)) {
         handle = pmt_nth(0, data);
         status = pmt_nth(1, data);
 
