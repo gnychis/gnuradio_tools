@@ -318,7 +318,7 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.cc
 +
 Index: usrp/host/lib/inband/usrp_usb_interface.h
 ===================================================================
---- usrp/host/lib/inband/usrp_usb_interface.h	(revision 8280)
+--- usrp/host/lib/inband/usrp_usb_interface.h	(revision 8301)
 +++ usrp/host/lib/inband/usrp_usb_interface.h	(working copy)
 @@ -49,7 +49,7 @@
    long d_interp_tx;
@@ -469,7 +469,7 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.h
 +#endif //INCLUDED_DB_FLEXRF_MIMO_H
 Index: usrp/host/lib/inband/usrp_usb_interface.cc
 ===================================================================
---- usrp/host/lib/inband/usrp_usb_interface.cc	(revision 8280)
+--- usrp/host/lib/inband/usrp_usb_interface.cc	(revision 8301)
 +++ usrp/host/lib/inband/usrp_usb_interface.cc	(working copy)
 @@ -35,6 +35,7 @@
  #include <usrp_rx_stub.h>
@@ -546,9 +546,9 @@ Index: usrp/host/lib/inband/usrp_usb_interface.cc
  /*!
 Index: usrp/host/lib/inband/Makefile.am
 ===================================================================
---- usrp/host/lib/inband/Makefile.am	(revision 8280)
+--- usrp/host/lib/inband/Makefile.am	(revision 8301)
 +++ usrp/host/lib/inband/Makefile.am	(working copy)
-@@ -59,6 +59,7 @@
+@@ -57,6 +57,7 @@
  	usrp_server.cc			\
  	usrp_tx.cc			\
  	usrp_tx_stub.cc			\
@@ -556,11 +556,11 @@ Index: usrp/host/lib/inband/Makefile.am
  	usrp_usb_interface.cc		
  
  libusrp_inband_la_LDFLAGS = $(NO_UNDEFINED) -version-info 0:0:0
-@@ -75,6 +76,7 @@
+@@ -73,6 +74,7 @@
  	usrp_server.h			\
  	usrp_tx.h			\
  	usrp_tx_stub.h			\
 +	db_flexrf_mimo.h \
- 	usrp_usb_interface.h 		
+ 	usrp_usb_interface.h
  
  noinst_HEADERS =      			\
