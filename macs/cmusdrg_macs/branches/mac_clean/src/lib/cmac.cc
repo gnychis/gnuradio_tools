@@ -239,6 +239,7 @@ void cmac::set_carrier_sense(bool toggle, long threshold, long deadline, pmt_t i
 // until an ACK is received, so we enter an ACK wait state.
 void cmac::packet_transmitted(pmt_t data)
 {
+  fflush(stdout);
   pmt_t invocation_handle = pmt_nth(0, data);
   pmt_t status = pmt_nth(1, data);
 
@@ -263,6 +264,8 @@ void cmac::packet_transmitted(pmt_t data)
   
   d_state = ACK_WAIT;
 
+  if(verbose)
+    std::cout << "[CMAC] Packet transmitted, going to ACK wait\n";
 }
 
 // This method determines whether carrier sense should be enabled based on two
@@ -442,6 +445,9 @@ void cmac::handle_ack(long src, long dst)
   disable_rx();     // FIXME: spend more time thinking about this, I think its incorrect
 
   d_state = IDLE;   // Back to the idle state!
+
+  if(verbose)
+    std::cout << "[CMAC] Got ACK, going back to idle\n";
 
   return;
 }

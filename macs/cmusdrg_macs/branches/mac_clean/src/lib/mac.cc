@@ -106,10 +106,8 @@ void mac::transmit_pkt(pmt_t data)
   pmt_t pkt_properties = pmt_nth(2, data);
   pmt_t timestamp;
 
-  // A dictionary (a hash like structure) that is used to pass packet properties
-  // down the layers.
   pmt_t us_tx_properties = pmt_make_dict();
-  
+
   if(pmt_is_dict(pkt_properties)) {
     if(pmt_t pkt_cs = pmt_dict_ref(pkt_properties,
                                    pmt_intern("carrier-sense"),
@@ -128,6 +126,9 @@ void mac::transmit_pkt(pmt_t data)
         shutdown_all(PMT_F);
       }
     }
+  } else {
+    std::cout << "[MAC] Invalid packet properties on transmit frame\n";
+    shutdown_all(PMT_F);
   }
 
   pmt_t pdata = pmt_list5(invocation_handle,    // Invocation handle is passed back.
@@ -138,7 +139,7 @@ void mac::transmit_pkt(pmt_t data)
 
   d_us_tx->send(s_cmd_xmit_raw_frame, pdata);   // Finally, send!
 
-  if(verbose && 0)
+  if(verbose)
     std::cout << "[CMAC] Transmitted packet\n";
 }
 

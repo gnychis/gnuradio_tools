@@ -259,6 +259,9 @@ void cmac::build_frame(pmt_t data)
   const void *payload = pmt_uniform_vector_elements(pmt_nth(2, data), n_payload_bytes);
   pmt_t pkt_properties = pmt_nth(3, data);
 
+  if(!pmt_is_dict(pkt_properties))
+    pkt_properties = pmt_make_dict();
+
   // For CMAC, all packets are transmitted immediately
   pmt_dict_set(pkt_properties, pmt_intern("timestamp"), pmt_from_long(0xffffffff));
   

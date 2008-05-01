@@ -228,7 +228,7 @@ void gmsk::mod(pmt_t data) {
   // Frame properties
   pmt_t invocation_handle = pmt_nth(0, data);
   const void *payload = pmt_uniform_vector_elements(pmt_nth(1, data), n_bytes);
-  pmt_t pkt_properties = pmt_nth(1, data);
+  pmt_t pkt_properties = pmt_nth(2, data);
 
   // Access code and pre-amble
   std::vector<unsigned char>    b_access_code(d_access_code.length()/8);
@@ -329,7 +329,8 @@ void gmsk::mod(pmt_t data) {
                        v_mod_data,
                        pkt_properties));
                        
-
+  if(verbose)
+    std::cout << "[GMSK] Modulated data\n";
 }
 
 //void gmsk::demod(const std::vector<gr_complex> mod_data)
