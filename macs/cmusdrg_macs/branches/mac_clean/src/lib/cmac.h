@@ -103,7 +103,7 @@ class cmac : public mac
     return(MAX_FRAME_SIZE);
   }
   static int max_frame_payload() {
-    return(sizeof(d_frame_hdr_t));
+    return(MAX_FRAME_SIZE-sizeof(d_frame_hdr_t));
   }
 
  private:
