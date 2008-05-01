@@ -38,12 +38,11 @@
 #include <fstream>
 #include <sys/time.h>
 
-#include <cmac.h>
-#include <cmac_symbols.h>
+#include <mac_symbols.h>
 
 static bool verbose = false;
 
-class cmac_tx_file : public mb_mblock
+class tx_file : public mb_mblock
 {
   mb_port_sptr 	d_tx;
   mb_port_sptr  d_rx;
@@ -58,6 +57,7 @@ class cmac_tx_file : public mb_mblock
   state_t	d_state;
   long		d_nframes_xmitted;
   bool		d_done_sending;
+  long    d_mac_max_payload;
 
   std::ifstream d_ifile;
 
@@ -67,8 +67,8 @@ class cmac_tx_file : public mb_mblock
   struct timeval d_start, d_end;
 
  public:
-  cmac_tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg);
-  ~cmac_tx_file();
+  tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg);
+  ~tx_file();
   void handle_message(mb_message_sptr msg);
 
  protected:
@@ -81,16 +81,17 @@ class cmac_tx_file : public mb_mblock
   void enter_closing_channel();
 };
 
-cmac_tx_file::cmac_tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg)
+tx_file::tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(runtime, instance_name, user_arg),
     d_state(INIT), 
     d_nframes_xmitted(0),
     d_done_sending(false)
 { 
   // Extract USRP information from python and the arguments to the python script
-  std::string file = pmt_symbol_to_string(pmt_nth(0, user_arg));
-  d_local_addr = pmt_to_long(pmt_nth(1, user_arg));
-  d_dst_addr = pmt_to_long(pmt_nth(2, user_arg));
+  std::string mac = pmt_symbol_to_string(pmt_nth(0, user_arg));
+  std::string file = pmt_symbol_to_string(pmt_nth(1, user_arg));
+  d_local_addr = pmt_to_long(pmt_nth(2, user_arg));
+  d_dst_addr = pmt_to_long(pmt_nth(3, user_arg));
 
   // Open a stream to the input file and ensure it's open
   d_ifile.open(file.c_str(), std::ios::binary|std::ios::in);
@@ -101,18 +102,19 @@ cmac_tx_file::cmac_tx_file(mb_runtime *runtime, const std::string &instance_name
     return;
   }
 
-  pmt_t cmac_data = pmt_list1(pmt_from_long(d_local_addr));
+  pmt_t mac_data = pmt_list1(pmt_from_long(d_local_addr));
   
-  define_component("CMAC", "cmac", cmac_data);
-  d_tx = define_port("tx0", "cmac-tx", false, mb_port::INTERNAL);
-  d_rx = define_port("rx0", "cmac-rx", false, mb_port::INTERNAL);
-  d_cs = define_port("cs", "cmac-cs", false, mb_port::INTERNAL);
+  define_component(mac, mac, mac_data);
+  d_tx = define_port("tx0", mac+"-tx", false, mb_port::INTERNAL);
+  d_rx = define_port("rx0", mac+"-rx", false, mb_port::INTERNAL);
+  d_cs = define_port("cs", mac+"-cs", false, mb_port::INTERNAL);
 
-  connect("self", "tx0", "CMAC", "tx0");
-  connect("self", "rx0", "CMAC", "rx0");
-  connect("self", "cs", "CMAC", "cs");
+  connect("self", "tx0", mac, "tx0");
+  connect("self", "rx0", mac, "rx0");
+  connect("self", "cs", mac, "cs");
   
-  std::cout << "[CMAC_TX_FILE] Initialized ..."
+  std::cout << "[TX_FILE] Initialized ..."
+            << "\n    MAC: " << mac
             << "\n    Filename: " << file
             << "\n    Address: " << d_local_addr
             << "\n    Destination:" << d_dst_addr
@@ -120,14 +122,14 @@ cmac_tx_file::cmac_tx_file(mb_runtime *runtime, const std::string &instance_name
 
 }
 
-cmac_tx_file::~cmac_tx_file()
+tx_file::~tx_file()
 {
 
   d_ifile.close();
 }
 
 void
-cmac_tx_file::handle_message(mb_message_sptr msg)
+tx_file::handle_message(mb_message_sptr msg)
 {
   pmt_t event = msg->signal();
   pmt_t data = msg->data();
@@ -142,12 +144,29 @@ cmac_tx_file::handle_message(mb_message_sptr msg)
   switch(d_state) {
     
     //------------------------------ INIT ---------------------------------//
-    // When CMAC is done initializing, it will send a response
+    // When MAC is done initializing, it will send a response
     case INIT:
       
-      if(pmt_eq(event, s_response_cmac_initialized)) {
+      if(pmt_eq(event, s_response_mac_initialized)) {
         handle = pmt_nth(0, data);
         status = pmt_nth(1, data);
+        pmt_t mac_properties = pmt_nth(2, data);
+
+        if(pmt_is_dict(mac_properties)) {
+          if(pmt_t mac_max_payload = pmt_dict_ref(mac_properties,
+                                                  pmt_intern("max-payload"),
+                                                  PMT_NIL)) {
+            if(pmt_eqv(mac_max_payload, PMT_NIL)) {
+              std::cout << "Error: MAC needs to send max payload with init message\n";
+              shutdown_all(PMT_F);
+            } else {
+              d_mac_max_payload = pmt_to_long(mac_max_payload);
+            }
+          }
+        } else {
+          std::cout << "Error: MAC needs to send mac properties\n";
+          shutdown_all(PMT_F);
+        }
 
         // Set start time to keep track of performance
         gettimeofday(&d_start, NULL);
@@ -157,7 +176,7 @@ cmac_tx_file::handle_message(mb_message_sptr msg)
           return;
         }
         else {
-          error_msg = "error initializing cmac:";
+          error_msg = "error initializing mac:";
           goto bail;
         }
       }
@@ -169,7 +188,7 @@ cmac_tx_file::handle_message(mb_message_sptr msg)
     case TRANSMITTING:
       
       // Check that the transmits are OK
-      if (pmt_eq(event, s_response_tx_pkt)){
+      if (pmt_eq(event, s_response_tx_data)){
         handle = pmt_nth(0, data);
         status = pmt_nth(1, data);
 
@@ -196,38 +215,27 @@ cmac_tx_file::handle_message(mb_message_sptr msg)
  // Received an unhandled message for a specific state
  unhandled:
   if(verbose && !pmt_eq(event, pmt_intern("%shutdown")))
-    std::cout << "[CMAC_TX_FILE] unhandled msg: " << msg
+    std::cout << "[TX_FILE] unhandled msg: " << msg
               << "in state "<< d_state << std::endl;
 }
 
 void
-cmac_tx_file::enter_transmitting()
+tx_file::enter_transmitting()
 {
   d_state = TRANSMITTING;
-
-  d_cs->send(s_cmd_carrier_sense_deadline,
-             pmt_list2(PMT_NIL,
-                       pmt_from_long(50000000)));
-  
-  // Disable RX to save bandwidth and processing
-  d_cs->send(s_cmd_rx_disable, pmt_list1(PMT_NIL));
 
   build_and_send_next_frame();
 
 }
 
 void
-cmac_tx_file::build_and_send_next_frame()
+tx_file::build_and_send_next_frame()
 {
   size_t ignore;
   long n_bytes;
 
-  // Before we send the frame, we stop the RX port since we are not interested
-  // in decoding while transmitting, and full processing can go to TX
-  d_cs->send(s_cmd_rx_disable, pmt_list1(PMT_NIL));
-
   // Let's read in as much as possible to fit in a frame
-  char data[MAX_FRAME_SIZE-cmac::max_frame_payload()];
+  char data[d_mac_max_payload];
   d_ifile.read((char *)&data[0], sizeof(data));
 
   // Use gcount() and test if end of stream was met
@@ -243,21 +251,17 @@ cmac_tx_file::build_and_send_next_frame()
   char *vdata = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
   memcpy(vdata, data, n_bytes);
 
-  // Per packet properties
-  pmt_t tx_properties = pmt_make_dict();
-
-  pmt_t timestamp = pmt_from_long(0xffffffff);	// NOW
-  d_tx->send(s_cmd_tx_pkt,
-	     pmt_list5(pmt_from_long(d_nframes_xmitted),   // invocation-handle
-           pmt_from_long(d_local_addr),// src
+  //  Transmit the data
+  d_tx->send(s_cmd_tx_data,
+	     pmt_list4(pmt_from_long(d_nframes_xmitted),   // invocation-handle
            pmt_from_long(d_dst_addr),// destination
 		       uvec,				    // the samples
-           tx_properties)); // per pkt properties
+           PMT_NIL)); // per pkt properties
 
   d_nframes_xmitted++;
 
   if(verbose)
-    std::cout << "[CMAC_TX_FILE] Transmitted frame from " << d_local_addr
+    std::cout << "[TX_FILE] Transmitted frame from " << d_local_addr
               << " to " << d_dst_addr 
               << " of size " << n_bytes << " bytes\n";
 
@@ -267,7 +271,7 @@ cmac_tx_file::build_and_send_next_frame()
 
 
 void
-cmac_tx_file::handle_xmit_response(pmt_t handle)
+tx_file::handle_xmit_response(pmt_t handle)
 {
   if (d_done_sending && pmt_to_long(handle)==(d_nframes_xmitted-1)){
     gettimeofday(&d_end, NULL);
@@ -290,14 +294,15 @@ main (int argc, char **argv)
   mb_runtime_sptr rt = mb_make_runtime();
   pmt_t result = PMT_NIL;
 
-  if(argc!=4) {
-    std::cout << "usage: ./cmac_tx_file input_file local_addr dst_addr\n";
+  if(argc!=5) {
+    std::cout << "usage: ./tx_file macs input_file local_addr dst_addr\n";
+    std::cout << "  available macs: cmac\n";
     return -1;
   }
 
-  pmt_t args = pmt_list3(pmt_intern(argv[1]), pmt_from_long(strtol(argv[2],NULL,10)), pmt_from_long(strtol(argv[3],NULL,10)));
+  pmt_t args = pmt_list4(pmt_intern(argv[1]), pmt_intern(argv[2]), pmt_from_long(strtol(argv[3],NULL,10)), pmt_from_long(strtol(argv[4],NULL,10)));
 
-  rt->run("top", "cmac_tx_file", args, &result);
+  rt->run("top", "tx_file", args, &result);
 }
 
-REGISTER_MBLOCK_CLASS(cmac_tx_file);
+REGISTER_MBLOCK_CLASS(tx_file);

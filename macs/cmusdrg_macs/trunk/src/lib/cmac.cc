@@ -71,9 +71,16 @@ void cmac::initialize_cmac()
   set_carrier_sense(false, 25, 0, PMT_NIL);   // Initial carrier sense setting
 
   d_state = IDLE;   // State where we wait for messages to do something
+
+  // Send any information between the MAC and the PHY, require max frame sizes
+  pmt_t mac_properties = pmt_make_dict();
+  pmt_dict_set(mac_properties, pmt_intern("max-frame"), pmt_from_long(MAX_FRAME_SIZE));
+  pmt_dict_set(mac_properties, pmt_intern("max-payload"), pmt_from_long(max_frame_payload()));
   
-  d_cs->send(s_response_cmac_initialized,   // Notify the application that
-             pmt_list2(PMT_NIL, PMT_T));    // the MAC is initialized
+  d_cs->send(s_response_mac_initialized,   // Notify the application that MAC 
+             pmt_list3(PMT_NIL, PMT_T,mac_properties)); // hs been initialized
+
+  enable_rx();
 
   std::cout << "[CMAC] Initialized, and idle\n";
 }
@@ -84,14 +91,8 @@ void cmac::initialize_cmac()
 // 
 // Then, the incoming 'event' (type of message) in the state triggers some
 // functionality.  For example, if we are in the idle state and receive a 
-// s_cmd_tx_pkt event from the application (detected by the port ID), we send
+// s_cmd_tx_data event from the application (detected by the port ID), we send
 // the data to the physical layer to be modulated.
-//
-// Without the m-block to gr-block connection, all raw samples are forced
-// through the MAC layer.  So, in the idle state we receive raw incoming
-// samples, pass them to the physical layer for demodulation, and listen for
-// responses with frames.  Likewise, we send data to the modulator, get
-// modulated data back, and then we write it to the USRP.
 void cmac::handle_mac_message(mb_message_sptr msg)
 {
   pmt_t event = msg->signal();      // type of message
@@ -117,7 +118,7 @@ void cmac::handle_mac_message(mb_message_sptr msg)
       //---- Port: CMAC TX -------------- State: IDLE -----------------------//
       if(pmt_eq(d_tx->port_symbol(), port_id)) {
 
-        if(pmt_eq(event, s_cmd_tx_pkt)) {
+        if(pmt_eq(event, s_cmd_tx_data)) {
           build_frame(data); 
         }
         return;
@@ -126,19 +127,7 @@ void cmac::handle_mac_message(mb_message_sptr msg)
       //---- Port: CMAC CS -------------- State: IDLE -----------------------//
       if(pmt_eq(d_cs->port_symbol(), port_id)) {
 
-        if(pmt_eq(event, s_cmd_carrier_sense_enable)) {
-          enable_carrier_sense(data);                 // Enable carrier sense
-        }
-        else if(pmt_eq(event, s_cmd_carrier_sense_threshold)) {
-          set_carrier_sense_threshold(data);          // Change CS threshold
-        } 
-        else if(pmt_eq(event, s_cmd_carrier_sense_deadline)) {
-          set_carrier_sense_deadline(data);           // Change CS deadline
-        }
-        else if(pmt_eq(event, s_cmd_carrier_sense_disable)) {
-          disable_carrier_sense(data);                // Disable CS
-        }
-        else if(pmt_eq(event, s_cmd_rx_enable)) {
+        if(pmt_eq(event, s_cmd_rx_enable)) {
           enable_rx();                                // Enable RX
         }
         else if(pmt_eq(event, s_cmd_rx_disable)) {
@@ -240,6 +229,7 @@ void cmac::set_carrier_sense(bool toggle, long threshold, long deadline, pmt_t i
 // until an ACK is received, so we enter an ACK wait state.
 void cmac::packet_transmitted(pmt_t data)
 {
+  fflush(stdout);
   pmt_t invocation_handle = pmt_nth(0, data);
   pmt_t status = pmt_nth(1, data);
 
@@ -264,108 +254,8 @@ void cmac::packet_transmitted(pmt_t data)
   
   d_state = ACK_WAIT;
 
-}
-
-// This method determines whether carrier sense should be enabled based on two
-// properties.  The first is the MAC setting, which the user can set to carrier
-// sense packets by default or not.  The second is a per packet setting, which
-// can be used to override the MAC setting for the given packet only.
-bool cmac::carrier_sense_pkt(pmt_t pkt_properties) 
-{
-  // First we extract the per packet properties to check the per packet setting
-  // if it exists
-  if(pmt_is_dict(pkt_properties)) {
-
-    if(pmt_t pkt_cs = pmt_dict_ref(pkt_properties,
-                                   pmt_intern("carrier-sense"),
-                                   PMT_NIL)) {
-      // If the per packet property says true, enable carrier sense regardless
-      // of the MAC setting
-      if(pmt_eqv(pkt_cs, PMT_T))
-        return true;
-      // If the per packet setting says false, disable carrier sense regardless
-      // of the MAC setting
-      else if(pmt_eqv(pkt_cs, PMT_F))
-        return false;
-    }
-  }
-
-  // If we've hit this point, the packet properties did not state whether
-  // carrier sense should be used or not, so we use the MAC setting
-  if(d_carrier_sense)
-    return true;
-  else
-    return false;
-
-}
-
-// This method is envoked by an incoming cmd-enable-carrier-sense signal on the
-// C/S port.  It can be used to re-adjust the threshold or simply enabled
-// carrier sense. 
-void cmac::enable_carrier_sense(pmt_t data)
-{
-  pmt_t invocation_handle = pmt_nth(0, data);
-  pmt_t threshold = pmt_nth(1, data);
-  pmt_t deadline = pmt_nth(2, data);
-  long l_threshold, l_deadline;
-
-  // FIXME: for now, if threshold is NIL, we do not change the threshold.
-  // This should be replaced with an averaging algorithm
-  if(pmt_eqv(threshold, PMT_NIL))
-    l_threshold = d_cs_thresh;
-  else
-    l_threshold = pmt_to_long(threshold);
-
-  // If the deadline is NIL, we do not change the value
-  if(pmt_eqv(threshold, PMT_NIL))
-    l_deadline = d_cs_deadline;
-  else
-    l_deadline = pmt_to_long(deadline);
-  
-  set_carrier_sense(true, l_threshold, l_deadline, invocation_handle);
-}
-
-// This method is called when an incoming disable carrier sense command is sent
-// over the control status channel.  
-void cmac::disable_carrier_sense(pmt_t data) 
-{
-  pmt_t invocation_handle = pmt_nth(0, data);
-  
-  // We don't change the threshold, we leave it as is because the application
-  // did not request that it changes, only to disable carrier sense.
-  set_carrier_sense(false, d_cs_thresh, d_cs_deadline, invocation_handle);
-}
-
-// Only change the carrier sense threshold, nothing else, including the state.
-void cmac::set_carrier_sense_threshold(pmt_t data)
-{
-  pmt_t invocation_handle = pmt_nth(0, data);
-  pmt_t threshold = pmt_nth(1, data);
-  long l_threshold;
-
-  if(pmt_eqv(threshold, PMT_NIL))
-    l_threshold = d_cs_thresh;
-  else
-    l_threshold = pmt_to_long(threshold);
-  
-  set_carrier_sense(d_carrier_sense, l_threshold, d_cs_deadline, invocation_handle);
-}
-
-// Change the carrier sense deadline, AKA the time to wait for the channel to
-// become idle before throwing it away.
-void cmac::set_carrier_sense_deadline(pmt_t data)
-{
-  pmt_t invocation_handle = pmt_nth(0, data);
-  pmt_t deadline = pmt_nth(1, data);
-  long l_deadline;
-
-  // If the deadline passed is NIL, do *not* change the value.
-  if(pmt_eqv(deadline, PMT_NIL))
-    l_deadline = d_cs_deadline;
-  else
-    l_deadline = pmt_to_long(deadline);
-  
-  set_carrier_sense(d_carrier_sense, d_cs_thresh, l_deadline, invocation_handle);
+  if(verbose)
+    std::cout << "[CMAC] Packet transmitted, going to ACK wait\n";
 }
 
 // An incoming frame from the physical layer for us!  We check the packet
@@ -436,13 +326,16 @@ void cmac::handle_ack(long src, long dst)
 
   // Now that we have an ACK, we can notify the application of a successfully TX
   pmt_t invocation_handle = pmt_nth(0, d_last_frame);
-  d_tx->send(s_response_tx_pkt,
+  d_tx->send(s_response_tx_data,
              pmt_list2(invocation_handle,
                        PMT_T));
 
   disable_rx();     // FIXME: spend more time thinking about this, I think its incorrect
 
   d_state = IDLE;   // Back to the idle state!
+
+  if(verbose)
+    std::cout << "[CMAC] Got ACK, going back to idle\n";
 
   return;
 }
@@ -463,11 +356,9 @@ void cmac::build_and_send_ack(long dst)
 
   // Per packet properties
   pmt_t tx_properties = pmt_make_dict();
-
   pmt_dict_set(tx_properties, pmt_intern("ack"), PMT_T);  // it's an ACK!
 
-  pmt_t pdata = pmt_list5(PMT_NIL,                        // No invocation.
-                          pmt_from_long(d_local_address), // From us.
+  pmt_t pdata = pmt_list4(PMT_NIL,                        // No invocation.
                           pmt_from_long(dst),             // To them.
                           uvec,                           // With data.
                           tx_properties);                 // It's an ACK!

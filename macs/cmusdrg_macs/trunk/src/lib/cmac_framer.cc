@@ -167,7 +167,7 @@ void cmac::framer_have_header()
   
   // Do some logic checks on the payload length, that it's greater than 0 and
   // that it's less than the maximum frame size
-  if(!(d_cframe_hdr.payload_len>0) || !(d_cframe_hdr.payload_len <= (MAX_FRAME_SIZE-max_frame_payload()))) {
+  if(!(d_cframe_hdr.payload_len>0) || !(d_cframe_hdr.payload_len <= (max_frame_payload()))) {
     if(verbose)
       std::cout << "[CMAC] Improper payload detected\n";
     d_squelch=true;           // start to squelch again
@@ -254,10 +254,16 @@ void cmac::build_frame(pmt_t data)
 
   // Frame properties
   pmt_t invocation_handle = pmt_nth(0, data);
-  long src = pmt_to_long(pmt_nth(1, data));
-  long dst = pmt_to_long(pmt_nth(2, data));
-  const void *payload = pmt_uniform_vector_elements(pmt_nth(3, data), n_payload_bytes);
-  pmt_t pkt_properties = pmt_nth(4, data);
+  long src = d_local_address;
+  long dst = pmt_to_long(pmt_nth(1, data));
+  const void *payload = pmt_uniform_vector_elements(pmt_nth(2, data), n_payload_bytes);
+  pmt_t pkt_properties = pmt_nth(3, data);
+
+  if(!pmt_is_dict(pkt_properties))
+    pkt_properties = pmt_make_dict();
+
+  // For CMAC, all packets are transmitted immediately
+  pmt_dict_set(pkt_properties, pmt_intern("timestamp"), pmt_from_long(0xffffffff));
   
   // Frame header
   d_frame_hdr_t frame_hdr;
@@ -284,7 +290,7 @@ void cmac::build_frame(pmt_t data)
   }
 
   // Don't carrier sense ACKs at all
-  if(!frame_hdr.ack && carrier_sense_pkt(pkt_properties))
+  if(!frame_hdr.ack && d_carrier_sense)
       pmt_dict_set(pkt_properties, pmt_intern("carrier-sense"), PMT_T);
 
   // Copy full data (header + payload)

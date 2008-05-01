@@ -45,6 +45,7 @@
 #include <cmac_symbols.h>
 #include <gmsk_symbols.h>
 #include <cmac_framer.h>
+#include <mac_symbols.h>
 
 #include <mac.h>
 
@@ -103,7 +104,7 @@ class cmac : public mac
     return(MAX_FRAME_SIZE);
   }
   static int max_frame_payload() {
-    return(sizeof(d_frame_hdr_t));
+    return(MAX_FRAME_SIZE-sizeof(d_frame_hdr_t));
   }
 
  private:
@@ -119,12 +120,7 @@ class cmac : public mac
   void handle_ack(long src, long dst);
   
   // Carrier sense functionality
-  void disable_carrier_sense(pmt_t data);
-  void enable_carrier_sense(pmt_t data);
   void set_carrier_sense(bool toggle, long threshold, long deadline, pmt_t invocation);
-  void set_carrier_sense_deadline(pmt_t data);
-  void set_carrier_sense_threshold(pmt_t data);
-  bool carrier_sense_pkt(pmt_t pkt_properties);
 
   // Framer
   void framer(const std::vector<unsigned char> input, pmt_t demod_properties);

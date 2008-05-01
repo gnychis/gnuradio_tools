@@ -37,13 +37,11 @@
 #include <iostream>
 #include <fstream>
 
-#include <gmsk.h>
-#include <cmac.h>
-#include <cmac_symbols.h>
+#include <mac_symbols.h>
 
 static bool verbose = false;
 
-class cmac_rx_file : public mb_mblock
+class rx_file : public mb_mblock
 {
   mb_port_sptr 	d_tx;
   mb_port_sptr  d_rx;
@@ -64,8 +62,8 @@ class cmac_rx_file : public mb_mblock
   long d_local_addr;
 
  public:
-  cmac_rx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg);
-  ~cmac_rx_file();
+  rx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg);
+  ~rx_file();
   void handle_message(mb_message_sptr msg);
 
  protected:
@@ -79,15 +77,16 @@ class cmac_rx_file : public mb_mblock
   void enter_closing_channel();
 };
 
-cmac_rx_file::cmac_rx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg)
+rx_file::rx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(runtime, instance_name, user_arg),
     d_state(INIT), 
     d_nframes_xmitted(0),
     d_done_sending(false)
 { 
   // Extract USRP information from python and the arguments to the python script
-  std::string file = pmt_symbol_to_string(pmt_nth(0, user_arg));
-  d_local_addr = pmt_to_long(pmt_nth(1, user_arg));
+  std::string mac = pmt_symbol_to_string(pmt_nth(0, user_arg));
+  std::string file = pmt_symbol_to_string(pmt_nth(1, user_arg));
+  d_local_addr = pmt_to_long(pmt_nth(2, user_arg));
 
   // Open a stream to the input file and ensure it's open
   d_ofile.open(file.c_str(), std::ios::binary|std::ios::out);
@@ -98,31 +97,32 @@ cmac_rx_file::cmac_rx_file(mb_runtime *runtime, const std::string &instance_name
     return;
   }
 
-  pmt_t cmac_data = pmt_list1(pmt_from_long(d_local_addr));
+  pmt_t mac_data = pmt_list1(pmt_from_long(d_local_addr));
   
-  define_component("CMAC", "cmac", cmac_data); 
-  d_tx = define_port("tx0", "cmac-tx", false, mb_port::INTERNAL);
-  d_rx = define_port("rx0", "cmac-rx", false, mb_port::INTERNAL);
-  d_cs = define_port("cs", "cmac-cs", false, mb_port::INTERNAL);
+  define_component(mac, mac, mac_data); 
+  d_tx = define_port("tx0", mac+"-tx", false, mb_port::INTERNAL);
+  d_rx = define_port("rx0", mac+"-rx", false, mb_port::INTERNAL);
+  d_cs = define_port("cs", mac+"-cs", false, mb_port::INTERNAL);
 
-  connect("self", "tx0", "CMAC", "tx0");
-  connect("self", "rx0", "CMAC", "rx0");
-  connect("self", "cs", "CMAC", "cs");
+  connect("self", "tx0", mac, "tx0");
+  connect("self", "rx0", mac, "rx0");
+  connect("self", "cs", mac, "cs");
 
-  std::cout << "[CMAC_RX_FILE] Initialized ..."
+  std::cout << "[RX_FILE] Initialized ..."
+            << "\n    MAC: " << mac
             << "\n    Filename: " << file
             << "\n    Address: " << d_local_addr
             << "\n";
 
 }
 
-cmac_rx_file::~cmac_rx_file()
+rx_file::~rx_file()
 {
   d_ofile.close();
 }
 
 void
-cmac_rx_file::handle_message(mb_message_sptr msg)
+rx_file::handle_message(mb_message_sptr msg)
 {
   pmt_t event = msg->signal();
   pmt_t data = msg->data();
@@ -137,10 +137,10 @@ cmac_rx_file::handle_message(mb_message_sptr msg)
   switch(d_state) {
 
     //------------------------------ INIT ---------------------------------//
-    // When CMAC is done initializing, it will send a response
+    // When mac is done initializing, it will send a response
     case INIT:
       
-      if(pmt_eq(event, s_response_cmac_initialized)) {
+      if(pmt_eq(event, s_response_mac_initialized)) {
         handle = pmt_nth(0, data);
         status = pmt_nth(1, data);
 
@@ -149,7 +149,7 @@ cmac_rx_file::handle_message(mb_message_sptr msg)
           return;
         }
         else {
-          error_msg = "error initializing cmac:";
+          error_msg = "error initializing mac:";
           goto bail;
         }
       }
@@ -181,20 +181,19 @@ cmac_rx_file::handle_message(mb_message_sptr msg)
  // Received an unhandled message for a specific state
  unhandled:
   if(verbose && 0 && !pmt_eq(event, pmt_intern("%shutdown")))
-    std::cout << "[CMAC_RX_FILE] unhandled msg: " << msg
+    std::cout << "[RX_FILE] unhandled msg: " << msg
               << "in state "<< d_state << std::endl;
 }
 
 // Wait until we get incoming data...
 void
-cmac_rx_file::enter_data_wait()
+rx_file::enter_data_wait()
 {
   d_state = DATA_WAIT;
-  d_cs->send(s_cmd_rx_enable, pmt_list1(PMT_NIL));
 }
 
 void
-cmac_rx_file::handle_response_rx_pkt(pmt_t data)
+rx_file::handle_response_rx_pkt(pmt_t data)
 {
   pmt_t invocation_handle = pmt_nth(0, data);
   pmt_t payload = pmt_nth(1, data);
@@ -217,14 +216,15 @@ main (int argc, char **argv)
   mb_runtime_sptr rt = mb_make_runtime();
   pmt_t result = PMT_NIL;
 
-  if(argc!=3) {
-    std::cout << "usage: ./cmac_rx_file output_file local_addr\n";
+  if(argc!=4) {
+    std::cout << "usage: ./rx_file mac output_file local_addr\n";
+    std::cout << "  available macs: cmac\n";
     return -1;
   }
 
-  pmt_t args = pmt_list2(pmt_intern(argv[1]), pmt_from_long(strtol(argv[2],NULL,10)));
+  pmt_t args = pmt_list3(pmt_intern(argv[1]), pmt_intern(argv[2]), pmt_from_long(strtol(argv[3],NULL,10)));
 
-  rt->run("top", "cmac_rx_file", args, &result);
+  rt->run("top", "rx_file", args, &result);
 }
 
-REGISTER_MBLOCK_CLASS(cmac_rx_file);
+REGISTER_MBLOCK_CLASS(rx_file);

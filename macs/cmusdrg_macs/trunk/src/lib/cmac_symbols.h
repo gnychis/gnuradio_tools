@@ -24,13 +24,6 @@
 
 #include <pmt.h>
 
-// TX
-static pmt_t s_cmd_tx_pkt = pmt_intern("cmd-tx-pkt");
-static pmt_t s_response_tx_pkt = pmt_intern("response-tx-pkt");
-
-// RX
-static pmt_t s_response_rx_pkt = pmt_intern("response-rx-pkt");
-
 // CS
 static pmt_t s_cmd_set_address = pmt_intern("cmd-set-address");
 static pmt_t s_cmd_carrier_sense_enable = pmt_intern("cmd-carrier-sense-enable");
@@ -40,7 +33,6 @@ static pmt_t s_cmd_carrier_sense_disable = pmt_intern("cmd-carrier-sense-disable
 static pmt_t s_cmd_set_tx_retries = pmt_intern("cmd-set-tx-retries");
 static pmt_t s_cmd_rx_enable = pmt_intern("cmd-rx-enable");
 static pmt_t s_cmd_rx_disable = pmt_intern("cmd-rx-disable");
-static pmt_t s_response_cmac_initialized = pmt_intern("response-cmac-initialized");
 static pmt_t s_response_set_address = pmt_intern("response-set-address");
 static pmt_t s_response_carrier_sense_enable = pmt_intern("response-carrier-sense-enable");
 static pmt_t s_response_carrier_sense_treshold = pmt_intern("response-carrier-sense-threshold");

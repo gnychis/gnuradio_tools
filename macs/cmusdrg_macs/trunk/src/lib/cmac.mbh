@@ -65,14 +65,14 @@
     ;;
     ;; 'properties' can be used in the future to set per-packet options such as
     ;;   carrier sense overriding functionality.
-    (cmd-tx-pkt invocation-handle src dst data properties)
+    (cmd-tx-data invocation-handle dst data properties)
 
    )
 
   (:incoming
 
     ;; The response will carry the same invocation-handle passed with cmd-tx-pkt
-    (response-tx-pkt invocation-handle status)
+    (response-tx-data invocation-handle status)
 
    )
   )
@@ -140,7 +140,7 @@
 
   (:incoming
 
-    (response-cmac-initialized invocation-handle status)
+    (response-cmac-initialized invocation-handle status mac-properties)
 
     (response-set-address invocation-handle status)
 
