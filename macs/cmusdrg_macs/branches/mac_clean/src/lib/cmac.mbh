@@ -140,7 +140,7 @@
 
   (:incoming
 
-    (response-cmac-initialized invocation-handle status)
+    (response-cmac-initialized invocation-handle status mac-properties)
 
     (response-set-address invocation-handle status)
 

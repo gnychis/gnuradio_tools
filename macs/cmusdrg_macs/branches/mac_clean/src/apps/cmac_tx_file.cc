@@ -58,6 +58,7 @@ class cmac_tx_file : public mb_mblock
   state_t	d_state;
   long		d_nframes_xmitted;
   bool		d_done_sending;
+  long    d_mac_max_payload;
 
   std::ifstream d_ifile;
 
@@ -148,6 +149,23 @@ cmac_tx_file::handle_message(mb_message_sptr msg)
       if(pmt_eq(event, s_response_cmac_initialized)) {
         handle = pmt_nth(0, data);
         status = pmt_nth(1, data);
+        pmt_t mac_properties = pmt_nth(2, data);
+
+        if(pmt_is_dict(mac_properties)) {
+          if(pmt_t mac_max_payload = pmt_dict_ref(mac_properties,
+                                                  pmt_intern("max-payload"),
+                                                  PMT_NIL)) {
+            if(pmt_eqv(mac_max_payload, PMT_NIL)) {
+              std::cout << "Error: MAC needs to send max payload with init message\n";
+              shutdown_all(PMT_F);
+            } else {
+              d_mac_max_payload = pmt_to_long(mac_max_payload);
+            }
+          }
+        } else {
+          std::cout << "Error: MAC needs to send mac properties\n";
+          shutdown_all(PMT_F);
+        }
 
         // Set start time to keep track of performance
         gettimeofday(&d_start, NULL);
@@ -227,7 +245,7 @@ cmac_tx_file::build_and_send_next_frame()
   d_cs->send(s_cmd_rx_disable, pmt_list1(PMT_NIL));
 
   // Let's read in as much as possible to fit in a frame
-  char data[MAX_FRAME_SIZE-cmac::max_frame_payload()];
+  char data[d_mac_max_payload];
   d_ifile.read((char *)&data[0], sizeof(data));
 
   // Use gcount() and test if end of stream was met

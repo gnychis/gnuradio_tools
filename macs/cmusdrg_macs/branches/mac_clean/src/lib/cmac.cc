@@ -71,9 +71,14 @@ void cmac::initialize_cmac()
   set_carrier_sense(false, 25, 0, PMT_NIL);   // Initial carrier sense setting
 
   d_state = IDLE;   // State where we wait for messages to do something
+
+  // Send any information between the MAC and the PHY, require max frame sizes
+  pmt_t mac_properties = pmt_make_dict();
+  pmt_dict_set(mac_properties, pmt_intern("max-frame"), pmt_from_long(MAX_FRAME_SIZE));
+  pmt_dict_set(mac_properties, pmt_intern("max-payload"), pmt_from_long(max_frame_payload()));
   
-  d_cs->send(s_response_cmac_initialized,   // Notify the application that
-             pmt_list2(PMT_NIL, PMT_T));    // the MAC is initialized
+  d_cs->send(s_response_cmac_initialized,   // Notify the application that MAC 
+             pmt_list3(PMT_NIL, PMT_T,mac_properties)); // hs been initialized
 
   std::cout << "[CMAC] Initialized, and idle\n";
 }
