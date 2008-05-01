@@ -104,6 +104,7 @@ void mac::transmit_pkt(pmt_t data)
   pmt_t invocation_handle = pmt_nth(0, data);
   pmt_t samples = pmt_nth(1, data);
   pmt_t pkt_properties = pmt_nth(2, data);
+  pmt_t timestamp;
 
   // A dictionary (a hash like structure) that is used to pass packet properties
   // down the layers.
@@ -118,11 +119,16 @@ void mac::transmit_pkt(pmt_t data)
                      pmt_intern("carrier-sense"),   // the 'hash'
                      PMT_T);                        // true, but assumed false if no
     }
+
+    if(timestamp = pmt_dict_ref(pkt_properties,
+                                pmt_intern("timestamp"),
+                                PMT_NIL)) {
+      if(pmt_eqv(timestamp, PMT_NIL)) {
+        std::cout << "[MAC] Error: MAC did not specify timestamp with transmission\n";
+        shutdown_all(PMT_F);
+      }
+    }
   }
-
-                                                // dictionary setting
-
-  pmt_t timestamp = pmt_from_long(0xffffffff);	// 0xffffffff == transmit NOW!
 
   pmt_t pdata = pmt_list5(invocation_handle,    // Invocation handle is passed back.
 		                      d_us_tx_chan,         // Destined for our TX channel.

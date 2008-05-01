@@ -169,7 +169,7 @@ cmac_tx_file::handle_message(mb_message_sptr msg)
     case TRANSMITTING:
       
       // Check that the transmits are OK
-      if (pmt_eq(event, s_response_tx_pkt)){
+      if (pmt_eq(event, s_response_tx_data)){
         handle = pmt_nth(0, data);
         status = pmt_nth(1, data);
 
@@ -243,16 +243,12 @@ cmac_tx_file::build_and_send_next_frame()
   char *vdata = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
   memcpy(vdata, data, n_bytes);
 
-  // Per packet properties
-  pmt_t tx_properties = pmt_make_dict();
-
-  pmt_t timestamp = pmt_from_long(0xffffffff);	// NOW
-  d_tx->send(s_cmd_tx_pkt,
-	     pmt_list5(pmt_from_long(d_nframes_xmitted),   // invocation-handle
-           pmt_from_long(d_local_addr),// src
+  //  Transmit the data
+  d_tx->send(s_cmd_tx_data,
+	     pmt_list4(pmt_from_long(d_nframes_xmitted),   // invocation-handle
            pmt_from_long(d_dst_addr),// destination
 		       uvec,				    // the samples
-           tx_properties)); // per pkt properties
+           PMT_NIL)); // per pkt properties
 
   d_nframes_xmitted++;
 

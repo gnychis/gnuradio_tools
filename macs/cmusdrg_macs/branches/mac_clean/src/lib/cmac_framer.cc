@@ -254,10 +254,13 @@ void cmac::build_frame(pmt_t data)
 
   // Frame properties
   pmt_t invocation_handle = pmt_nth(0, data);
-  long src = pmt_to_long(pmt_nth(1, data));
-  long dst = pmt_to_long(pmt_nth(2, data));
-  const void *payload = pmt_uniform_vector_elements(pmt_nth(3, data), n_payload_bytes);
-  pmt_t pkt_properties = pmt_nth(4, data);
+  long src = d_local_address;
+  long dst = pmt_to_long(pmt_nth(1, data));
+  const void *payload = pmt_uniform_vector_elements(pmt_nth(2, data), n_payload_bytes);
+  pmt_t pkt_properties = pmt_nth(3, data);
+
+  // For CMAC, all packets are transmitted immediately
+  pmt_dict_set(pkt_properties, pmt_intern("timestamp"), pmt_from_long(0xffffffff));
   
   // Frame header
   d_frame_hdr_t frame_hdr;

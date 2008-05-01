@@ -25,8 +25,8 @@
 #include <pmt.h>
 
 // TX
-static pmt_t s_cmd_tx_pkt = pmt_intern("cmd-tx-pkt");
-static pmt_t s_response_tx_pkt = pmt_intern("response-tx-pkt");
+static pmt_t s_cmd_tx_data = pmt_intern("cmd-tx-data");
+static pmt_t s_response_tx_data = pmt_intern("response-tx-data");
 
 // RX
 static pmt_t s_response_rx_pkt = pmt_intern("response-rx-pkt");

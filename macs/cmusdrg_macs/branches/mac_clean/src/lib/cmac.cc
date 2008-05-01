@@ -84,14 +84,8 @@ void cmac::initialize_cmac()
 // 
 // Then, the incoming 'event' (type of message) in the state triggers some
 // functionality.  For example, if we are in the idle state and receive a 
-// s_cmd_tx_pkt event from the application (detected by the port ID), we send
+// s_cmd_tx_data event from the application (detected by the port ID), we send
 // the data to the physical layer to be modulated.
-//
-// Without the m-block to gr-block connection, all raw samples are forced
-// through the MAC layer.  So, in the idle state we receive raw incoming
-// samples, pass them to the physical layer for demodulation, and listen for
-// responses with frames.  Likewise, we send data to the modulator, get
-// modulated data back, and then we write it to the USRP.
 void cmac::handle_mac_message(mb_message_sptr msg)
 {
   pmt_t event = msg->signal();      // type of message
@@ -117,7 +111,7 @@ void cmac::handle_mac_message(mb_message_sptr msg)
       //---- Port: CMAC TX -------------- State: IDLE -----------------------//
       if(pmt_eq(d_tx->port_symbol(), port_id)) {
 
-        if(pmt_eq(event, s_cmd_tx_pkt)) {
+        if(pmt_eq(event, s_cmd_tx_data)) {
           build_frame(data); 
         }
         return;
@@ -436,7 +430,7 @@ void cmac::handle_ack(long src, long dst)
 
   // Now that we have an ACK, we can notify the application of a successfully TX
   pmt_t invocation_handle = pmt_nth(0, d_last_frame);
-  d_tx->send(s_response_tx_pkt,
+  d_tx->send(s_response_tx_data,
              pmt_list2(invocation_handle,
                        PMT_T));
 
@@ -463,11 +457,9 @@ void cmac::build_and_send_ack(long dst)
 
   // Per packet properties
   pmt_t tx_properties = pmt_make_dict();
-
   pmt_dict_set(tx_properties, pmt_intern("ack"), PMT_T);  // it's an ACK!
 
-  pmt_t pdata = pmt_list5(PMT_NIL,                        // No invocation.
-                          pmt_from_long(d_local_address), // From us.
+  pmt_t pdata = pmt_list4(PMT_NIL,                        // No invocation.
                           pmt_from_long(dst),             // To them.
                           uvec,                           // With data.
                           tx_properties);                 // It's an ACK!
