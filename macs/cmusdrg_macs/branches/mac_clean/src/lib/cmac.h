@@ -45,6 +45,7 @@
 #include <cmac_symbols.h>
 #include <gmsk_symbols.h>
 #include <cmac_framer.h>
+#include <mac_symbols.h>
 
 #include <mac.h>
 

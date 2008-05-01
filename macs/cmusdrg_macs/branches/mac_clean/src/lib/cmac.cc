@@ -77,8 +77,10 @@ void cmac::initialize_cmac()
   pmt_dict_set(mac_properties, pmt_intern("max-frame"), pmt_from_long(MAX_FRAME_SIZE));
   pmt_dict_set(mac_properties, pmt_intern("max-payload"), pmt_from_long(max_frame_payload()));
   
-  d_cs->send(s_response_cmac_initialized,   // Notify the application that MAC 
+  d_cs->send(s_response_mac_initialized,   // Notify the application that MAC 
              pmt_list3(PMT_NIL, PMT_T,mac_properties)); // hs been initialized
+
+  enable_rx();
 
   std::cout << "[CMAC] Initialized, and idle\n";
 }

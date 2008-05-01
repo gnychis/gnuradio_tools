@@ -167,7 +167,7 @@ void cmac::framer_have_header()
   
   // Do some logic checks on the payload length, that it's greater than 0 and
   // that it's less than the maximum frame size
-  if(!(d_cframe_hdr.payload_len>0) || !(d_cframe_hdr.payload_len <= (MAX_FRAME_SIZE-max_frame_payload()))) {
+  if(!(d_cframe_hdr.payload_len>0) || !(d_cframe_hdr.payload_len <= (max_frame_payload()))) {
     if(verbose)
       std::cout << "[CMAC] Improper payload detected\n";
     d_squelch=true;           // start to squelch again
