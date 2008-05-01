@@ -290,7 +290,7 @@ void cmac::build_frame(pmt_t data)
   }
 
   // Don't carrier sense ACKs at all
-  if(!frame_hdr.ack && carrier_sense_pkt(pkt_properties))
+  if(!frame_hdr.ack && d_carrier_sense)
       pmt_dict_set(pkt_properties, pmt_intern("carrier-sense"), PMT_T);
 
   // Copy full data (header + payload)

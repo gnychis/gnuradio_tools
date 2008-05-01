@@ -127,19 +127,7 @@ void cmac::handle_mac_message(mb_message_sptr msg)
       //---- Port: CMAC CS -------------- State: IDLE -----------------------//
       if(pmt_eq(d_cs->port_symbol(), port_id)) {
 
-        if(pmt_eq(event, s_cmd_carrier_sense_enable)) {
-          enable_carrier_sense(data);                 // Enable carrier sense
-        }
-        else if(pmt_eq(event, s_cmd_carrier_sense_threshold)) {
-          set_carrier_sense_threshold(data);          // Change CS threshold
-        } 
-        else if(pmt_eq(event, s_cmd_carrier_sense_deadline)) {
-          set_carrier_sense_deadline(data);           // Change CS deadline
-        }
-        else if(pmt_eq(event, s_cmd_carrier_sense_disable)) {
-          disable_carrier_sense(data);                // Disable CS
-        }
-        else if(pmt_eq(event, s_cmd_rx_enable)) {
+        if(pmt_eq(event, s_cmd_rx_enable)) {
           enable_rx();                                // Enable RX
         }
         else if(pmt_eq(event, s_cmd_rx_disable)) {
@@ -268,108 +256,6 @@ void cmac::packet_transmitted(pmt_t data)
 
   if(verbose)
     std::cout << "[CMAC] Packet transmitted, going to ACK wait\n";
-}
-
-// This method determines whether carrier sense should be enabled based on two
-// properties.  The first is the MAC setting, which the user can set to carrier
-// sense packets by default or not.  The second is a per packet setting, which
-// can be used to override the MAC setting for the given packet only.
-bool cmac::carrier_sense_pkt(pmt_t pkt_properties) 
-{
-  // First we extract the per packet properties to check the per packet setting
-  // if it exists
-  if(pmt_is_dict(pkt_properties)) {
-
-    if(pmt_t pkt_cs = pmt_dict_ref(pkt_properties,
-                                   pmt_intern("carrier-sense"),
-                                   PMT_NIL)) {
-      // If the per packet property says true, enable carrier sense regardless
-      // of the MAC setting
-      if(pmt_eqv(pkt_cs, PMT_T))
-        return true;
-      // If the per packet setting says false, disable carrier sense regardless
-      // of the MAC setting
-      else if(pmt_eqv(pkt_cs, PMT_F))
-        return false;
-    }
-  }
-
-  // If we've hit this point, the packet properties did not state whether
-  // carrier sense should be used or not, so we use the MAC setting
-  if(d_carrier_sense)
-    return true;
-  else
-    return false;
-
-}
-
-// This method is envoked by an incoming cmd-enable-carrier-sense signal on the
-// C/S port.  It can be used to re-adjust the threshold or simply enabled
-// carrier sense. 
-void cmac::enable_carrier_sense(pmt_t data)
-{
-  pmt_t invocation_handle = pmt_nth(0, data);
-  pmt_t threshold = pmt_nth(1, data);
-  pmt_t deadline = pmt_nth(2, data);
-  long l_threshold, l_deadline;
-
-  // FIXME: for now, if threshold is NIL, we do not change the threshold.
-  // This should be replaced with an averaging algorithm
-  if(pmt_eqv(threshold, PMT_NIL))
-    l_threshold = d_cs_thresh;
-  else
-    l_threshold = pmt_to_long(threshold);
-
-  // If the deadline is NIL, we do not change the value
-  if(pmt_eqv(threshold, PMT_NIL))
-    l_deadline = d_cs_deadline;
-  else
-    l_deadline = pmt_to_long(deadline);
-  
-  set_carrier_sense(true, l_threshold, l_deadline, invocation_handle);
-}
-
-// This method is called when an incoming disable carrier sense command is sent
-// over the control status channel.  
-void cmac::disable_carrier_sense(pmt_t data) 
-{
-  pmt_t invocation_handle = pmt_nth(0, data);
-  
-  // We don't change the threshold, we leave it as is because the application
-  // did not request that it changes, only to disable carrier sense.
-  set_carrier_sense(false, d_cs_thresh, d_cs_deadline, invocation_handle);
-}
-
-// Only change the carrier sense threshold, nothing else, including the state.
-void cmac::set_carrier_sense_threshold(pmt_t data)
-{
-  pmt_t invocation_handle = pmt_nth(0, data);
-  pmt_t threshold = pmt_nth(1, data);
-  long l_threshold;
-
-  if(pmt_eqv(threshold, PMT_NIL))
-    l_threshold = d_cs_thresh;
-  else
-    l_threshold = pmt_to_long(threshold);
-  
-  set_carrier_sense(d_carrier_sense, l_threshold, d_cs_deadline, invocation_handle);
-}
-
-// Change the carrier sense deadline, AKA the time to wait for the channel to
-// become idle before throwing it away.
-void cmac::set_carrier_sense_deadline(pmt_t data)
-{
-  pmt_t invocation_handle = pmt_nth(0, data);
-  pmt_t deadline = pmt_nth(1, data);
-  long l_deadline;
-
-  // If the deadline passed is NIL, do *not* change the value.
-  if(pmt_eqv(deadline, PMT_NIL))
-    l_deadline = d_cs_deadline;
-  else
-    l_deadline = pmt_to_long(deadline);
-  
-  set_carrier_sense(d_carrier_sense, d_cs_thresh, l_deadline, invocation_handle);
 }
 
 // An incoming frame from the physical layer for us!  We check the packet
