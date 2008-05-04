@@ -74,7 +74,7 @@ void tmac::define_mac_ports()
 
   // Connect to physical layer
   define_component("GMSK", "gmsk", phy_dict);
-  d_gmsk_cs = define_port("phy-cs", "gmsk-cs", false, mb_port::INTERNAL);
+  d_phy_cs = define_port("phy-cs", "gmsk-cs", false, mb_port::INTERNAL);
   connect("self", "phy-cs", "GMSK", "cs0");
 
   // Define ports for the application to connect to us
@@ -87,6 +87,11 @@ void tmac::define_mac_ports()
 void tmac::usrp_initialized()
 {
   initialize_tmac();
+ 
+  // Send any information between the MAC and the PHY, require max frame sizes
+  pmt_t mac_properties = pmt_make_dict();
+  pmt_dict_set(mac_properties, pmt_intern("max-frame"), pmt_from_long(MAX_FRAME_SIZE));
+  pmt_dict_set(mac_properties, pmt_intern("max-payload"), pmt_from_long(max_frame_payload()));
 }
 
 void tmac::initialize_tmac()
@@ -95,8 +100,8 @@ void tmac::initialize_tmac()
   if(d_base_station) {
     initialize_base_station();
   
-    d_cs->send(s_response_mac_initialized,    // Notify the application that
-               pmt_list2(PMT_NIL, PMT_T));    // the MAC is initialized
+    d_cs->send(s_response_mac_initialized,                  // Notify the application that
+               pmt_list3(PMT_NIL, PMT_T, mac_properties));  // the MAC is initialized
     if(verbose)
       std::cout << "[TMAC] Base station transmitting SYNC...\n";
   } else {
@@ -113,7 +118,7 @@ void tmac::initialize_tmac()
 // 
 // Then, the incoming 'event' (type of message) in the state triggers some
 // functionality.  For example, if we are in the idle state and receive a 
-// s_cmd_tx_pkt event from the application (detected by the port ID), we send
+// s_cmd_tx_data event from the application (detected by the port ID), we send
 // the data to the physical layer to be modulated.
 void tmac::handle_mac_message(mb_message_sptr msg)
 {
@@ -145,7 +150,7 @@ void tmac::handle_mac_message(mb_message_sptr msg)
       //---- Port: TMAC TX -------------- State: IDLE -----------------------//
       if(pmt_eq(d_tx->port_symbol(), port_id)) {
 
-        if(pmt_eq(event, s_cmd_tx_pkt)) {
+        if(pmt_eq(event, s_cmd_tx_data)) {
           build_frame(data);
         }
         return;
@@ -164,7 +169,7 @@ void tmac::handle_mac_message(mb_message_sptr msg)
       }
 
       //---- Port: GMSK CS -------------- State: IDLE -----------------------//
-      if(pmt_eq(d_gmsk_cs->port_symbol(), port_id)) {
+      if(pmt_eq(d_phy_cs->port_symbol(), port_id)) {
         
         if(pmt_eq(event, s_response_demod)) {
           incoming_data(data);                        // Incoming frame!
@@ -213,7 +218,7 @@ void tmac::calculate_parameters()
   d_clock_ticks_per_bit = (d_usrp_decim * gmsk::samples_per_symbol()) / BITS_PER_SYMBOL;
 
   // The slot time is fixed to the maximum frame time over the air.
-  d_slot_time = (cmac::max_frame_size() * BITS_PER_BYTE) * d_clock_ticks_per_bit;
+  d_slot_time = (MAX_FRAME_SIZE * BITS_PER_BYTE) * d_clock_ticks_per_bit;
 
   // The local slot offset depends on the local address and slot/guard times.
   // The local address defines the node's slot assignment.  Slot 0 is for the
@@ -275,7 +280,7 @@ void tmac::packet_transmitted(pmt_t data)
   pmt_t status = pmt_nth(1, data);
   
   if(!d_base_station)
-    d_tx->send(s_response_tx_pkt,
+    d_tx->send(s_response_tx_data,
                pmt_list2(invocation_handle,
                          PMT_T));
 
@@ -316,7 +321,36 @@ void tmac::transmit_sync()
                           uvec,                           // With data.
                           tx_properties);                 // It's an ACK!
 
-  d_gmsk_cs->send(s_cmd_mod, pdata);    // Modulate the SYNC frame
+  d_phy_cs->send(s_cmd_mod, pdata);    // Modulate the SYNC frame
+}
+
+// An incoming frame from the physical layer for us!  We check the packet
+// properties to determine the sender and if it passed a CRC check, for example.
+void tmac::incoming_frame(pmt_t data)
+{
+  pmt_t invocation_handle = PMT_NIL;
+  pmt_t payload = pmt_nth(0, data);
+  pmt_t pkt_properties = pmt_nth(1, data);
+
+  // Let's do some checking on the demoded frame
+  long lsrc=0, ldst=0;
+
+  // Properties are set in the physical layer framing code
+  lsrc = pmt_to_long(pmt_dict_ref(pkt_properties,
+                                  pmt_intern("src"),
+                                  PMT_NIL));
+
+  ldst = pmt_to_long(pmt_dict_ref(pkt_properties,
+                                  pmt_intern("dst"),
+                                  PMT_NIL));
+
+  if(ldst != d_local_address)  // not for this address
+    return;
+  
+  d_rx->send(s_response_rx_pkt, pmt_list3(invocation_handle, payload, pkt_properties));
+
+  if(verbose)
+    std::cout << "[TMAC] Passing up demoded frame\n";
 }
 
 void tmac::incoming_sync(pmt_t data)

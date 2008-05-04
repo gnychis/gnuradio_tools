@@ -44,9 +44,10 @@
 
 #include <tmac_symbols.h>
 #include <gmsk_symbols.h>
+#include <tmac_framer.h>
+#include <mac_symbols.h>
 
 #include <mac.h>
-#include <gmsk.h>
 
 class tmac;
 
@@ -59,12 +60,18 @@ class tmac : public mac
     IDLE,
   };
   tmac_state_t	d_state;
+  
+  enum state_t {
+    SYNC_SEARCH,
+    WAIT_HEADER,
+    HAVE_HEADER,
+    WAIT_PAYLOAD,
+    HAVE_PAYLOAD
+  };
+  state_t	d_framer_state;
 
   // Ports used for applications to connect to this block
   mb_port_sptr		  d_tx, d_rx, d_cs;
-
-  // Ports to connect to gmsk (us)
-  mb_port_sptr      d_gmsk_cs;
 
   // TDMA state
   bool d_base_station;
@@ -76,9 +83,19 @@ class tmac : public mac
   unsigned long d_local_slot_offset;
   unsigned long d_next_tx_time;
   unsigned long d_clock_ticks_per_bit;
+  pmt_t d_last_frame;
 
   // Local user address
   long d_local_address;
+  
+  // Framer
+  d_frame_hdr_t d_frame_hdr;
+  d_frame_hdr_t d_cframe_hdr;
+  std::vector<unsigned char> d_hdr_bits;
+  std::vector<unsigned char> d_payload_bits;
+  unsigned long d_frame_timestamp;
+  
+  pmt_t mac_properties;
   
  protected:
   void handle_mac_message(mb_message_sptr msg);   // overriding MAC method
@@ -87,6 +104,12 @@ class tmac : public mac
  public:
   tmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg);
   ~tmac();
+  static int max_frame_size() {
+    return(MAX_FRAME_SIZE);
+  }
+  static int max_frame_payload() {
+    return(MAX_FRAME_SIZE-sizeof(d_frame_hdr_t));
+  }
 
  private:
   // TMAC initialization
@@ -98,6 +121,7 @@ class tmac : public mac
   void initialize_node();
   void transmit_pkt(pmt_t data);
   void packet_transmitted(pmt_t data);
+  void incoming_data(pmt_t data);
   void incoming_frame(pmt_t data);
 
   // Synchronization related
@@ -105,6 +129,16 @@ class tmac : public mac
   void transmit_sync();
   void incoming_sync(pmt_t data);
   
+  // Framer
+  void framer(const std::vector<unsigned char> input, pmt_t demod_properties);
+  void framer_calculate_timestamp(unsigned long timestamp, int bit, int nbits, long sps, long bps);
+  void framer_found_sync();
+  void framer_new_header_bit(unsigned char bit);
+  void framer_new_payload_bit(unsigned char bit);
+  void framer_have_header();
+  void framer_have_payload();
+  void framer_have_frame(pmt_t uvec);
+  void build_frame(pmt_t data);
 };
 
 #endif // INCLUDED_TMAC_H
