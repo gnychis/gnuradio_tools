@@ -104,8 +104,6 @@ void tmac::initialize_tmac()
   
     d_cs->send(s_response_mac_initialized,                  // Notify the application that
                pmt_list3(PMT_NIL, PMT_T, mac_properties));  // the MAC is initialized
-    if(verbose)
-      std::cout << "[TMAC] Base station transmitting SYNC...\n";
   } else {
     // Regular node
     initialize_node();
@@ -230,6 +228,14 @@ void tmac::calculate_parameters()
   // The total round time takes in to account all of the nodes and slot timing.
   // We add one for the base station.
   d_round_time = (d_total_nodes+1) * (d_slot_time + d_guard_time);
+
+  if(verbose)
+    std::cout << "[TMAC] Parameters:"
+              << "\n   d_clock_ticks_per_bit: " << d_clock_ticks_per_bit
+              << "\n   d_slot_time: " << d_slot_time
+              << "\n   d_local_slot_offset: " << d_local_slot_offset
+              << "\n   d_round_time: " << d_round_time
+              << std::endl;
 }
 
 
@@ -308,22 +314,32 @@ void tmac::transmit_sync()
 {
   size_t ignore;
   char data;
-  long n_bytes=1;   // Negligable payload
   
   // Make the PMT data, get a writable pointer to it, then copy our data in
-  pmt_t uvec = pmt_make_u8vector(n_bytes, 0);
-  char *vdata = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
-  memcpy(vdata, &data, n_bytes);
+  pmt_t uvec = pmt_make_u8vector(sizeof(d_sync_frame_data), 0);
+  d_sync_frame_data *sframe = (d_sync_frame_data *) pmt_u8vector_writeable_elements(uvec, ignore);
+
+  // Set the SYNC frame properties
+  sframe->guard_time = d_guard_time;
+  sframe->total_nodes = d_total_nodes;
+  
+  // Set the timestamp to the next tx time, and then recalculate the next TX
+  // time to be the current time plus a total round time.
+  pmt_t timestamp = pmt_from_long(d_next_tx_time);
+  d_next_tx_time += d_round_time;
 
   // Per packet properties
   pmt_t tx_properties = pmt_make_dict();
-  pmt_t pdata = pmt_list5(PMT_NIL,                        // Unused invoc handle.
-                          pmt_from_long(d_local_address), // From us.
+  pmt_dict_set(tx_properties, pmt_intern("timestamp"), timestamp);
+  pmt_t pdata = pmt_list4(PMT_NIL,                        // Unused invoc handle.
                           pmt_from_long(0xffffffff),      // To broadcast.
                           uvec,                           // With data.
-                          tx_properties);                 // It's an ACK!
+                          tx_properties);                 // Properties
 
-  d_phy_cs->send(s_cmd_mod, pdata);    // Modulate the SYNC frame
+  std::cout << ".";
+  fflush(stdout);
+
+  build_frame(pdata);
 }
 
 // An incoming frame from the physical layer for us!  We check the packet

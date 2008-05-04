@@ -40,4 +40,10 @@ typedef struct d_frame_hdr_t {
   long payload_len;
 } __attribute__((__packed__));
 
+typedef struct d_sync_frame_data {
+  unsigned long guard_time;
+  unsigned long total_nodes;
+} __attribute__((__packed__));
+
+
 #endif
