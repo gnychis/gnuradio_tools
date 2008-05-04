@@ -19,8 +19,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef INCLUDED_CMAC_FRAMER_H
-#define INCLUDED_CMAC_FRAMER_H
+#ifndef INCLUDED_TMAC_FRAMER_H
+#define INCLUDED_TMAC_FRAMER_H
 
 #include <string>
 #include <boost/crc.hpp>
@@ -38,8 +38,6 @@ typedef struct d_frame_hdr_t {
   long src_addr;
   long dst_addr;
   long payload_len;
-  bool ack;
-  long crc;
 } __attribute__((__packed__));
 
 #endif

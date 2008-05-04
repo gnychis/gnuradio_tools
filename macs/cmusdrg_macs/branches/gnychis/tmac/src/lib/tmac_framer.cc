@@ -23,15 +23,15 @@
 #include <config.h>
 #endif
 
-#include <cmac.h>
-#include <cmac_framer.h>
+#include <tmac.h>
+#include <tmac_framer.h>
 
 static bool verbose = false;
 
 // The framer will use the special flag bit to detect the incoming frame.  To be
 // clean this should be a new block, but for performance reasons I'm keeping it
 // here.
-void cmac::framer(const std::vector<unsigned char> input, pmt_t demod_properties)
+void tmac::framer(const std::vector<unsigned char> input, pmt_t demod_properties)
 {
   int bit=0;
   int nbits=(int)input.size();
@@ -101,7 +101,7 @@ void cmac::framer(const std::vector<unsigned char> input, pmt_t demod_properties
 // The timestamp corresponds to the last sample in the USB block, so we need to
 // backcalculate from the total number of bits to the current bit, and then
 // backwards further to the synchronization bits.
-void cmac::framer_calculate_timestamp(unsigned long timestamp, int bit, int nbits, long sps, long bps)
+void tmac::framer_calculate_timestamp(unsigned long timestamp, int bit, int nbits, long sps, long bps)
 {
   // The number of clock ticks for a single bit is how many samples are needed
   // to construct a single bit, and the spacing between samples (decimation).
@@ -118,19 +118,19 @@ void cmac::framer_calculate_timestamp(unsigned long timestamp, int bit, int nbit
 }
 
 // We have found the framing bits and are now synchronized.
-void cmac::framer_found_sync() 
+void tmac::framer_found_sync() 
 {
   d_framer_state = WAIT_HEADER;  // Wait for header number of bits.
   d_squelch=false;        // No need to squelch on an incoming frame
   d_hdr_bits.clear();     // Prepare header bits
 
   if(verbose)
-    std::cout << "[CMAC] Found framing bits found\n";
+    std::cout << "[TMAC] Found framing bits found\n";
 }
 
 // A new bit has arrived, place it in a queue and we will pack all of the bits
 // layer into a buffer.
-void cmac::framer_new_header_bit(unsigned char bit)
+void tmac::framer_new_header_bit(unsigned char bit)
 {
   d_hdr_bits.push_back(bit);
 
@@ -139,23 +139,23 @@ void cmac::framer_new_header_bit(unsigned char bit)
 }
 
 // A new payload bit has arrived.
-void cmac::framer_new_payload_bit(unsigned char bit)
+void tmac::framer_new_payload_bit(unsigned char bit)
 {
   d_payload_bits.push_back(bit);
 
   if((int)d_payload_bits.size() == (d_cframe_hdr.payload_len * 8)) {
     d_framer_state = HAVE_PAYLOAD;
     if(verbose)
-      std::cout << "[CMAC] Have payload\n";
+      std::cout << "[TMAC] Have payload\n";
   }
 }
 
-void cmac::framer_have_header()
+void tmac::framer_have_header()
 {
   unsigned char *frame_bp = (unsigned char *)&d_cframe_hdr;
 
   if(verbose)
-    std::cout << "[CMAC] Header's worth of bits\n";
+    std::cout << "[TMAC] Header's worth of bits\n";
 
   // Mask out the actual bits from the 'unsigned char' representation and stuff
   // them into the frame.
@@ -169,25 +169,23 @@ void cmac::framer_have_header()
   // that it's less than the maximum frame size
   if(!(d_cframe_hdr.payload_len>0) || !(d_cframe_hdr.payload_len <= (max_frame_payload()))) {
     if(verbose)
-      std::cout << "[CMAC] Improper payload detected\n";
+      std::cout << "[TMAC] Improper payload detected\n";
     d_squelch=true;           // start to squelch again
     d_framer_state = SYNC_SEARCH;    // On failure, let's go back to looking for the framing bits
     return;
   }
 
   if(verbose)
-    std::cout << "[CMAC] Have header:"
+    std::cout << "[TMAC] Have header:"
               << "\n        src: " << d_cframe_hdr.src_addr
               << "\n        dst: " << d_cframe_hdr.dst_addr
               << "\n        payload_len: " << d_cframe_hdr.payload_len
-              << "\n        crc: " << d_cframe_hdr.crc
-              << "\n        ack: " << d_cframe_hdr.ack
               << std::endl;
 
   d_framer_state = WAIT_PAYLOAD;   // On success, wait for payload_len worth of bits
 }
 
-void cmac::framer_have_payload()
+void tmac::framer_have_payload()
 {
   pmt_t uvec;
   char *vdata;
@@ -206,37 +204,18 @@ void cmac::framer_have_payload()
 }
 
 
-void cmac::framer_have_frame(pmt_t uvec)
+void tmac::framer_have_frame(pmt_t uvec)
 {
   pmt_t pkt_properties;
   pkt_properties = pmt_make_dict();
   size_t ignore;
   char *vdata = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
-  boost::crc_32_type bcrc;
   
   // Create a dictionary (hash like structure) with frame header information,
   // you can put as much as you want in here
   pmt_dict_set(pkt_properties, pmt_intern("timestamp"), pmt_from_long(d_frame_timestamp));
   pmt_dict_set(pkt_properties, pmt_intern("src"), pmt_from_long(d_cframe_hdr.src_addr));
   pmt_dict_set(pkt_properties, pmt_intern("dst"), pmt_from_long(d_cframe_hdr.dst_addr));
-
-  // If the frame is an ACK, we don't care about payload... lets just pass it up
-  if(d_cframe_hdr.ack) {
-    pmt_dict_set(pkt_properties, pmt_intern("ack"), PMT_T);
-    goto exit_framer_have_frame;
-  }
-
-  // Compute a CRC on the payload
-  bcrc.reset();
-  bcrc.process_bytes(vdata, d_cframe_hdr.payload_len);
-
-  // Compare the computed CRC to the CRC contained in the header
-  if(d_cframe_hdr.crc == (int)bcrc.checksum())
-    pmt_dict_set(pkt_properties, pmt_intern("crc"), PMT_T);   // CRC passes
-  else
-    pmt_dict_set(pkt_properties, pmt_intern("crc"), PMT_F);   // CRC failed
-
-  pmt_dict_set(pkt_properties, pmt_intern("ack"), PMT_F);     // Not an ACK
 
  exit_framer_have_frame:
   incoming_frame(pmt_list2(uvec, pkt_properties));
@@ -245,10 +224,10 @@ void cmac::framer_have_frame(pmt_t uvec)
   d_framer_state = SYNC_SEARCH;    // Go back to searching for the framing bits
 
   if(verbose)
-    std::cout << "[CMAC] Pushing up demoded data\n";
+    std::cout << "[TMAC] Pushing up demoded data\n";
 }
 
-void cmac::build_frame(pmt_t data)
+void tmac::build_frame(pmt_t data)
 {
   size_t n_payload_bytes, ignore;
 
@@ -262,7 +241,7 @@ void cmac::build_frame(pmt_t data)
   if(!pmt_is_dict(pkt_properties))
     pkt_properties = pmt_make_dict();
 
-  // For CMAC, all packets are transmitted immediately
+  // For TMAC, all packets are transmitted immediately
   pmt_dict_set(pkt_properties, pmt_intern("timestamp"), pmt_from_long(0xffffffff));
   
   // Frame header
@@ -271,27 +250,6 @@ void cmac::build_frame(pmt_t data)
   frame_hdr.src_addr = src;
   frame_hdr.dst_addr = dst;
   frame_hdr.payload_len = n_payload_bytes;
-
-  // Compute the CRC using boost library
-  boost::crc_32_type bcrc;
-  bcrc.process_bytes(payload, n_payload_bytes);
-  frame_hdr.crc = bcrc.checksum();
-
-  // Set ACK if specified
-  if(pmt_is_dict(pkt_properties)) {
-    if(pmt_t ack = pmt_dict_ref(pkt_properties,
-                                pmt_intern("ack"),
-                                PMT_NIL)) {
-      if(pmt_eqv(ack, PMT_T))
-        frame_hdr.ack = true;
-      else
-        frame_hdr.ack = false;
-    }
-  }
-
-  // Don't carrier sense ACKs at all
-  if(!frame_hdr.ack && d_carrier_sense)
-      pmt_dict_set(pkt_properties, pmt_intern("carrier-sense"), PMT_T);
 
   // Copy full data (header + payload)
   long total_bytes = sizeof(frame_hdr) + n_payload_bytes;
