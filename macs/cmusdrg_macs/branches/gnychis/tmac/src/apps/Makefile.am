@@ -29,6 +29,7 @@ INCLUDES = 	\
 bin_PROGRAMS =				
 
 noinst_PROGRAMS =			\
+	tmac_basestation \
 	tx_file	\
 	rx_file
 
@@ -38,3 +39,6 @@ tx_file_LDADD   	= $(USRP_LA) $(USRP_INBAND_LA) ../lib/libcmusdrg_macs.la
 
 rx_file_SOURCES 	= rx_file.cc 
 rx_file_LDADD   	= $(USRP_LA) $(USRP_INBAND_LA) ../lib/libcmusdrg_macs.la
+
+tmac_basestation_SOURCES 	= tmac_basestation.cc 
+tmac_basestation_LDADD   	= $(USRP_LA) $(USRP_INBAND_LA) ../lib/libcmusdrg_macs.la

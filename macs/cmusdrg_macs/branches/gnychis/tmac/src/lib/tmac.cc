@@ -27,7 +27,7 @@
 
 static int INITIAL_SYNC = 0;
 
-static bool verbose = false;
+static bool verbose = true;
 
 static pmt_t s_timeout = pmt_intern("%timeout");
 
@@ -40,7 +40,7 @@ tmac::tmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   define_mac_ports();   // Initialize ports for message passing
   
   // Make sure a local address was specified, convert it from PMT to long
-  if(!pmt_eqv(pmt_nth(1, user_arg), PMT_NIL)) {
+  if(!pmt_eqv(pmt_nth(0, user_arg), PMT_NIL)) {
     d_local_address = pmt_to_long(pmt_nth(1, user_arg));
   } else {
     std::cout << "[TMAC] ERROR: Need to specify local address when initializing MAC\n";
@@ -52,8 +52,10 @@ tmac::tmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   if(d_local_address==0) {
     d_base_station=true;
 
-    if(!pmt_eqv(pmt_nth(2, user_arg), PMT_NIL)) {
+    if(!pmt_eqv(pmt_nth(1, user_arg), PMT_NIL)) {
       d_total_nodes = pmt_to_long(pmt_nth(2, user_arg));
+      if(verbose)
+        std::cout << "[TMAC] Initializing base station with " << d_total_nodes << " nodes\n";
     } else {
       std::cout << "[TMAC] ERROR: Need to specify total number of nodes in the network\n";
       shutdown_all(PMT_F);
