@@ -19,17 +19,27 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef INCLUDED_TMAC_SYMBOLS_H
-#define INCLUDED_TMAC_SYMBOLS_H
+#ifndef INCLUDED_CMAC_FRAMER_H
+#define INCLUDED_CMAC_FRAMER_H
 
-#include <pmt.h>
+#include <string>
+#include <boost/crc.hpp>
+#include <boost/cstdint.hpp>
+#include <gmsk.h>
 
-// CS
-static pmt_t s_cmd_set_address = pmt_intern("cmd-set-address");
-static pmt_t s_cmd_rx_enable = pmt_intern("cmd-rx-enable");
-static pmt_t s_cmd_rx_disable = pmt_intern("cmd-rx-disable");
-static pmt_t s_response_set_address = pmt_intern("response-set-address");
-static pmt_t s_response_rx_enable = pmt_intern("response-rx-enable");
-static pmt_t s_response_rx_disable = pmt_intern("response-rx-disable");
+// Lengths in bits of our fields used for timestamp calculation
+static const long PREAMBLE_LEN=16;
+static const long FRAMING_BITS_LEN=64;
+static const long POSTAMBLE_LEN=16;
 
-#endif // INCLUDED_TMAC_SYMBOLS_H
+static const int MAX_FRAME_SIZE = 1500;
+
+typedef struct d_frame_hdr_t {
+  long src_addr;
+  long dst_addr;
+  long payload_len;
+  bool ack;
+  long crc;
+} __attribute__((__packed__));
+
+#endif
