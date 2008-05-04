@@ -34,14 +34,14 @@ static pmt_t s_timeout = pmt_intern("%timeout");
 tmac::tmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   : mac(rt, instance_name, user_arg),
   d_state(INIT_TMAC),
-  d_base_station(true),
+  d_base_station(false),
   d_last_sync(0)
 {
   define_mac_ports();   // Initialize ports for message passing
   
   // Make sure a local address was specified, convert it from PMT to long
   if(!pmt_eqv(pmt_nth(0, user_arg), PMT_NIL)) {
-    d_local_address = pmt_to_long(pmt_nth(1, user_arg));
+    d_local_address = pmt_to_long(pmt_nth(0, user_arg));
   } else {
     std::cout << "[TMAC] ERROR: Need to specify local address when initializing MAC\n";
     shutdown_all(PMT_F);
@@ -53,7 +53,7 @@ tmac::tmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
     d_base_station=true;
 
     if(!pmt_eqv(pmt_nth(1, user_arg), PMT_NIL)) {
-      d_total_nodes = pmt_to_long(pmt_nth(2, user_arg));
+      d_total_nodes = pmt_to_long(pmt_nth(1, user_arg));
       if(verbose)
         std::cout << "[TMAC] Initializing base station with " << d_total_nodes << " nodes\n";
     } else {
@@ -139,6 +139,15 @@ void tmac::handle_mac_message(mb_message_sptr msg)
     // In this state, we're waiting for a synchronization frame from the
     // basestation so that we can aligned our round and slot.
     case WAIT_SYNC:
+
+      //---- Port: GMSK CS -------------- State: IDLE -----------------------//
+      if(pmt_eq(d_phy_cs->port_symbol(), port_id)) {
+        
+        if(pmt_eq(event, s_response_demod)) {
+          incoming_data(data);                        // Incoming data
+        }
+        return;
+      }
       goto unhandled;
     
     //----------------------------- IDLE ------------------------------------//
@@ -172,7 +181,7 @@ void tmac::handle_mac_message(mb_message_sptr msg)
       if(pmt_eq(d_phy_cs->port_symbol(), port_id)) {
         
         if(pmt_eq(event, s_response_demod)) {
-          incoming_data(data);                        // Incoming frame!
+          incoming_data(data);                        // Incoming data
         }
         return;
       }
@@ -243,6 +252,8 @@ void tmac::calculate_parameters()
 // anything can really occur.
 void tmac::initialize_node()
 {
+  enable_rx();
+
   d_state = WAIT_SYNC;
 }
 
@@ -305,7 +316,9 @@ void tmac::incoming_data(pmt_t data)
   pmt_t demod_properties = pmt_nth(1, data);
   std::vector<unsigned char> bit_data = boost::any_cast<std::vector<unsigned char> >(pmt_any_ref(bits));
 
-  framer(bit_data, demod_properties);
+  // The basestation does not care to decode anything
+  if(d_local_address != 0)
+    framer(bit_data, demod_properties);
 }
 
 // We transmit a sync every round time with an offset of 0, meaning the base
@@ -351,18 +364,24 @@ void tmac::incoming_frame(pmt_t data)
   pmt_t pkt_properties = pmt_nth(1, data);
 
   // Let's do some checking on the demoded frame
-  long lsrc=0, ldst=0;
+  long src=0, dst=0;
 
   // Properties are set in the physical layer framing code
-  lsrc = pmt_to_long(pmt_dict_ref(pkt_properties,
+  src = pmt_to_long(pmt_dict_ref(pkt_properties,
                                   pmt_intern("src"),
                                   PMT_NIL));
 
-  ldst = pmt_to_long(pmt_dict_ref(pkt_properties,
+  dst = pmt_to_long(pmt_dict_ref(pkt_properties,
                                   pmt_intern("dst"),
                                   PMT_NIL));
 
-  if(ldst != d_local_address)  // not for this address
+  // All frames from node 0 are SYNC frames, special handling
+  if(src == 0) {
+    incoming_sync(data);
+    return;
+  }
+
+  if(dst != d_local_address)  // not for this address
     return;
   
   d_rx->send(s_response_rx_pkt, pmt_list3(invocation_handle, payload, pkt_properties));
@@ -371,9 +390,33 @@ void tmac::incoming_frame(pmt_t data)
     std::cout << "[TMAC] Passing up demoded frame\n";
 }
 
+// Read an incoming SYNC frame
 void tmac::incoming_sync(pmt_t data)
 {
+  pmt_t invocation_handle = PMT_NIL;
+  pmt_t payload = pmt_nth(0, data);
+  pmt_t pkt_properties = pmt_nth(1, data);
 
+  unsigned long timestamp = pmt_to_long(pmt_dict_ref(pkt_properties, pmt_intern("timestamp"), PMT_NIL));
+
+  // Cast the incoming payload into SYNC frame data
+  size_t ignore;
+  d_sync_frame_data *sframe = (d_sync_frame_data *) pmt_u8vector_writeable_elements(payload, ignore);
+
+  // Calculate the parameters at the local node
+  d_guard_time = sframe->guard_time;
+  d_total_nodes =  sframe->total_nodes;
+  calculate_parameters();
+
+  // Calculate the local node's next TX time
+  d_next_tx_time = timestamp + d_local_slot_offset;
+
+  if(verbose)
+    std::cout << "[TMAC] Received SYNC:"
+              << "\n   Timestamp: " << timestamp
+              << "\n   Guard Time: " << sframe->guard_time
+              << "\n   Total Nodes: " << sframe->total_nodes
+              << std::endl;
 }
 
 REGISTER_MBLOCK_CLASS(tmac);
