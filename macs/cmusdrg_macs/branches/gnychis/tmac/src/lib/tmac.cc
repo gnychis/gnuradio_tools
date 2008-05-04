@@ -92,16 +92,19 @@ void tmac::usrp_initialized()
 void tmac::initialize_tmac()
 {
   // The base station takes special initialization
-  if(d_base_station)
+  if(d_base_station) {
     initialize_base_station();
-  else
-    initialize_node();
   
-//  d_cs->send(s_response_tmac_initialized,   // Notify the application that
-//             pmt_list2(PMT_NIL, PMT_T));    // the MAC is initialized
-
-  if(verbose)
-    std::cout << "[TMAC] Waiting for SYNC before notifying application of initialization...\n";
+    d_cs->send(s_response_mac_initialized,    // Notify the application that
+               pmt_list2(PMT_NIL, PMT_T));    // the MAC is initialized
+    if(verbose)
+      std::cout << "[TMAC] Base station transmitting SYNC...\n";
+  } else {
+    // Regular node
+    initialize_node();
+    if(verbose)
+      std::cout << "[TMAC] Waiting for SYNC before notifying application of initialization...\n";
+  }
 }
 
 // This is the crux of the MAC layer.  The general architecture is to have
@@ -112,12 +115,6 @@ void tmac::initialize_tmac()
 // functionality.  For example, if we are in the idle state and receive a 
 // s_cmd_tx_pkt event from the application (detected by the port ID), we send
 // the data to the physical layer to be modulated.
-//
-// Without the m-block to gr-block connection, all raw samples are forced
-// through the MAC layer.  So, in the idle state we receive raw incoming
-// samples, pass them to the physical layer for demodulation, and listen for
-// responses with frames.  Likewise, we send data to the modulator, get
-// modulated data back, and then we write it to the USRP.
 void tmac::handle_mac_message(mb_message_sptr msg)
 {
   pmt_t event = msg->signal();      // type of message
@@ -149,7 +146,7 @@ void tmac::handle_mac_message(mb_message_sptr msg)
       if(pmt_eq(d_tx->port_symbol(), port_id)) {
 
         if(pmt_eq(event, s_cmd_tx_pkt)) {
-          d_gmsk_cs->send(s_cmd_mod, data);           // Modulate the data
+          build_frame(data);
         }
         return;
       }
@@ -166,32 +163,11 @@ void tmac::handle_mac_message(mb_message_sptr msg)
         return;
       }
 
-      //---- Port: USRP TX -------------- State: IDLE -----------------------//
-      if(pmt_eq(d_us_tx->port_symbol(), port_id)) {
-
-        if(pmt_eq(event, s_response_xmit_raw_frame)) {
-          packet_transmitted(data);                   // Transmission successful
-        }
-        return;
-      }
-      
-      //---- Port: USRP RX -------------- State: IDLE -----------------------//
-      if(pmt_eq(d_us_rx->port_symbol(), port_id)) {
-
-        if(pmt_eq(event, s_response_recv_raw_samples)) {
-          d_gmsk_cs->send(s_cmd_demod, data);         // Demod incoming samples
-        }
-        return;
-      }
-
       //---- Port: GMSK CS -------------- State: IDLE -----------------------//
       if(pmt_eq(d_gmsk_cs->port_symbol(), port_id)) {
         
-        if(pmt_eq(event, s_response_mod)) {
-          transmit_pkt(data);                         // Data done being mod'ed
-        }
-        else if(pmt_eq(event, s_response_demod)) {
-          incoming_frame(data);                       // Incoming frame!
+        if(pmt_eq(event, s_response_demod)) {
+          incoming_data(data);                        // Incoming frame!
         }
         return;
       }
@@ -228,6 +204,27 @@ void tmac::initialize_base_station()
   // Schedule the initial synchronization frame.
   transmit_sync();
 }
+
+// Here we calculate the crucial TDMA parameters.  Everything is calculated in
+// clock cycles, which is 1/64e6 based on the FPGA clock.
+void tmac::calculate_parameters()
+{
+  // The number of clock cycles a bit transmission/reception takes
+  d_clock_ticks_per_bit = (d_usrp_decim * gmsk::samples_per_symbol()) / BITS_PER_SYMBOL;
+
+  // The slot time is fixed to the maximum frame time over the air.
+  d_slot_time = (cmac::max_frame_size() * BITS_PER_BYTE) * d_clock_ticks_per_bit;
+
+  // The local slot offset depends on the local address and slot/guard times.
+  // The local address defines the node's slot assignment.  Slot 0 is for the
+  // base station.
+  d_local_slot_offset = d_local_address * (d_slot_time + d_guard_time);
+
+  // The total round time takes in to account all of the nodes and slot timing.
+  // We add one for the base station.
+  d_round_time = (d_total_nodes+1) * (d_slot_time + d_guard_time);
+}
+
 
 // The initialization of a regular station, which waits for a sync before
 // anything can really occur.
@@ -288,43 +285,14 @@ void tmac::packet_transmitted(pmt_t data)
   d_state = IDLE;
 }
 
-// An incoming frame from the physical layer for us!  We check the packet
-// properties to determine the sender and if it passed a CRC check, for example.
-void tmac::incoming_frame(pmt_t data)
+// Entrance of new incoming data
+void tmac::incoming_data(pmt_t data)
 {
-  pmt_t invocation_handle = PMT_NIL;
-  pmt_t payload = pmt_nth(0, data);
-  pmt_t pkt_properties = pmt_nth(1, data);
+  pmt_t bits = pmt_nth(0, data);
+  pmt_t demod_properties = pmt_nth(1, data);
+  std::vector<unsigned char> bit_data = boost::any_cast<std::vector<unsigned char> >(pmt_any_ref(bits));
 
-  // Let's do some checking on the demoded frame
-  long lsrc=0, ldst=0;
-  bool b_crc = false;
-
-  // Properties are set in the physical layer framing code
-  lsrc = pmt_to_long(pmt_dict_ref(pkt_properties,
-                                  pmt_intern("src"),
-                                  PMT_NIL));
-
-  ldst = pmt_to_long(pmt_dict_ref(pkt_properties,
-                                  pmt_intern("dst"),
-                                  PMT_NIL));
-
-  if(pmt_t crc = pmt_dict_ref(pkt_properties,
-                              pmt_intern("crc"),
-                              PMT_NIL)) {
-    if(pmt_eqv(crc, PMT_T))
-      b_crc = true;   // payload passed CRC
-    else
-      b_crc = false;  // payload failed CRC
-  }
-
-  if(ldst != d_local_address)  // not for this address
-    return;
-  
-  d_rx->send(s_response_rx_pkt, pmt_list3(invocation_handle, payload, pkt_properties));
-
-  if(verbose)
-    std::cout << "[TMAC] Passing up demoded frame\n";
+  framer(bit_data, demod_properties);
 }
 
 // We transmit a sync every round time with an offset of 0, meaning the base
@@ -354,26 +322,6 @@ void tmac::transmit_sync()
 void tmac::incoming_sync(pmt_t data)
 {
 
-}
-
-// Here we calculate the crucial TDMA parameters.  Everything is calculated in
-// clock cycles, which is 1/64e6 based on the FPGA clock.
-void tmac::calculate_parameters()
-{
-  // The number of clock cycles a bit transmission/reception takes
-  d_clock_ticks_per_bit = (d_usrp_decim * gmsk::samples_per_symbol()) / BITS_PER_SYMBOL;
-
-  // The slot time is fixed to the maximum frame time over the air.
-  d_slot_time = (cmac::max_frame_size() * BITS_PER_BYTE) * d_clock_ticks_per_bit;
-
-  // The local slot offset depends on the local address and slot/guard times.
-  // The local address defines the node's slot assignment.  Slot 0 is for the
-  // base station.
-  d_local_slot_offset = d_local_address * (d_slot_time + d_guard_time);
-
-  // The total round time takes in to account all of the nodes and slot timing.
-  // We add one for the base station.
-  d_round_time = (d_total_nodes+1) * (d_slot_time + d_guard_time);
 }
 
 REGISTER_MBLOCK_CLASS(tmac);
