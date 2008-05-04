@@ -408,8 +408,9 @@ void tmac::incoming_sync(pmt_t data)
   d_total_nodes =  sframe->total_nodes;
   calculate_parameters();
 
-  // Calculate the local node's next TX time
-  d_next_tx_time = timestamp + d_local_slot_offset;
+  // Calculate the local node's first TX time, skip ahead
+  if(d_state == WAIT_SYNC)
+    d_next_tx_time = timestamp + d_local_slot_offset;
 
   if(verbose)
     std::cout << "[TMAC] Received SYNC:"
