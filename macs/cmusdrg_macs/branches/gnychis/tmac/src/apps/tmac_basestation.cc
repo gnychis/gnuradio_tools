@@ -74,8 +74,9 @@ tmac_basestation::tmac_basestation(mb_runtime *runtime, const std::string &insta
   std::string mac("tmac");
   d_local_addr = 0;
   long total_nodes = pmt_to_long(pmt_nth(0, user_arg));
+  long guard_time = pmt_to_long(pmt_nth(1, user_arg));
 
-  pmt_t mac_data = pmt_list2(pmt_from_long(d_local_addr), pmt_from_long(total_nodes));
+  pmt_t mac_data = pmt_list3(pmt_from_long(d_local_addr), pmt_from_long(total_nodes),pmt_from_long(guard_time));
   
   define_component(mac, mac, mac_data);
   d_tx = define_port("tx0", mac+"-tx", false, mb_port::INTERNAL);
@@ -149,12 +150,12 @@ main (int argc, char **argv)
   mb_runtime_sptr rt = mb_make_runtime();
   pmt_t result = PMT_NIL;
 
-  if(argc!=2) {
-    std::cout << "usage: ./tmac_basestation total_nodes\n";
+  if(argc!=3) {
+    std::cout << "usage: ./tmac_basestation total_nodes guard_time\n";
     return -1;
   }
 
-  pmt_t args = pmt_list1(pmt_from_long(strtol(argv[1],NULL,10)));
+  pmt_t args = pmt_list2(pmt_from_long(strtol(argv[1],NULL,10)),pmt_from_long(strtol(argv[2],NULL,10)));
 
   rt->run("top", "tmac_basestation", args, &result);
 }

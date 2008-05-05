@@ -52,12 +52,16 @@ tmac::tmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   if(d_local_address==0) {
     d_base_station=true;
 
-    if(!pmt_eqv(pmt_nth(1, user_arg), PMT_NIL)) {
+    if(!pmt_eqv(pmt_nth(1, user_arg), PMT_NIL) && !pmt_eqv(pmt_nth(2, user_arg), PMT_NIL)) {
       d_total_nodes = pmt_to_long(pmt_nth(1, user_arg));
+      d_guard_time = pmt_to_long(pmt_nth(2, user_arg));
       if(verbose)
-        std::cout << "[TMAC] Initializing base station with " << d_total_nodes << " nodes\n";
+        std::cout << "[TMAC] Initializing base station with " 
+                  << d_total_nodes << " nodes  "
+                  << d_guard_time << " guard time\n";
+
     } else {
-      std::cout << "[TMAC] ERROR: Need to specify total number of nodes in the network\n";
+      std::cout << "[TMAC] ERROR: Need to specify total number of nodes and guard time in the network\n";
       shutdown_all(PMT_F);
     }
   }
@@ -208,7 +212,6 @@ void tmac::initialize_base_station()
 
   // The base station specifies the guard time, which it will transmit in its
   // synchronization packets.  Other nodes will calculate parameters on sync.
-  d_guard_time = 1000;
   calculate_parameters();
  
   // Initialize the next time its going to transmit, which is the initial
