@@ -418,7 +418,6 @@ void tmac::incoming_sync(pmt_t data)
               << "\n   Guard Time: " << sframe->guard_time
               << "\n   Total Nodes: " << sframe->total_nodes
               << std::endl;
-  fflush(stdout);
 }
 
 REGISTER_MBLOCK_CLASS(tmac);
