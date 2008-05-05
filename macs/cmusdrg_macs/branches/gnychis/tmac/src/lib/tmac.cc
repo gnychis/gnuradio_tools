@@ -27,7 +27,7 @@
 
 static int INITIAL_SYNC = 14967296;
 
-static bool verbose = false;
+static bool verbose = true;
 
 static pmt_t s_timeout = pmt_intern("%timeout");
 
@@ -257,37 +257,6 @@ void tmac::initialize_node()
   d_state = WAIT_SYNC;
 }
 
-// Handles the transmission of a pkt from the application.  The invocation
-// handle is passed on but a response is not given back to the application until
-// the response is passed from usrp_server.  This ensures that the MAC passes
-// back the success or failure. 
-void tmac::transmit_pkt(pmt_t data)
-{
-  pmt_t invocation_handle = pmt_nth(0, data);
-  pmt_t samples = pmt_nth(1, data);
-  pmt_t pkt_properties = pmt_nth(2, data);
-
-  // A dictionary (a hash like structure) that is used to pass packet properties
-  // down the layers.
-  pmt_t us_tx_properties = pmt_make_dict();
-
-  // Set the timestamp to the next tx time, and then recalculate the next TX
-  // time to be the current time plus a total round time.
-  pmt_t timestamp = pmt_from_long(d_next_tx_time);
-  d_next_tx_time += d_round_time;
-
-  pmt_t pdata = pmt_list5(invocation_handle,    // Invocation handle is passed back.
-		                      d_us_tx_chan,         // Destined for our TX channel.
-		                      samples,              // The modulated data (samples).
-                          timestamp,            // The time to send the packet.
-                          us_tx_properties);    // Our per-packet properties.
-
-  d_us_tx->send(s_cmd_xmit_raw_frame, pdata);   // Finally, send!
-
-  if(verbose && 0)
-    std::cout << "[TMAC] Transmitted packet\n";
-}
-
 // Invoked when we get a response that a packet was written to the USRP USB bus,
 // we assume that it has been transmitted (or will be, within negligable time).
 //
@@ -406,22 +375,26 @@ void tmac::incoming_sync(pmt_t data)
   // Calculate the parameters at the local node
   d_guard_time = sframe->guard_time;
   d_total_nodes =  sframe->total_nodes;
-  calculate_parameters();
-
-  // Calculate the local node's first TX time, skip ahead
-  if(d_state == WAIT_SYNC)
-    d_next_tx_time = timestamp + d_round_time + d_local_slot_offset;
-
-  if(verbose)
+  
+  if(verbose && d_state==WAIT_SYNC)
     std::cout << "[TMAC] Received SYNC:"
               << "\n   Timestamp: " << timestamp
               << "\n   Guard Time: " << sframe->guard_time
               << "\n   Total Nodes: " << sframe->total_nodes
               << std::endl;
 
-  if(d_state==WAIT_SYNC)
+  // Calculate the local node's first TX time, skip ahead
+  if(d_state == WAIT_SYNC) {
+    calculate_parameters();
+    d_next_tx_time = timestamp + d_local_slot_offset + d_round_time;//*(1/d_round_time/64e6);
+    std::cout << "next: " << d_next_tx_time << std::endl;
+    
     d_cs->send(s_response_mac_initialized,                  // Notify the application that
                pmt_list3(PMT_NIL, PMT_T, d_mac_properties));  // the MAC is initialized
+
+    d_state = IDLE;
+  }
+
 }
 
 REGISTER_MBLOCK_CLASS(tmac);

@@ -42,6 +42,8 @@
 
 static bool verbose = false;
 
+int timeval_subtract (struct timeval *result, struct timeval *x, struct timeval *y);
+
 class tx_file : public mb_mblock
 {
   mb_port_sptr 	d_tx;
@@ -56,8 +58,10 @@ class tx_file : public mb_mblock
 
   state_t	d_state;
   long		d_nframes_xmitted;
+  long d_tbytes;
   bool		d_done_sending;
   long    d_mac_max_payload;
+
 
   std::ifstream d_ifile;
 
@@ -85,6 +89,7 @@ tx_file::tx_file(mb_runtime *runtime, const std::string &instance_name, pmt_t us
   : mb_mblock(runtime, instance_name, user_arg),
     d_state(INIT), 
     d_nframes_xmitted(0),
+    d_tbytes(0),
     d_done_sending(false)
 { 
   // Extract USRP information from python and the arguments to the python script
@@ -225,7 +230,6 @@ tx_file::enter_transmitting()
   d_state = TRANSMITTING;
 
   build_and_send_next_frame();
-
 }
 
 void
@@ -233,6 +237,9 @@ tx_file::build_and_send_next_frame()
 {
   size_t ignore;
   long n_bytes;
+
+  if(d_done_sending)
+    return;
 
   // Let's read in as much as possible to fit in a frame
   char data[d_mac_max_payload];
@@ -245,6 +252,8 @@ tx_file::build_and_send_next_frame()
   } else {
     n_bytes = sizeof(data);
   }
+
+  d_tbytes+=n_bytes;
 
   // Make the PMT data, get a writable pointer to it, then copy our data in
   pmt_t uvec = pmt_make_u8vector(n_bytes, 0);
@@ -275,17 +284,48 @@ tx_file::handle_xmit_response(pmt_t handle)
 {
   if (d_done_sending && pmt_to_long(handle)==(d_nframes_xmitted-1)){
     gettimeofday(&d_end, NULL);
-    std::cout << "Transfer time: " 
-              << (d_end.tv_sec-d_start.tv_sec)
+    struct timeval result;
+    timeval_subtract(&result, &d_end, &d_start);
+    std::cout << "\n\nTransfer time: " 
+              << result.tv_sec
               << "."
-              << (d_end.tv_usec-d_start.tv_usec)
+              << result.tv_usec
               << std::endl;
+
+    float total_time = result.tv_sec + (result.tv_usec/(float)1000000);
+
+    std::cout << "\n\nTime: " << total_time << std::endl;
+    std::cout << "\n\nThroughput: " << (d_tbytes*8/total_time/1000000) << std::endl;
     fflush(stdout);
     shutdown_all(PMT_T);
   }
 
   // CMAC has taken care of waiting for the ACK
   build_and_send_next_frame();  
+}
+
+int
+timeval_subtract (struct timeval *result, struct timeval *x, struct timeval *y)
+{
+  /* Perform the carry for the later subtraction by updating y. */
+  if (x->tv_usec < y->tv_usec) {
+    int nsec = (y->tv_usec - x->tv_usec) / 1000000 + 1;
+    y->tv_usec -= 1000000 * nsec;
+    y->tv_sec += nsec;
+  }
+  if (x->tv_usec - y->tv_usec > 1000000) {
+    int nsec = (x->tv_usec - y->tv_usec) / 1000000;
+    y->tv_usec += 1000000 * nsec;
+    y->tv_sec -= nsec;
+  }
+
+  /* Compute the time remaining to wait.
+     tv_usec is certainly positive. */
+  result->tv_sec = x->tv_sec - y->tv_sec;
+  result->tv_usec = x->tv_usec - y->tv_usec;
+
+  /* Return 1 if result is negative. */
+  return x->tv_sec < y->tv_sec;
 }
 
 int
