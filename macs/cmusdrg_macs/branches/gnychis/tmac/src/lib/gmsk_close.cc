@@ -37,13 +37,9 @@ std::ofstream corr_ofile;
 bool d_squelch;
 
 long t_samples;
-long lcount;
 
 gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(rt, instance_name, user_arg),
-  d_first_timestamp(0),
-  d_first(false),
-  d_tcalled(0),
   d_samples_per_symbol(SAMPLES_PER_SYMBOL),
   d_bt(0.35),
   d_gain_mu(0.175),
@@ -68,7 +64,6 @@ gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   d_squelch = true;
 
   t_samples =0;
-  lcount = 0;
 
   if (pmt_is_dict(user_arg)) {
 
@@ -349,13 +344,6 @@ void gmsk::demod(pmt_t data)
   int16_t *samples = (int16_t *)mod_data;
   unsigned long timestamp = (unsigned long)pmt_to_long(pmt_nth(3, data));
 
-  lcount++;
-
-  if(!d_first && lcount>4) {
-    d_first_timestamp = timestamp;
-    d_first=true;
-  }
-
   if(demod_debug)
     std::cout << "[GMSK] Demodulating (" << n_bytes/4 << ")...";
 
@@ -394,13 +382,12 @@ void gmsk::demod(pmt_t data)
     mcount++;
   }
 
-  // Correction in timestamp
-  timestamp = timestamp - (64*(c_tsamples-cf_nout));
-
   // Need to bail if not enough samples for the filter
   if(cf_nout==0) {
     if(demod_debug) 
       std::cout << std::endl;
+    std::cout << "bail\n";
+    fflush(stdout);
     return;
   }
 
@@ -578,15 +565,17 @@ void gmsk::demod(pmt_t data)
     std::cout << " t_samples: " << t_samples << std::endl;
 
   // Timestamp hack
-  timestamp = d_first_timestamp + d_tcalled * (126*d_usrp_decim);
-  timestamp = timestamp - 64*mcount;
-  d_tcalled++;
+  timestamp = timestamp - 64*(d_crq.size()+mcount);
+//  std::cout << "*** num: " << corr_output.size() << std::endl;
+  fflush(stdout);
 
   // Frame!
   pmt_t demod_properties = pmt_make_dict();
   pmt_dict_set(demod_properties, pmt_intern("timestamp"), pmt_from_long(timestamp));
   pmt_dict_set(demod_properties, pmt_intern("sps"), pmt_from_long(d_samples_per_symbol));
   pmt_dict_set(demod_properties, pmt_intern("bps"), pmt_from_long(BITS_PER_SYMBOL));
+  pmt_dict_set(demod_properties, pmt_intern("cf_nout"), pmt_from_long(cf_nout));
+  pmt_dict_set(demod_properties, pmt_intern("d_crq"), pmt_from_long(d_crq.size()));
   // RSSI
 
   pmt_t p_corr_output = pmt_make_any(corr_output);

@@ -28,6 +28,9 @@
 
 static bool verbose = false;
 
+long cf_nout;
+long d_crq;
+
 // The framer will use the special flag bit to detect the incoming frame.  To be
 // clean this should be a new block, but for performance reasons I'm keeping it
 // here.
@@ -40,6 +43,8 @@ void tmac::framer(const std::vector<unsigned char> input, pmt_t demod_properties
   long timestamp = pmt_to_long(pmt_dict_ref(demod_properties, pmt_intern("timestamp"), PMT_NIL));
   long sps = pmt_to_long(pmt_dict_ref(demod_properties, pmt_intern("sps"), PMT_NIL));
   long bps = pmt_to_long(pmt_dict_ref(demod_properties, pmt_intern("bps"), PMT_NIL));
+  cf_nout = pmt_to_long(pmt_dict_ref(demod_properties, pmt_intern("cf_nout"), PMT_NIL));
+  d_crq = pmt_to_long(pmt_dict_ref(demod_properties, pmt_intern("d_crq"), PMT_NIL));
 
   while(bit < nbits) {
     switch(d_framer_state)
@@ -115,6 +120,12 @@ void tmac::framer_calculate_timestamp(unsigned long timestamp, int bit, int nbit
       timestamp - clock_ticks_per_bit*(nbits - bit - FRAMING_BITS_LEN - PREAMBLE_LEN);
  
   d_frame_timestamp = start_of_transmission;
+  std::cout << "timestamp: " << d_frame_timestamp 
+            << "  cf_nout: " << cf_nout 
+            << "  nbits: " << nbits 
+            << "  d_crq: " << d_crq
+            << std::endl;
+  fflush(stdout);
 }
 
 // We have found the framing bits and are now synchronized.

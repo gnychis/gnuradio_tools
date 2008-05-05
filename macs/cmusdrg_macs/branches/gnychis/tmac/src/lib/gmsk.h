@@ -81,6 +81,11 @@ class gmsk : public mb_mblock
   // Ports used for applications to connect to this block
   mb_port_sptr		  d_cs;
 
+  bool d_first;
+  unsigned long d_first_timestamp;
+  unsigned long long d_tcalled;
+  
+
   long d_samples_per_symbol;
   float d_bt;
   float d_gain_mu;
