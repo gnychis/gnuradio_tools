@@ -68,6 +68,8 @@ class tx_file : public mb_mblock
   long d_local_addr;
   long d_dst_addr;
 
+  pmt_t d_mac_properties;
+
   struct timeval d_start, d_end;
 
  public:
@@ -155,10 +157,10 @@ tx_file::handle_message(mb_message_sptr msg)
       if(pmt_eq(event, s_response_mac_initialized)) {
         handle = pmt_nth(0, data);
         status = pmt_nth(1, data);
-        pmt_t mac_properties = pmt_nth(2, data);
+        d_mac_properties = pmt_nth(2, data);
 
-        if(pmt_is_dict(mac_properties)) {
-          if(pmt_t mac_max_payload = pmt_dict_ref(mac_properties,
+        if(pmt_is_dict(d_mac_properties)) {
+          if(pmt_t mac_max_payload = pmt_dict_ref(d_mac_properties,
                                                   pmt_intern("max-payload"),
                                                   PMT_NIL)) {
             if(pmt_eqv(mac_max_payload, PMT_NIL)) {
@@ -292,10 +294,19 @@ tx_file::handle_xmit_response(pmt_t handle)
               << result.tv_usec
               << std::endl;
 
-    float total_time = result.tv_sec + (result.tv_usec/(float)1000000);
+    float round_time=0;
+    if(!pmt_eqv(PMT_NIL, pmt_dict_ref(d_mac_properties, pmt_intern("round-time"), PMT_NIL))) {
+      round_time = pmt_to_long(pmt_dict_ref(d_mac_properties, pmt_intern("round-time"), PMT_NIL));
+      round_time = round_time/64e6;
+    }
+
+      
+    std::cout << "\n Round time: " << round_time << std::endl;
+
+    float total_time = result.tv_sec + (result.tv_usec/(float)1000000) - round_time;
 
     std::cout << "\n\nTime: " << total_time << std::endl;
-    std::cout << "\n\nThroughput: " << (d_tbytes*8/total_time/1000000) << std::endl;
+    std::cout << "\n\nThroughput: " << (d_tbytes*8/total_time/1000) << std::endl;
     fflush(stdout);
     shutdown_all(PMT_T);
   }

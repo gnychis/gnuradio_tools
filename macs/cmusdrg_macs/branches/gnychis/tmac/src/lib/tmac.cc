@@ -395,6 +395,7 @@ void tmac::incoming_sync(pmt_t data)
     d_next_tx_time = timestamp + d_local_slot_offset + d_round_time;//*(1/d_round_time/64e6);
     std::cout << "next: " << d_next_tx_time << std::endl;
     
+    pmt_dict_set(d_mac_properties, pmt_intern("round-time"), pmt_from_long(d_round_time));
     d_cs->send(s_response_mac_initialized,                  // Notify the application that
                pmt_list3(PMT_NIL, PMT_T, d_mac_properties));  // the MAC is initialized
 
