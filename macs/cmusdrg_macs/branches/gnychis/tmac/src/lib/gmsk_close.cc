@@ -360,16 +360,18 @@ void gmsk::demod(pmt_t data)
   // we're at it
   const long SQUELCH = 100;
   long stored = 0;
+  bool found=false;
   for(int j=0; j<(int)c_samples.size()-swaiting; j++) {
-//    if(d_squelch) {
-//      if(sqrt(samples[j*2]*samples[j*2]+samples[j*2+1]*samples[j*2+1]) > SQUELCH) {
-//        c_samples[stored+swaiting] = gr_complex(samples[j*2], samples[j*2+1]);
-//        stored++;
-//      }
-//    } else {
+    if(d_squelch && !found) {
+      if(sqrt(samples[j*2]*samples[j*2]+samples[j*2+1]*samples[j*2+1]) > SQUELCH) {
+        c_samples[stored+swaiting] = gr_complex(samples[j*2], samples[j*2+1]);
+        stored++;
+        found=true;
+      }
+    } else {
       c_samples[stored+swaiting] = gr_complex(samples[j*2], samples[j*2+1]);
       stored++;
-//    }
+    }
   }
 
   long c_tsamples = stored + swaiting;
@@ -386,8 +388,6 @@ void gmsk::demod(pmt_t data)
   if(cf_nout==0) {
     if(demod_debug) 
       std::cout << std::endl;
-    std::cout << "bail\n";
-    fflush(stdout);
     return;
   }
 
