@@ -25,7 +25,7 @@
 
 #include <tmac.h>
 
-static int INITIAL_SYNC = 0;
+static int INITIAL_SYNC = 14967296;
 
 static bool verbose = false;
 
@@ -349,7 +349,7 @@ void tmac::transmit_sync()
                           uvec,                           // With data.
                           tx_properties);                 // Properties
 
-  std::cout << ".";
+  std::cout << "[TMAC] Transmitting SYNC at " << (unsigned long)pmt_to_long(timestamp) << std::endl;
   fflush(stdout);
 
   build_frame(pdata);

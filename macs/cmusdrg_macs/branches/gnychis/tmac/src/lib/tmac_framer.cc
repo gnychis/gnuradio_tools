@@ -241,9 +241,6 @@ void tmac::build_frame(pmt_t data)
   if(!pmt_is_dict(pkt_properties))
     pkt_properties = pmt_make_dict();
 
-  // For TMAC, all packets are transmitted immediately
-  pmt_dict_set(pkt_properties, pmt_intern("timestamp"), pmt_from_long(0xffffffff));
-  
   // Frame header
   d_frame_hdr_t frame_hdr;
   memset(&frame_hdr, '\0', sizeof(frame_hdr));
