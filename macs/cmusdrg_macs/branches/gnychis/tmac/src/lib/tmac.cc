@@ -25,7 +25,7 @@
 
 #include <tmac.h>
 
-static int INITIAL_SYNC = 14967296;
+static int INITIAL_SYNC = 114967296;
 
 static bool verbose = true;
 
@@ -219,6 +219,9 @@ void tmac::initialize_base_station()
   d_next_tx_time = INITIAL_SYNC;
 
   // Schedule the initial synchronization frame.
+  transmit_sync();
+  transmit_sync();
+  transmit_sync();
   transmit_sync();
 }
 
