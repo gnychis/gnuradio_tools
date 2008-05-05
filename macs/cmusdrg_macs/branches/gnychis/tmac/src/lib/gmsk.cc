@@ -343,7 +343,7 @@ void gmsk::demod(pmt_t data)
   const void *mod_data = pmt_uniform_vector_elements(pmt_nth(2, data), n_bytes);
   int16_t *samples = (int16_t *)mod_data;
   unsigned long timestamp = (unsigned long)pmt_to_long(pmt_nth(3, data));
-
+  
   if(demod_debug)
     std::cout << "[GMSK] Demodulating (" << n_bytes/4 << ")...";
 
@@ -378,11 +378,8 @@ void gmsk::demod(pmt_t data)
 
   // Push the extra samples on to the queue (input has to be % 20)
   long cf_nout = c_tsamples - (c_tsamples % 20);
-  long mcount = 0;
-  for(int k=cf_nout; k<(int)c_tsamples; k++) {
+  for(int k=cf_nout; k<(int)c_tsamples; k++)
     d_filterq.push(c_samples[k]);
-    mcount++;
-  }
 
   // Need to bail if not enough samples for the filter
   if(cf_nout==0) {
@@ -564,18 +561,13 @@ void gmsk::demod(pmt_t data)
   if(demod_debug)
     std::cout << " t_samples: " << t_samples << std::endl;
 
-  // Timestamp hack
-  timestamp = timestamp - 64*(d_crq.size()+mcount);
-//  std::cout << "*** num: " << corr_output.size() << std::endl;
-  fflush(stdout);
+  timestamp = timestamp - 64*(d_crq.size()+(c_tsamples-cf_nout));
 
   // Frame!
   pmt_t demod_properties = pmt_make_dict();
   pmt_dict_set(demod_properties, pmt_intern("timestamp"), pmt_from_long(timestamp));
   pmt_dict_set(demod_properties, pmt_intern("sps"), pmt_from_long(d_samples_per_symbol));
   pmt_dict_set(demod_properties, pmt_intern("bps"), pmt_from_long(BITS_PER_SYMBOL));
-  pmt_dict_set(demod_properties, pmt_intern("cf_nout"), pmt_from_long(cf_nout));
-  pmt_dict_set(demod_properties, pmt_intern("d_crq"), pmt_from_long(d_crq.size()));
   // RSSI
 
   pmt_t p_corr_output = pmt_make_any(corr_output);
