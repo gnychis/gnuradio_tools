@@ -85,6 +85,8 @@ class tmac : public mac
   unsigned long d_clock_ticks_per_bit;
   pmt_t d_last_frame;
 
+  pmt_t d_mac_properties;
+
   // Local user address
   long d_local_address;
   

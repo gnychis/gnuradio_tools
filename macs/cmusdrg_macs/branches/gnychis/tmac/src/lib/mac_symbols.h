@@ -33,6 +33,6 @@ static pmt_t s_response_tx_data = pmt_intern("response-tx-data");
 static pmt_t s_response_rx_pkt = pmt_intern("response-rx-pkt");
 
 // Initialized
-static pmt_t s_response_mac_initialized = pmt_intern("response-cmac-initialized");
+static pmt_t s_response_mac_initialized = pmt_intern("response-mac-initialized");
 
 #endif // INCLUDED_MAC_SYMBOLS_H

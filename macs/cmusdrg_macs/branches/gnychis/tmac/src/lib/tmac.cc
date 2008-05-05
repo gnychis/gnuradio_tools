@@ -27,7 +27,7 @@
 
 static int INITIAL_SYNC = 0;
 
-static bool verbose = true;
+static bool verbose = false;
 
 static pmt_t s_timeout = pmt_intern("%timeout");
 
@@ -91,9 +91,9 @@ void tmac::usrp_initialized()
   initialize_tmac();
  
   // Send any information between the MAC and the PHY, require max frame sizes
-  pmt_t mac_properties = pmt_make_dict();
-  pmt_dict_set(mac_properties, pmt_intern("max-frame"), pmt_from_long(MAX_FRAME_SIZE));
-  pmt_dict_set(mac_properties, pmt_intern("max-payload"), pmt_from_long(max_frame_payload()));
+  d_mac_properties = pmt_make_dict();
+  pmt_dict_set(d_mac_properties, pmt_intern("max-frame"), pmt_from_long(MAX_FRAME_SIZE));
+  pmt_dict_set(d_mac_properties, pmt_intern("max-payload"), pmt_from_long(max_frame_payload()));
 }
 
 void tmac::initialize_tmac()
@@ -103,7 +103,7 @@ void tmac::initialize_tmac()
     initialize_base_station();
   
     d_cs->send(s_response_mac_initialized,                  // Notify the application that
-               pmt_list3(PMT_NIL, PMT_T, mac_properties));  // the MAC is initialized
+               pmt_list3(PMT_NIL, PMT_T, d_mac_properties));  // the MAC is initialized
   } else {
     // Regular node
     initialize_node();
@@ -410,7 +410,7 @@ void tmac::incoming_sync(pmt_t data)
 
   // Calculate the local node's first TX time, skip ahead
   if(d_state == WAIT_SYNC)
-    d_next_tx_time = timestamp + d_local_slot_offset;
+    d_next_tx_time = timestamp + d_round_time + d_local_slot_offset;
 
   if(verbose)
     std::cout << "[TMAC] Received SYNC:"
@@ -418,6 +418,10 @@ void tmac::incoming_sync(pmt_t data)
               << "\n   Guard Time: " << sframe->guard_time
               << "\n   Total Nodes: " << sframe->total_nodes
               << std::endl;
+
+  if(d_state==WAIT_SYNC)
+    d_cs->send(s_response_mac_initialized,                  // Notify the application that
+               pmt_list3(PMT_NIL, PMT_T, d_mac_properties));  // the MAC is initialized
 }
 
 REGISTER_MBLOCK_CLASS(tmac);
