@@ -32,7 +32,7 @@ static const long PREAMBLE_LEN=16;
 static const long FRAMING_BITS_LEN=64;
 static const long POSTAMBLE_LEN=16;
 
-static const int MAX_FRAME_SIZE = 1500;
+static const int MAX_FRAME_SIZE = 81;
 
 typedef struct d_frame_hdr_t {
   long src_addr;
