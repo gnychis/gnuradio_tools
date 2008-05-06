@@ -233,7 +233,7 @@ void tmac::calculate_parameters()
   d_clock_ticks_per_bit = (d_usrp_decim * gmsk::samples_per_symbol()) / BITS_PER_SYMBOL;
 
   // The slot time is fixed to the maximum frame time over the air.
-  d_slot_time = (MAX_FRAME_SIZE * BITS_PER_BYTE) * d_clock_ticks_per_bit;
+  d_slot_time = (PREAMBLE_LEN + FRAMING_BITS_LEN + (MAX_FRAME_SIZE * BITS_PER_BYTE) + POSTAMBLE_LEN) * d_clock_ticks_per_bit;
 
   // The local slot offset depends on the local address and slot/guard times.
   // The local address defines the node's slot assignment.  Slot 0 is for the
@@ -304,8 +304,12 @@ void tmac::transmit_sync()
   char data;
   
   // Make the PMT data, get a writable pointer to it, then copy our data in
-  pmt_t uvec = pmt_make_u8vector(sizeof(d_sync_frame_data), 0);
+  pmt_t uvec = pmt_make_u8vector(max_frame_payload(), 0);
   d_sync_frame_data *sframe = (d_sync_frame_data *) pmt_u8vector_writeable_elements(uvec, ignore);
+  char *pay = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
+  
+  for(int i=sizeof(d_sync_frame_data); i<max_frame_payload(); i++)
+    pay[i] = 'a';
 
   // Set the SYNC frame properties
   sframe->guard_time = d_guard_time;
