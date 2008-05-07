@@ -1,0 +1,15 @@
+1. Declare int variables a, b, c, d. (They could be doubles if you would
+prefer.)
+
+2. Declare double variables sum1, sum2, mean, std_dev
+
+3. Get user inputs into a, b, c, d
+
+4. Set sum1 = a+b+c+d;
+
+5. Set mean = (double)sum1/4.0
+
+6. Set sum2 = (a-mean)*(a-mean) + (b-mean)*(b-mean)
++(c-mean)*(c-mean)+(d-mean)*(d-mean)
+
+7. set std_dev = sqrt((1.0/4.0)*(double)sum2)
