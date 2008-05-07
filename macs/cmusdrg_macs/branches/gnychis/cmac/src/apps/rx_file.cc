@@ -204,10 +204,6 @@ rx_file::handle_response_rx_pkt(pmt_t data)
   char *payload_data = (char *)pmt_u8vector_writeable_elements(payload, nbytes);
   d_ofile.write((const char *)payload_data, nbytes);
   d_ofile.flush();
-
-  std::cout << ".";
-  fflush(stdout);
-
 }
 
 int

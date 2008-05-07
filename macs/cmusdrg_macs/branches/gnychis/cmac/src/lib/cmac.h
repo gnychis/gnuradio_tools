@@ -71,6 +71,9 @@ class cmac : public mac
   };
   state_t	d_framer_state;
 
+  // Mainly for debugging
+  bool d_verbose_frames;
+  unsigned long d_nframes_recvd;
 
   // Ports used for applications to connect to this block
   mb_port_sptr		  d_tx, d_rx, d_cs;
