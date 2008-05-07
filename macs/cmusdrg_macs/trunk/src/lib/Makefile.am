@@ -27,6 +27,7 @@ INCLUDES = 	\
 
 EXTRA_DIST =				\
 	cmac.mbh			\
+	tmac.mbh			\
 	gmsk.mbh
 
 lib_LTLIBRARIES = 			\
@@ -40,10 +41,14 @@ GUILE=/usr/bin/guile -e main -s $(top_srcdir)/src/scheme/mblock/gnuradio/compile
 
 BUILT_SOURCES =				\
 	cmac_mbh.cc		\
+	tmac_mbh.cc		\
 	gmsk_mbh.cc 
 
 cmac_mbh.cc : cmac.mbh
 	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/cmac.mbh $(srcdir)/cmac_mbh.cc
+
+tmac_mbh.cc : tmac.mbh
+	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/tmac.mbh $(srcdir)/tmac_mbh.cc
 
 gmsk_mbh.cc : gmsk.mbh
 	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/gmsk.mbh $(srcdir)/gmsk_mbh.cc
@@ -53,6 +58,8 @@ libcmusdrg_macs_la_SOURCES =		\
 	mac.cc \
 	cmac.cc \
 	cmac_framer.cc \
+	tmac.cc	\
+	tmac_framer.cc \
 	gmsk.cc 
 
 libcmusdrg_macs_la_LDFLAGS = $(NO_UNDEFINED) -version-info 0:0:0
@@ -68,11 +75,14 @@ include_HEADERS =			\
 	mac.h \
 	cmac.h \
 	cmac_framer.h \
+	tmac.h	\
+	tmac_framer.h \
 	gmsk.h 
 
 
 noinst_HEADERS =      			\
 	gmsk_symbols.h	\
+	tmac_symbols.h	\
 	cmac_symbols.h
 
 

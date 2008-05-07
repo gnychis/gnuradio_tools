@@ -19,20 +19,31 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef INCLUDED_MAC_SYMBOLS_H
-#define INCLUDED_MAC_SYMBOLS_H
+#ifndef INCLUDED_TMAC_FRAMER_H
+#define INCLUDED_TMAC_FRAMER_H
 
-#include <pmt.h>
+#include <string>
+#include <boost/crc.hpp>
+#include <boost/cstdint.hpp>
+#include <gmsk.h>
+
+// Lengths in bits of our fields used for timestamp calculation
+static const long PREAMBLE_LEN=16;
+static const long FRAMING_BITS_LEN=64;
+static const long POSTAMBLE_LEN=16;
+
+static const int MAX_FRAME_SIZE = 81;
+
+typedef struct d_frame_hdr_t {
+  long src_addr;
+  long dst_addr;
+  long payload_len;
+} __attribute__((__packed__));
+
+typedef struct d_sync_frame_data {
+  unsigned long guard_time;
+  unsigned long total_nodes;
+} __attribute__((__packed__));
 
 
-// TX
-static pmt_t s_cmd_tx_data = pmt_intern("cmd-tx-data");
-static pmt_t s_response_tx_data = pmt_intern("response-tx-data");
-
-// RX
-static pmt_t s_response_rx_pkt = pmt_intern("response-rx-pkt");
-
-// Initialized
-static pmt_t s_response_mac_initialized = pmt_intern("response-mac-initialized");
-
-#endif // INCLUDED_MAC_SYMBOLS_H
+#endif
