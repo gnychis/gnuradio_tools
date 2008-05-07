@@ -220,6 +220,8 @@ void cmac::framer_have_frame(pmt_t uvec)
   pmt_dict_set(pkt_properties, pmt_intern("src"), pmt_from_long(d_cframe_hdr.src_addr));
   pmt_dict_set(pkt_properties, pmt_intern("dst"), pmt_from_long(d_cframe_hdr.dst_addr));
   pmt_dict_set(pkt_properties, pmt_intern("seq"), pmt_from_long(d_cframe_hdr.seq_num));
+  pmt_dict_set(pkt_properties, pmt_intern("ack"), PMT_F);   // default value
+  pmt_dict_set(pkt_properties, pmt_intern("crc"), PMT_F);   // default value
 
   // If the frame is an ACK, we don't care about payload... lets just pass it up
   if(d_cframe_hdr.ack) {
