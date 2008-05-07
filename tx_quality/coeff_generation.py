@@ -22,6 +22,7 @@
 
 
 import sys, array, numpy, math, time
+sys.path.append('../phys/')
 
 from gnuradio import gr
 from gnuradio.eng_option import eng_option
@@ -33,7 +34,8 @@ def build_graph(outfile):
   fg = gr.top_block()
 
   # Input
-  input = [0x00, 0xa7]
+  #input = [0xA4, 0xF2, 0xAC, 0xDD, 0xA4, 0xE2, 0xF2, 0x8C, 0x20, 0xFC, 0x00, 0x00, 0x00, 0x02]
+  input = [0xAC, 0xDD, 0xA4, 0xE2, 0xF2, 0x8C, 0x20, 0xFC]
 
   # Unsigned char source to use the input
   src = gr.vector_source_b(input)
