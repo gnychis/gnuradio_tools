@@ -163,6 +163,7 @@ void cmac::handle_mac_message(mb_message_sptr msg)
       if(pmt_eq(event, s_timeout)) {
         std::cout << "x";
         fflush(stdout);
+        d_seq_num--;
         build_frame(d_last_frame);
         return;
       }
@@ -250,7 +251,7 @@ void cmac::packet_transmitted(pmt_t data)
   
   // Schedule an ACK timeout to fire every timeout period. This should be user
   // settable.  The first timeout is now+TIMEOUT_PERIOD
-  const double TIMEOUT_PERIOD = 0.15;  // in seconds
+  const double TIMEOUT_PERIOD = 0.5;  // in seconds
   mb_time now = mb_time::time();
   d_ack_timeout = schedule_periodic_timeout(now + TIMEOUT_PERIOD, mb_time(TIMEOUT_PERIOD), PMT_T);
   
