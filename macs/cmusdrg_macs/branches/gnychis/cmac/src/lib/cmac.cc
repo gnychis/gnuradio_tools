@@ -304,6 +304,7 @@ void cmac::incoming_frame(pmt_t data)
               << seq << "\t"
               << src << "\t"
               << std::endl;
+    fflush(stdout);
   }
   
   d_nframes_recvd++;

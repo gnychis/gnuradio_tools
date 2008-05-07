@@ -35,8 +35,8 @@ static const long POSTAMBLE_LEN=16;
 static const int MAX_FRAME_SIZE = 1500;
 
 typedef struct d_frame_hdr_t {
-  long src_addr;
   long dst_addr;
+  long src_addr;
   long payload_len;
   unsigned long seq_num;
   bool ack;
