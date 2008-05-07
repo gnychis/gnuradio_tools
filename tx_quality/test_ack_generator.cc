@@ -5,52 +5,36 @@
 #include <string>
 #include <map>
 #include <fstream>
+#include <list>
 
-const int tsamples=23872;
+const int TSAMPLES=23872;
+const int COMP_WINDOW=20;
 
-// State
-bool first;
-bool monitoring;
-long samples_left;
-long ntransmission;
+std::list<unsigned long> power_history;
 
-// Stats
-unsigned long avg, min, max;
-unsigned long long sum;
+unsigned long tx_average;
+unsigned long curr_average;
 
-void compute()
-{
-  bool ack;
+void compute_average(unsigned long power)
+{  
+  power_history.push_back(power);
 
-  if(first) {
-    std::cout << ntransmission << "1";
-    first=false;
+  if(power_history.size()<COMP_WINDOW) 
     return;
-  }
 
-  avg=sum/tsamples;
+  power_history.pop_front();
 
-}
+  unsigned long long sum;
+  std::list<unsigned long>::iterator power_it;
+  for(power_it = power_history.begin(); power_it != power_history.end(); power_it++)
+    sum += *power_it;
 
-void handle(unsigned long power)
-{
-  if(!monitoring && first) {
-    monitoring=true;
-    samples_left=tsamples;
-  }
-
-  sum+=power;
-  samples_left--;
-
-  if(samples_left==0)
-    compute();
+  curr_average = sum/COMP_WINDOW;
 }
 
 int main(int argc, char **argv) {
 
   std::string curr_line;
-
-  first=true;
 
   // Input format:
   //   src_ip dst_ip src_port dst_port src_pkts dst_pkts
@@ -70,10 +54,7 @@ int main(int argc, char **argv) {
     mf >> mf_flag;
     pow >> power;
 
-    if(mf_flag || monitoring)
-      handle(power);
-
-    std::cout << mf_flag << " " << power << std::endl;
+    compute_average(power);
   }
 
   return 1;
