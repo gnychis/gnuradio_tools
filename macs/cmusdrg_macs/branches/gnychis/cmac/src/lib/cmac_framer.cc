@@ -277,6 +277,9 @@ void cmac::build_frame(pmt_t data)
   bcrc.process_bytes(payload, n_payload_bytes);
   frame_hdr.crc = bcrc.checksum();
 
+  // Add a sequence number
+  frame_hdr.seq_num = d_seq_num++;
+
   // Set ACK if specified
   if(pmt_is_dict(pkt_properties)) {
     if(pmt_t ack = pmt_dict_ref(pkt_properties,

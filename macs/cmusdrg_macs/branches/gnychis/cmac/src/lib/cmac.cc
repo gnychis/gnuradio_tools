@@ -72,6 +72,8 @@ void cmac::initialize_cmac()
 
   d_state = IDLE;   // State where we wait for messages to do something
 
+  d_seq_num = 0;    // Sequence number frames
+
   // Send any information between the MAC and the PHY, require max frame sizes
   pmt_t mac_properties = pmt_make_dict();
   pmt_dict_set(mac_properties, pmt_intern("max-frame"), pmt_from_long(MAX_FRAME_SIZE));

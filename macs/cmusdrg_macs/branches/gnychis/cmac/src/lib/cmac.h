@@ -92,6 +92,7 @@ class cmac : public mac
   std::vector<unsigned char> d_hdr_bits;
   std::vector<unsigned char> d_payload_bits;
   unsigned long d_frame_timestamp;
+  unsigned long d_seq_num;
   
  protected:
   void handle_mac_message(mb_message_sptr msg);   // overriding MAC method
