@@ -27,7 +27,7 @@ from gnuradio import gr
 from gnuradio.eng_option import eng_option
 from gnuradio import cmusdrg
 
-def build_graph(input, output, acq_coeffs, sync_coeffs, sync_thresh, sync_window):
+def build_graph(input, output, acq_coeffs, sync_thresh, sync_window):
 
   # Initialize our top block
   fg = gr.top_block()
@@ -45,6 +45,7 @@ def build_graph(input, output, acq_coeffs, sync_coeffs, sync_thresh, sync_window
   
   mfilter = gr.fir_filter_ccc(1, data)    # Our matched filter!
   delay = gr.delay(gr.sizeof_gr_complex, len(data)-1)
+  acq = cmusdrg.acquisition_filter_ccc(sync_thresh, sync_window)
   power = gr.complex_to_mag_squared(1)
 
   # Connect complex input to matched filter and delay
@@ -59,27 +60,26 @@ def build_graph(input, output, acq_coeffs, sync_coeffs, sync_thresh, sync_window
   fg.connect((acq,1), power)
 
   # Two file sinks for the output
-  fsink = gr.file_sink (gr.sizeof_char, output+"_sync")
+  fsink = gr.file_sink (gr.sizeof_float, output+"_power")
   fsink2 = gr.file_sink (gr.sizeof_gr_complex, output+"_acq")
+  fg.connect(power, fsink)
   fg.connect((acq,0), fsink2)
-  fg.connect(sync, fsink)
 
   return fg
 
 def main (args):
   nargs = len (args)
-  if nargs == 6:
+  if nargs == 5:
       input = args[0]
       output = args[1]
       acq_coeffs = args[2]
-      sync_coeffs = args[3]
-      sync_thresh = int(args[4])
-      sync_window = int(args[5])
+      sync_thresh = int(args[3])
+      sync_window = int(args[4])
   else:
-      sys.stderr.write ("usage: ./zigbee_demod.py input output acq_coeffs sync_coeffs sync_thresh sync_window\n")
+      sys.stderr.write ("usage: ./tx_quality.py input output acq_coeffs sync_thresh sync_window\n")
       sys.exit (1)
 
-  fg = build_graph (input, output, acq_coeffs, sync_coeffs, sync_thresh, sync_window)
+  fg = build_graph (input, output, acq_coeffs, sync_thresh, sync_window)
   fg.run()
 
 if __name__ == '__main__':
