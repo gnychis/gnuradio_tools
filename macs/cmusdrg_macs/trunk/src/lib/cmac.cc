@@ -32,7 +32,9 @@ static pmt_t s_timeout = pmt_intern("%timeout");
 cmac::cmac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   : mac(rt, instance_name, user_arg),
   d_state(INIT_CMAC),
-  d_framer_state(SYNC_SEARCH)
+  d_framer_state(SYNC_SEARCH),
+  d_verbose_frames(true),
+  d_nframes_recvd(0)
 {
   define_mac_ports();   // Initialize ports for message passing
   d_local_address = pmt_to_long(pmt_nth(0, user_arg));
@@ -71,6 +73,8 @@ void cmac::initialize_cmac()
   set_carrier_sense(false, 25, 0, PMT_NIL);   // Initial carrier sense setting
 
   d_state = IDLE;   // State where we wait for messages to do something
+
+  d_seq_num = 0;    // Sequence number frames
 
   // Send any information between the MAC and the PHY, require max frame sizes
   pmt_t mac_properties = pmt_make_dict();
@@ -161,6 +165,7 @@ void cmac::handle_mac_message(mb_message_sptr msg)
       if(pmt_eq(event, s_timeout)) {
         std::cout << "x";
         fflush(stdout);
+        d_seq_num--;
         build_frame(d_last_frame);
         return;
       }
@@ -248,7 +253,7 @@ void cmac::packet_transmitted(pmt_t data)
   
   // Schedule an ACK timeout to fire every timeout period. This should be user
   // settable.  The first timeout is now+TIMEOUT_PERIOD
-  const double TIMEOUT_PERIOD = 0.15;  // in seconds
+  const double TIMEOUT_PERIOD = 0.5;  // in seconds
   mb_time now = mb_time::time();
   d_ack_timeout = schedule_periodic_timeout(now + TIMEOUT_PERIOD, mb_time(TIMEOUT_PERIOD), PMT_T);
   
@@ -265,54 +270,45 @@ void cmac::incoming_frame(pmt_t data)
   pmt_t invocation_handle = PMT_NIL;
   pmt_t payload = pmt_nth(0, data);
   pmt_t pkt_properties = pmt_nth(1, data);
-
-  // Let's do some checking on the demoded frame
-  long lsrc=0, ldst=0;
-  bool b_crc = false;
-  bool b_ack = false;
+  std::string status;
 
   // Properties are set in the physical layer framing code
-  lsrc = pmt_to_long(pmt_dict_ref(pkt_properties,
-                                  pmt_intern("src"),
-                                  PMT_NIL));
+  long src = pmt_to_long(pmt_dict_ref(pkt_properties, pmt_intern("src"), PMT_NIL));
+  long dst = pmt_to_long(pmt_dict_ref(pkt_properties, pmt_intern("dst"), PMT_NIL));
+  bool crc = pmt_to_bool(pmt_dict_ref(pkt_properties, pmt_intern("crc"), PMT_NIL));
+  bool ack = pmt_to_bool(pmt_dict_ref(pkt_properties, pmt_intern("ack"), PMT_NIL));
+  unsigned long seq = (unsigned long) pmt_to_long(pmt_dict_ref(pkt_properties, 
+                                                               pmt_intern("seq"), 
+                                                               PMT_NIL));
 
-  ldst = pmt_to_long(pmt_dict_ref(pkt_properties,
-                                  pmt_intern("dst"),
-                                  PMT_NIL));
-
-  if(pmt_t crc = pmt_dict_ref(pkt_properties,
-                              pmt_intern("crc"),
-                              PMT_NIL)) {
-    if(pmt_eqv(crc, PMT_T))
-      b_crc = true;   // payload passed CRC
-    else
-      b_crc = false;  // payload failed CRC
-  }
-
-  if(pmt_t ack = pmt_dict_ref(pkt_properties,
-                              pmt_intern("ack"),
-                              PMT_NIL)) {
-    if(pmt_eqv(ack, PMT_T))
-      b_ack = true;   // frame is an ACK
-    else
-      b_ack = false;  // frame is not an ACK
-  }
-
-  if(b_ack) {         // Handle ACKs in a special manner
-    handle_ack(lsrc, ldst);
+  if(ack) {         // Handle ACKs in a special manner
+    handle_ack(src, dst);
     return;
   }
 
-  if(ldst != d_local_address)  // not for this address
+  if(dst != d_local_address)  // not for this address
     return;
   
-  if(b_crc)  // CRC passes, let's ACK the source
-    build_and_send_ack(lsrc);
+  if(crc) {  // CRC passes, let's ACK the source
+    build_and_send_ack(src);
+    status="pass";
+  } else {
+    status="fail";
+  }
+  
+  if(d_verbose_frames) {
+    if(d_nframes_recvd==0)
+      std::cout << "crc\trecvd\tseq#\tsrc\n";
+    std::cout << status << "\t"
+              << d_nframes_recvd << "\t"
+              << seq << "\t"
+              << src << "\t"
+              << std::endl;
+  }
+  
+  d_nframes_recvd++;
 
   d_rx->send(s_response_rx_pkt, pmt_list3(invocation_handle, payload, pkt_properties));
-
-  if(verbose)
-    std::cout << "[CMAC] Passing up demoded frame\n";
 }
 
 // Special handling for ACK frames

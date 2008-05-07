@@ -38,6 +38,7 @@ typedef struct d_frame_hdr_t {
   long src_addr;
   long dst_addr;
   long payload_len;
+  unsigned long seq_num;
   bool ack;
   long crc;
 } __attribute__((__packed__));

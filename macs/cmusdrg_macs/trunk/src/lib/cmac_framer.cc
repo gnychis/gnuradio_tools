@@ -219,6 +219,7 @@ void cmac::framer_have_frame(pmt_t uvec)
   pmt_dict_set(pkt_properties, pmt_intern("timestamp"), pmt_from_long(d_frame_timestamp));
   pmt_dict_set(pkt_properties, pmt_intern("src"), pmt_from_long(d_cframe_hdr.src_addr));
   pmt_dict_set(pkt_properties, pmt_intern("dst"), pmt_from_long(d_cframe_hdr.dst_addr));
+  pmt_dict_set(pkt_properties, pmt_intern("seq"), pmt_from_long(d_cframe_hdr.seq_num));
 
   // If the frame is an ACK, we don't care about payload... lets just pass it up
   if(d_cframe_hdr.ack) {
@@ -276,6 +277,9 @@ void cmac::build_frame(pmt_t data)
   boost::crc_32_type bcrc;
   bcrc.process_bytes(payload, n_payload_bytes);
   frame_hdr.crc = bcrc.checksum();
+
+  // Add a sequence number
+  frame_hdr.seq_num = d_seq_num++;
 
   // Set ACK if specified
   if(pmt_is_dict(pkt_properties)) {
