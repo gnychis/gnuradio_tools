@@ -40,7 +40,6 @@ void check_power(long mf_flag, long power)
         samples_left=TSAMPLES;
         tx_average=curr_average;
         tx_max=curr_max;
-        std::cout << ntransmissions++;
         curr_state=MONITORING;
       }
     break;
@@ -52,19 +51,19 @@ void check_power(long mf_flag, long power)
 //        samples_left+=NSKIP;
 //        curr_state=SKIPPING;
 //      } 
-      if(power>(tx_max+(0.25*tx_max))) {
-        std::cout << " fail\n";
+      if(power>(tx_max+(0.18*tx_max))) {
+        std::cout << ntransmissions++ << " fail\n";
         samples_left+=NSKIP;
         curr_state=SKIPPING;
       }
-      if(power < 50) {
+      if(power < 100) {
         std::cout << " false positive\n";
         samples_left=0;
         curr_state=IDLE;
       }
       samples_left--;
       if(samples_left==0) {
-        std::cout << " success\n";
+        std::cout << ntransmissions++ <<  " success\n";
         curr_state=SKIPPING;
         samples_left=NSKIP;
       }
