@@ -8,9 +8,9 @@
 #include <list>
 
 const int TSAMPLES=23872;
-const int COMP_WINDOW=30;
+const int COMP_WINDOW=100;
 const int NSKIP=5000;
-const int POWER_THRESH=1000;
+const int POWER_THRESH=580;
 
 std::list<long> power_history;
 
@@ -25,6 +25,8 @@ long tx_average;
 long curr_average;
 long samples_left;
 long ntransmissions;
+long tx_max;
+long curr_max;
 
 void check_power(long mf_flag, long power)
 {
@@ -36,17 +38,24 @@ void check_power(long mf_flag, long power)
       if(mf_flag==1) {
         samples_left=TSAMPLES;
         tx_average=curr_average;
-        std::cout << ntransmissions++;
+        tx_max=curr_max;
+        std::cout << ntransmissions++ << " max: " << tx_max << std::endl;
         curr_state=MONITORING;
       }
     break;
 
     case MONITORING:
-      error = std::abs(curr_average-tx_average);
-      if(error>POWER_THRESH) {
+//      error = std::abs(curr_average-tx_average);
+//      if(error>POWER_THRESH) {
+//        std::cout << " fail\n";
+//        samples_left+=NSKIP;
+//        curr_state=SKIPPING;
+//      } 
+      if(power>(tx_max+(0.25*tx_max))) {
         std::cout << " fail\n";
         samples_left+=NSKIP;
         curr_state=SKIPPING;
+
       }
       samples_left--;
       if(samples_left==0) {
@@ -79,8 +88,12 @@ void compute_average(long power)
 
   long long sum;
   std::list<long>::iterator power_it;
-  for(power_it = power_history.begin(); power_it != power_history.end(); power_it++)
+  curr_max=0;
+  for(power_it = power_history.begin(); power_it != power_history.end(); power_it++) {
     sum += *power_it;
+    if(*power_it>curr_max)
+      curr_max=*power_it;
+  }
 
   curr_average = sum/COMP_WINDOW;
 }
@@ -90,7 +103,8 @@ int main(int argc, char **argv) {
   std::string curr_line;
 
   ntransmissions=0;
-  curr_state=IDLE;
+  curr_state=SKIPPING;
+  samples_left=10000;
 
   // Input format:
   //   src_ip dst_ip src_port dst_port src_pkts dst_pkts

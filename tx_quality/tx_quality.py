@@ -44,17 +44,17 @@ def build_graph(input, output, acq_coeffs, sync_thresh, sync_window):
   data.reverse()
   
   mfilter = gr.fir_filter_ccc(1, data)    # Our matched filter!
-  delay = gr.delay(gr.sizeof_gr_complex, len(data)-1)
+#  delay = gr.delay(gr.sizeof_gr_complex, len(data)-1)
   acq = cmusdrg.acquisition_filter_ccc(sync_thresh, sync_window)
   power = gr.complex_to_mag(1)
 
   # Connect complex input to matched filter and delay
   fg.connect(src, mfilter)
-  fg.connect(src, delay)
+#  fg.connect(src, delay)
 
   # Connect the mfilter and delay to the acquisition filter
   fg.connect(mfilter, (acq, 0))
-  fg.connect(delay, (acq, 1))
+  fg.connect(src, (acq, 1))
   
   # Connect the delay component to compute the power
   fg.connect((acq,1), power)
