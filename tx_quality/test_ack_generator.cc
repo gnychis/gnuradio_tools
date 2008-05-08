@@ -11,6 +11,7 @@ const int TSAMPLES=23872;
 const int COMP_WINDOW=100;
 const int NSKIP=5000;
 const int POWER_THRESH=580;
+const int MIN_SAMPLES=10000;
 
 std::list<long> power_history;
 
@@ -39,7 +40,7 @@ void check_power(long mf_flag, long power)
         samples_left=TSAMPLES;
         tx_average=curr_average;
         tx_max=curr_max;
-        std::cout << ntransmissions++ << " max: " << tx_max << std::endl;
+        std::cout << ntransmissions++;
         curr_state=MONITORING;
       }
     break;
@@ -55,7 +56,11 @@ void check_power(long mf_flag, long power)
         std::cout << " fail\n";
         samples_left+=NSKIP;
         curr_state=SKIPPING;
-
+      }
+      if(power < 50) {
+        std::cout << " false positive\n";
+        samples_left=0;
+        curr_state=IDLE;
       }
       samples_left--;
       if(samples_left==0) {
