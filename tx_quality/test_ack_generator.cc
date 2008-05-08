@@ -8,14 +8,61 @@
 #include <list>
 
 const int TSAMPLES=23872;
-const int COMP_WINDOW=20;
+const int COMP_WINDOW=30;
+const int NSKIP=2000;
+const int POWER_THRESH=200;
 
-std::list<unsigned long> power_history;
+std::list<long> power_history;
 
-unsigned long tx_average;
-unsigned long curr_average;
+enum state_t {
+  IDLE,
+  MONITORING,
+  SKIPPING
+};
+state_t curr_state;
 
-void compute_average(unsigned long power)
+long tx_average;
+long curr_average;
+long samples_left;
+long ntransmissions;
+
+void check_power(long mf_flag, long power)
+{
+  long error;
+
+  switch(curr_state) {
+
+    case IDLE:
+      if(mf_flag) {
+        samples_left=TSAMPLES;
+        tx_average=curr_average;
+        std::cout << "Transmission " << ntransmissions++;
+      }
+    break;
+
+    case MONITORING:
+      error = std::abs(curr_average-tx_average);
+      if(error>POWER_THRESH) {
+        std::cout << "fail\n";
+        samples_left+=NSKIP;
+        curr_state=SKIPPING;
+      }
+      samples_left--;
+    break;
+
+    case SKIPPING:
+      if(samples_left>0)
+        samples_left--;
+      else 
+        curr_state=IDLE;
+    break;
+
+    default:
+    break;
+  }
+}
+
+void compute_average(long power)
 {  
   power_history.push_back(power);
 
@@ -24,8 +71,8 @@ void compute_average(unsigned long power)
 
   power_history.pop_front();
 
-  unsigned long long sum;
-  std::list<unsigned long>::iterator power_it;
+  long long sum;
+  std::list<long>::iterator power_it;
   for(power_it = power_history.begin(); power_it != power_history.end(); power_it++)
     sum += *power_it;
 
@@ -35,6 +82,9 @@ void compute_average(unsigned long power)
 int main(int argc, char **argv) {
 
   std::string curr_line;
+
+  ntransmissions=0;
+  curr_state=IDLE;
 
   // Input format:
   //   src_ip dst_ip src_port dst_port src_pkts dst_pkts
@@ -49,12 +99,13 @@ int main(int argc, char **argv) {
     for(std::string each; std::getline(in,each,'\t'); tokens.push_back(each));
 
     // Convert the ports to integers
-    unsigned long mf_flag, power;
+    long mf_flag, power;
     std::istringstream mf(tokens[0]), pow(tokens[1]);
     mf >> mf_flag;
     pow >> power;
 
     compute_average(power);
+    check_power(mf_flag, power);
   }
 
   return 1;
