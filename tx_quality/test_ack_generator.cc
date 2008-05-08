@@ -9,8 +9,8 @@
 
 const int TSAMPLES=23872;
 const int COMP_WINDOW=30;
-const int NSKIP=2000;
-const int POWER_THRESH=200;
+const int NSKIP=5000;
+const int POWER_THRESH=1000;
 
 std::list<long> power_history;
 
@@ -33,21 +33,27 @@ void check_power(long mf_flag, long power)
   switch(curr_state) {
 
     case IDLE:
-      if(mf_flag) {
+      if(mf_flag==1) {
         samples_left=TSAMPLES;
         tx_average=curr_average;
-        std::cout << "Transmission " << ntransmissions++;
+        std::cout << ntransmissions++;
+        curr_state=MONITORING;
       }
     break;
 
     case MONITORING:
       error = std::abs(curr_average-tx_average);
       if(error>POWER_THRESH) {
-        std::cout << "fail\n";
+        std::cout << " fail\n";
         samples_left+=NSKIP;
         curr_state=SKIPPING;
       }
       samples_left--;
+      if(samples_left==0) {
+        std::cout << " success\n";
+        curr_state=SKIPPING;
+        samples_left=NSKIP;
+      }
     break;
 
     case SKIPPING:
