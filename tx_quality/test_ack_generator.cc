@@ -38,7 +38,8 @@ long ntransmissions;
 long tx_max;
 long curr_max;
 
-const float PTHRESH=0.13;
+const float PTHRESH=0.18;
+const float HTHRESH=85;
 
 std::ofstream ofile;
 
@@ -79,15 +80,16 @@ void check_power(long mf_flag, long power)
 //        samples_left+=NSKIP;
 //        curr_state=SKIPPING;
 //      } 
-      if(power>(tx_max+(PTHRESH*tx_max))) {
+      if(power>(tx_max+HTHRESH)) {
         std::cout << "fail " << ntransmissions++ << std::endl;
         result=FAIL;
         samples_left+=NSKIP;
         curr_state=SKIPPING;
       }
       if(power < 50) {
+        std::string txs = stringify(ntransmissions-1);
         std::cout << " false positive\n";
-        result=FP;
+        system(std::string("mv /tmp/out /home/gnychis/school/gr/cmu_sdrg/tx_quality/transmissions/fp_"+txs).c_str());
         samples_left=0;
         curr_state=IDLE;
       }
@@ -109,9 +111,7 @@ void check_power(long mf_flag, long power)
         ofile.close();
         std::string txs = stringify(ntransmissions-1);
         if(result==PASS || result==FAIL)
-          system(std::string("mv /tmp/out /home/gnychis/school/gr/cmu_sdrg/tx_quality/tx_"+txs).c_str());
-        if(result==FP)
-          system(std::string("mv /tmp/out /home/gnychis/school/gr/cmu_sdrg/tx_quality/fail_"+txs).c_str());
+          system(std::string("mv /tmp/out /home/gnychis/school/gr/cmu_sdrg/tx_quality/transmissions/tx_"+txs).c_str());
         }
       }
     break;
