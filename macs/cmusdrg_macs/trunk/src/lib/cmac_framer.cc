@@ -165,6 +165,15 @@ void cmac::framer_have_header()
     }
   }
   
+if(verbose)
+    std::cout << "[CMAC] Have header:"
+              << "\n        src: " << d_cframe_hdr.src_addr
+              << "\n        dst: " << d_cframe_hdr.dst_addr
+              << "\n        payload_len: " << d_cframe_hdr.payload_len
+              << "\n        crc: " << d_cframe_hdr.crc
+              << "\n        ack: " << d_cframe_hdr.ack
+              << std::endl;
+  
   // Do some logic checks on the payload length, that it's greater than 0 and
   // that it's less than the maximum frame size
   if(!(d_cframe_hdr.payload_len>0) || !(d_cframe_hdr.payload_len <= (max_frame_payload()))) {
@@ -175,14 +184,6 @@ void cmac::framer_have_header()
     return;
   }
 
-  if(verbose)
-    std::cout << "[CMAC] Have header:"
-              << "\n        src: " << d_cframe_hdr.src_addr
-              << "\n        dst: " << d_cframe_hdr.dst_addr
-              << "\n        payload_len: " << d_cframe_hdr.payload_len
-              << "\n        crc: " << d_cframe_hdr.crc
-              << "\n        ack: " << d_cframe_hdr.ack
-              << std::endl;
 
   d_framer_state = WAIT_PAYLOAD;   // On success, wait for payload_len worth of bits
 }
