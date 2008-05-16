@@ -35,9 +35,9 @@ static const long POSTAMBLE_LEN=16;
 static const int MAX_FRAME_SIZE = 81;
 
 typedef struct d_frame_hdr_t {
-  long src_addr;
-  long dst_addr;
-  long payload_len;
+  uint32_t src_addr;
+  uint32_t dst_addr;
+  uint32_t payload_len;
 } __attribute__((__packed__));
 
 typedef struct d_sync_frame_data {
