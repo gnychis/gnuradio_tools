@@ -347,7 +347,7 @@ void cmac::build_and_send_ack(long dst)
 
   // Make the PMT data, get a writable pointer to it, then copy our data in
   pmt_t uvec = pmt_make_u8vector(n_bytes, 0);
-  char *vdata = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
+  char *vdata = (char *) pmt_u8vector_writable_elements(uvec, ignore);
   memcpy(vdata, &data, n_bytes);
 
   // Per packet properties
