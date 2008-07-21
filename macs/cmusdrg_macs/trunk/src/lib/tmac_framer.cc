@@ -109,7 +109,7 @@ void tmac::framer_calculate_timestamp(unsigned long timestamp, int bit, int nbit
 
   // The time of the start of the frame header (not transmission)
   unsigned long start_of_frame = 
-      timestamp - clock_ticks_per_bit*(nbits - bit);
+      timestamp + clock_ticks_per_bit*bit;
 
   unsigned long start_of_transmission = 
       start_of_frame - clock_ticks_per_bit*(FRAMING_BITS_LEN + PREAMBLE_LEN);

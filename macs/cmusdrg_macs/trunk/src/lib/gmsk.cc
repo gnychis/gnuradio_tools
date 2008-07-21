@@ -562,7 +562,7 @@ void gmsk::demod(pmt_t data)
   if(demod_debug)
     std::cout << " t_samples: " << t_samples << std::endl;
 
-  timestamp = timestamp - 64*(d_crq.size()+(c_tsamples-cf_nout));
+//  timestamp = timestamp - 64*(d_crq.size()+(c_tsamples-cf_nout));
 
   // Frame!
   pmt_dict_set(demod_properties, pmt_intern("timestamp"), pmt_from_long(timestamp));
