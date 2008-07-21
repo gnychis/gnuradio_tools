@@ -112,7 +112,7 @@ void tmac::framer_calculate_timestamp(unsigned long timestamp, int bit, int nbit
       timestamp - clock_ticks_per_bit*(nbits - bit);
 
   unsigned long start_of_transmission = 
-      timestamp - clock_ticks_per_bit*(nbits - bit - FRAMING_BITS_LEN - PREAMBLE_LEN);
+      start_of_frame - clock_ticks_per_bit*(FRAMING_BITS_LEN + PREAMBLE_LEN);
  
   d_frame_timestamp = start_of_transmission;
 }
