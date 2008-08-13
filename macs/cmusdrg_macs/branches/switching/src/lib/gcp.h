@@ -80,7 +80,7 @@ class gcp : public mb_mblock
  private:
   void define_ports();
   void connect_macs();
-}
+};
 
 #endif
 
