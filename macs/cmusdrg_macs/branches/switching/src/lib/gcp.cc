@@ -119,7 +119,7 @@ void gcp::initialize_macs()
     curr_mac.name = pmt_nth(i, macs);
 
     std::string sname = pmt_symbol_to_string(curr_mac.name);
-    std::string sport = sname+"-cs";
+    std::string sport = "mac-cs";
 
     define_component(sname, sname, PMT_NIL);
     curr_mac.port = define_port(sname, sport, false, mb_port::INTERNAL);

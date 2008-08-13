@@ -33,6 +33,7 @@ mac::mac(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
     d_us_rx_chan(PMT_NIL), d_us_tx_chan(PMT_NIL),
     d_usrp_decim(64), d_usrp_interp(128)
 {
+  create_control_port();
   define_usrp_ports();    // Initialize the ports to connect to the USRP
   initialize_usrp();
 }
@@ -41,12 +42,27 @@ mac::~mac()
 {
 }
 
+void mac::create_control_port()
+{
+  d_control = define_port("control", "mac-cs", true, mb_port::EXTERNAL);
+}
+
 void mac::define_usrp_ports()
 {
   // Ports we use to connect to usrp_server, which handles the USRP
   d_us_tx = define_port("us-tx0", "usrp-tx", false, mb_port::INTERNAL);
   d_us_rx = define_port("us-rx0", "usrp-rx", false, mb_port::INTERNAL);
   d_us_cs = define_port("us-cs", "usrp-server-cs", false, mb_port::INTERNAL);
+  
+  // Create a small dictionary to pass some information to the PHY
+  pmt_t phy_dict = pmt_make_dict();
+  pmt_dict_set(phy_dict, pmt_intern("interp-tx"), pmt_from_long(d_usrp_interp));
+  pmt_dict_set(phy_dict, pmt_intern("decim-rx"), pmt_from_long(d_usrp_decim));
+
+  // Connect to physical layer
+  define_component("GMSK", "gmsk", phy_dict);
+  d_phy_cs = define_port("phy-cs", "gmsk-cs", false, mb_port::INTERNAL);
+  connect("self", "phy-cs", "GMSK", "cs0");
 }
 
 // This is the entrance point of all messages to and from the MAC.  This base

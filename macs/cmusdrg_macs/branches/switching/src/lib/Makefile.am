@@ -28,7 +28,8 @@ INCLUDES = 	\
 EXTRA_DIST =				\
 	cmac.mbh			\
 	tmac.mbh			\
-	gmsk.mbh			
+	gmsk.mbh			\
+	mac.mbh
 
 lib_LTLIBRARIES = 			\
 	libcmusdrg_macs.la	
@@ -42,7 +43,8 @@ GUILE=/usr/bin/guile -e main -s $(top_srcdir)/src/scheme/mblock/gnuradio/compile
 BUILT_SOURCES =				\
 	cmac_mbh.cc		\
 	tmac_mbh.cc		\
-	gmsk_mbh.cc 	
+	gmsk_mbh.cc 	\
+	mac_mbh.cc
 
 cmac_mbh.cc : cmac.mbh
 	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/cmac.mbh $(srcdir)/cmac_mbh.cc
@@ -52,6 +54,9 @@ tmac_mbh.cc : tmac.mbh
 
 gmsk_mbh.cc : gmsk.mbh
 	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/gmsk.mbh $(srcdir)/gmsk_mbh.cc
+
+mac_mbh.cc :  mac.mbh
+	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/mac.mbh $(srcdir)/mac_mbh.cc
 
 libcmusdrg_macs_la_SOURCES =		\
 	$(BUILT_SOURCES)		\

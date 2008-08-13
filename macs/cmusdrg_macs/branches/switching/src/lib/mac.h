@@ -75,6 +75,8 @@ class mac : public mb_mblock
   // The channel numbers assigned for use
   pmt_t d_us_rx_chan, d_us_tx_chan;
 
+  mb_port_sptr      d_control;
+
   // USRP parameters
   long d_usrp_decim;
   long d_usrp_interp;
@@ -104,6 +106,7 @@ class mac : public mb_mblock
   void handle_message(mb_message_sptr msg);
 
  private:
+  void create_control_port();
   void define_usrp_ports();
   void initialize_usrp();
   void handle_usrp_message(mb_message_sptr msg);

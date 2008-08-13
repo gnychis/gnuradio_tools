@@ -35,4 +35,10 @@ static pmt_t s_response_rx_pkt = pmt_intern("response-rx-pkt");
 // Initialized
 static pmt_t s_response_mac_initialized = pmt_intern("response-mac-initialized");
 
+// CS
+static pmt_t s_cmd_connect = pmt_intern("cmd-connect");
+static pmt_t s_cmd_disconnect = pmt_intern("cmd-disconnect");
+static pmt_t s_response_connect = pmt_intern("response-connect");
+static pmt_t s_response_disconnect = pmt_intern("response-disconnect");
+
 #endif // INCLUDED_MAC_SYMBOLS_H
