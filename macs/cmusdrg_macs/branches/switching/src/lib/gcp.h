@@ -44,7 +44,7 @@
 #include <symbols_usrp_tx.h>
 #include <symbols_usrp_rx.h>
 
-#include <gcp_symbols.h>
+#include <switch_symbols.h>
 
 class gcp;
 
@@ -55,6 +55,7 @@ class gcp : public mb_mblock
 
   // List of states for GCP
   enum gcp_state_t {
+    INIT_GCP,
     CONN_MACS,
     TRAINING,
     IDLE,
@@ -65,6 +66,7 @@ class gcp : public mb_mblock
   // GCP Ports
   mb_port_sptr d_phy;
   mb_port_sptr d_switch;
+  mb_port_sptr d_control;
 
  public:
   gcp(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg);
@@ -73,6 +75,7 @@ class gcp : public mb_mblock
 
  private:
   void define_ports();
+  void connect_macs();
 }
 
 #endif

@@ -29,9 +29,10 @@ static bool verbose = false;
 
 gcp::gcp(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(rt, instance_name, user_arg),
-  d_gcp_state(CONN_MACS)
+  d_gcp_state(INIT_GCP)
 {
   define_ports();  
+  connect_macs();
 }
 
 gcp::~gcp()
@@ -62,12 +63,36 @@ void gcp::handle_message(mb_message_sptr msg)
   pmt_t data = msg->data();         // the associated data
   pmt_t port_id = msg->port_id();   // the port the msg was received on
 
+  pmt_t invocation;
+  pmt_t status;
+
   switch(d_gcp_state) {
 
-    //-------------------- CONN MACS ----------------------//
+    //-------------------- INIT GCP -----------------------------------//
+    // Not expecting any messages in this state
+    INIT_GCP:
+      goto unhandled;
+
+    //-------------------- CONN MACS ----------------------------------//
     // In this state, we wait for a response from the switch
     // block that the MACs were connected successfully.
     CONN_MACS:
+
+      //---- Port: SWITCH ----------- State: CONN_MACS -------//
+      if(pmt_eq(port_id, d_switch->port_symbol())) {
+        
+        if(pmt_eq(event, s_response_connect_macs)) {
+          invocation = pmt_nth(0, data); 
+          status = pmt_nth(1, data); 
+
+          if(pmt_eqv(status, PMT_F)) {
+            std::cerr << "[GCP] Error connecting MACs";
+            shutdown_all(PMT_F);
+          }
+
+          // Switch states
+        }
+      }
       goto unhandled;
 
     TRAINING:
@@ -84,4 +109,22 @@ void gcp::handle_message(mb_message_sptr msg)
   }
 
   unhandled:
+}
+
+// Function that sends a message to the 'switch' block that connects
+// the given list of MACs
+void gcp::connect_macs()
+{
+  // Change the GCP state
+  d_gcp_state = CONN_MACS;
+
+  // Invocation handle unused
+  pmt_t invocation = PMT_NIL;
+
+  // List of MACs to connect
+  pmt_t mac_list = pmt_list2(pmt_intern("cmac"), 
+                             pmt_intern("tmac"));
+
+  // Send the message to connect the MACs
+  d_switch->send(s_cmd_connect_macs, pmt_list2(invocation, mac_list));
 }
