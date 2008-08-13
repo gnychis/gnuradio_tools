@@ -55,7 +55,7 @@ void gcp::define_ports()
 
   // Create and connect to the switch block
   define_component("SWITCH", "switch", PMT_NIL);
-  d_switch = define_port("switch", "switch-cs", false, mb_port::INTERNAL);
+  d_switch = define_port("switch", "gcp-switch-cs", false, mb_port::INTERNAL);
   connect("self", "switch", "SWITCH", "cs0");
 }
 

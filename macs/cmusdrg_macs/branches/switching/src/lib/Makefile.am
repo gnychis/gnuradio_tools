@@ -29,7 +29,7 @@ EXTRA_DIST =				\
 	cmac.mbh			\
 	tmac.mbh			\
 	gmsk.mbh			\
-	switch.mbh
+	gcp_switch.mbh
 
 lib_LTLIBRARIES = 			\
 	libcmusdrg_macs.la	
@@ -44,7 +44,7 @@ BUILT_SOURCES =				\
 	cmac_mbh.cc		\
 	tmac_mbh.cc		\
 	gmsk_mbh.cc 	\
-	switch_mbh.cc
+	gcp_switch_mbh.cc
 
 cmac_mbh.cc : cmac.mbh
 	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/cmac.mbh $(srcdir)/cmac_mbh.cc
@@ -55,8 +55,8 @@ tmac_mbh.cc : tmac.mbh
 gmsk_mbh.cc : gmsk.mbh
 	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/gmsk.mbh $(srcdir)/gmsk_mbh.cc
 
-switch_mbh.cc : switch.mbh
-	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/switch.mbh $(srcdir)/switch_mbh.cc
+gcp_switch_mbh.cc : gcp_switch.mbh
+	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/gcp_switch.mbh $(srcdir)/gcp_switch_mbh.cc
 
 libcmusdrg_macs_la_SOURCES =		\
 	$(BUILT_SOURCES)		\
@@ -91,7 +91,7 @@ noinst_HEADERS =      			\
 	gmsk_symbols.h	\
 	tmac_symbols.h	\
 	cmac_symbols.h	\
-	switch_symbols.h
+	gcp_switch_symbols.h
 
 
 MOSTLYCLEANFILES = \

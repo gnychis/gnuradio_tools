@@ -19,8 +19,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef INCLUDED_SWITCH_SYMBOLS_H
-#define INCLUDED_SWITCH_SYMBOLS_H
+#ifndef INCLUDED_GCP_SWITCH_SYMBOLS_H
+#define INCLUDED_GCP_SWITCH_SYMBOLS_H
 
 #include <pmt.h>
 
