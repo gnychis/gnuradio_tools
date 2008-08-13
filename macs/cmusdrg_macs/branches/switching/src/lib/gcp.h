@@ -44,6 +44,9 @@
 #include <symbols_usrp_tx.h>
 #include <symbols_usrp_rx.h>
 
+#include <gmsk_symbols.h>
+#include <gcp_framer.h>
+
 class gcp;
 
 class gcp : public mb_mblock
@@ -60,6 +63,15 @@ class gcp : public mb_mblock
     SWITCHING,
   };
   gcp_state_t d_gcp_state;
+  
+  enum state_t {
+    SYNC_SEARCH,
+    WAIT_HEADER,
+    HAVE_HEADER,
+    WAIT_PAYLOAD,
+    HAVE_PAYLOAD
+  };
+  state_t	d_framer_state;
   
   // Used to keep MAC name/port pairs
   struct macs_t {
@@ -84,16 +96,49 @@ class gcp : public mb_mblock
   // USRP parameters
   long d_usrp_interp;
   long d_usrp_decim;
+  
+  // Local control address
+  long d_local_address;
+  bool d_carrier_sense;
+  pmt_t d_last_frame;
+  
+  // Framer
+  d_frame_hdr_t d_frame_hdr;
+  d_frame_hdr_t d_cframe_hdr;
+  std::vector<unsigned char> d_hdr_bits;
+  std::vector<unsigned char> d_payload_bits;
+  unsigned long d_frame_timestamp;
+  unsigned long d_seq_num;
+
+  mb_port_sptr d_phy_cs;
 
  public:
   gcp(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg);
   ~gcp();
   void handle_message(mb_message_sptr msg);
+  static int max_frame_size() {
+    return(MAX_FRAME_SIZE);
+  }
+  static int max_frame_payload() {
+    return(MAX_FRAME_SIZE-sizeof(d_frame_hdr_t));
+  }
 
  private:
   void define_ports();
   void initialize_macs();
   void connect_mac(struct macs_t *mac);
+  
+  // Framer
+  void framer(const std::vector<unsigned char> input, pmt_t demod_properties);
+  void framer_calculate_timestamp(unsigned long timestamp, int bit, int nbits, long sps, long bps);
+  void framer_found_sync();
+  void framer_new_header_bit(unsigned char bit);
+  void framer_new_payload_bit(unsigned char bit);
+  void framer_have_header();
+  void framer_have_payload();
+  void framer_have_frame(pmt_t uvec);
+  void build_frame(pmt_t data);
+  void incoming_frame(pmt_t data);
 };
 
 #endif

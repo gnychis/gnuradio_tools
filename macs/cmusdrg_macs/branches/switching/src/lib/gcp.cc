@@ -146,3 +146,7 @@ void gcp::connect_mac(struct macs_t *mac)
   }
   d_active_mac=mac;
 }
+
+void gcp::incoming_frame(pmt_t data)
+{
+}
