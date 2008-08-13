@@ -46,15 +46,6 @@ cmac::~cmac()
 
 void cmac::define_mac_ports()
 {
-  // Create a small dictionary to pass some information to the PHY
-  pmt_t phy_dict = pmt_make_dict();
-  pmt_dict_set(phy_dict, pmt_intern("interp-tx"), pmt_from_long(d_usrp_interp));
-  pmt_dict_set(phy_dict, pmt_intern("decim-rx"), pmt_from_long(d_usrp_decim));
-
-  // Connect to physical layer
-  define_component("GMSK", "gmsk", phy_dict);
-  d_phy_cs = define_port("phy-cs", "gmsk-cs", false, mb_port::INTERNAL);
-  connect("self", "phy-cs", "GMSK", "cs0");
 
   // Define ports for the application to connect to us
   d_tx = define_port("tx0", "cmac-tx", true, mb_port::EXTERNAL);  // Transmit
