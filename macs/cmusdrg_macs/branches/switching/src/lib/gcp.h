@@ -55,8 +55,10 @@ class gcp : public mb_mblock
 
   // List of states for GCP
   enum gcp_state_t {
-    INITIALIZING_GCP,
-    GCP_WAITING,
+    CONN_MACS,
+    TRAINING,
+    IDLE,
+    SWITCHING,
   };
   gcp_state_t d_gcp_state;
 
@@ -70,7 +72,7 @@ class gcp : public mb_mblock
   void handle_message(mb_message_sptr msg);
 
  private:
-
+  void define_ports();
 }
 
 #endif

@@ -28,12 +28,60 @@
 static bool verbose = false;
 
 gcp::gcp(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
-  : mb_mblock(rt, instance_name, user_arg)
+  : mb_mblock(rt, instance_name, user_arg),
+  d_gcp_state(CONN_MACS)
 {
+  define_ports();  
 }
 
 gcp::~gcp()
 {
 }
 
+void gcp::define_ports()
+{
+  // Create a small dictionary to pass some information to the PHY
+  pmt_t phy_dict = pmt_make_dict();
+  pmt_dict_set(phy_dict, pmt_intern("interp-tx"), pmt_from_long(d_usrp_interp));
+  pmt_dict_set(phy_dict, pmt_intern("decim-rx"), pmt_from_long(d_usrp_decim));
 
+  // Create and connect a physical layer (GMSK) that is used for control frames
+  define_component("GMSK", "gmsk", phy_dict);
+  d_phy = define_port("phy", "gmsk-cs", false, mb_port::INTERNAL);
+  connect("self", "phy", "GMSK", "cs0");
+
+  // Create and connect to the switch block
+  define_component("SWITCH", "switch", PMT_NIL);
+  d_switch = define_port("switch", "switch-cs", false, mb_port::INTERNAL);
+  connect("self", "switch", "SWITCH", "cs0");
+}
+
+void gcp::handle_message(mb_message_sptr msg)
+{
+  pmt_t event = msg->signal();      // type of message
+  pmt_t data = msg->data();         // the associated data
+  pmt_t port_id = msg->port_id();   // the port the msg was received on
+
+  switch(d_gcp_state) {
+
+    //-------------------- CONN MACS ----------------------//
+    // In this state, we wait for a response from the switch
+    // block that the MACs were connected successfully.
+    CONN_MACS:
+      goto unhandled;
+
+    TRAINING:
+      goto unhandled;
+    
+    IDLE:
+      goto unhandled;
+
+    SWITCHING:
+      goto unhandled;
+
+    default:
+      goto unhandled;
+  }
+
+  unhandled:
+}
