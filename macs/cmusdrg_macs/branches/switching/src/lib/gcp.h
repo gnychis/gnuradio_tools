@@ -68,6 +68,10 @@ class gcp : public mb_mblock
   mb_port_sptr d_switch;
   mb_port_sptr d_control;
 
+  // USRP parameters
+  long d_usrp_interp;
+  long d_usrp_decim;
+
  public:
   gcp(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg);
   ~gcp();

@@ -29,7 +29,9 @@ static bool verbose = false;
 
 gcp::gcp(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(rt, instance_name, user_arg),
-  d_gcp_state(INIT_GCP)
+  d_gcp_state(INIT_GCP),
+  d_usrp_interp(64),
+  d_usrp_decim(32)
 {
   define_ports();  
   connect_macs();
@@ -109,6 +111,7 @@ void gcp::handle_message(mb_message_sptr msg)
   }
 
   unhandled:
+    return;
 }
 
 // Function that sends a message to the 'switch' block that connects
