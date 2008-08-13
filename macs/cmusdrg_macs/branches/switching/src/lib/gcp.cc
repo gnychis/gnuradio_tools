@@ -30,6 +30,7 @@ static bool verbose = false;
 gcp::gcp(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(rt, instance_name, user_arg),
   d_gcp_state(INIT_GCP),
+  d_active_mac(NULL),
   d_usrp_interp(64),
   d_usrp_decim(32)
 {
@@ -109,22 +110,39 @@ void gcp::initialize_macs()
   pmt_t invocation = PMT_NIL;
 
   // List of MACs to connect
-  pmt_t macs = pmt_list2(pmt_intern("cmac"), 
-                         pmt_intern("tmac"));
+  std::vector<std::string> macs;
+  macs.push_back("cmac");
+  macs.push_back("tmac");
   
-  long nmacs = pmt_length(macs);
+  long nmacs = macs.size();
 
   for(int i=0; i<nmacs; i++) {
     struct macs_t curr_mac;
-    curr_mac.name = pmt_nth(i, macs);
 
-    std::string sname = pmt_symbol_to_string(curr_mac.name);
-    std::string sport = "mac-cs";
+    curr_mac.name = macs[i];
+    curr_mac.pname = curr_mac.name+"-cs";
 
-    define_component(sname, sname, PMT_NIL);
-    curr_mac.port = define_port(sname, sport, false, mb_port::INTERNAL);
-    //connect("self", sname, sname, "switcher");
+    define_component(curr_mac.name, curr_mac.name, PMT_NIL);
+    curr_mac.port = define_port(curr_mac.name, curr_mac.pname, false, mb_port::INTERNAL);
 
     d_macs.push_back(curr_mac);
+
+    // Connect to the first MAC
+    if(i==0)
+      connect_mac(&curr_mac);
   }
+}
+
+// Better to think of this method as a switching MAC method, there is no
+// disconnect without connecting another MAC, a MAC should be connected at all
+// times
+void gcp::connect_mac(struct macs_t *mac)
+{
+  if(d_active_mac==NULL) {
+    connect("self", mac->pname, mac->name, "mac-cs");
+  } else {
+    disconnect_component(d_active_mac->name);
+    connect("self", mac->pname, mac->name, "mac-cs");
+  }
+  d_active_mac=mac;
 }

@@ -43,6 +43,7 @@
 #include <symbols_usrp_rx.h>
 
 #include <gmsk_symbols.h>
+#include <mac_symbols.h>
 
 class mac;
 

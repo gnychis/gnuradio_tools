@@ -62,7 +62,6 @@ void mac::define_usrp_ports()
   // Connect to physical layer
   define_component("GMSK", "gmsk", phy_dict);
   d_phy_cs = define_port("phy-cs", "gmsk-cs", false, mb_port::INTERNAL);
-  connect("self", "phy-cs", "GMSK", "cs0");
 }
 
 // This is the entrance point of all messages to and from the MAC.  This base
@@ -75,7 +74,28 @@ void mac::handle_message(mb_message_sptr msg)
   pmt_t data = msg->data();         // the associated data
   pmt_t port_id = msg->port_id();   // the port the msg was received on
 
+  pmt_t invocation;
+  pmt_t status;
+
   if(d_usrp_state==CONNECTED) {
+
+    //---- Port: MAC CS ---------------------------------------------------//
+    if(pmt_eq(d_control->port_symbol(), port_id)) {
+      if(pmt_eq(event, s_cmd_connect)) {
+        connect("self", "phy-cs", "GMSK", "cs0");
+        invocation=pmt_nth(0, data);
+        status=PMT_T;
+        d_control->send(s_response_connect,pmt_list2(invocation, status));
+        return;
+      }
+      if(pmt_eq(event, s_cmd_disconnect)) {
+        disconnect_component("GMSK");
+        invocation=pmt_nth(0, data);
+        status=PMT_T;
+        d_control->send(s_response_disconnect,pmt_list2(invocation, status));
+        return;
+      }
+    }
 
     //---- Port: USRP RX --------------------------------------------------//
     if(pmt_eq(d_us_rx->port_symbol(), port_id)) {
@@ -104,7 +124,7 @@ void mac::handle_message(mb_message_sptr msg)
         return;
       }
     }
-    
+
     handle_mac_message(msg);
   } else {
     handle_usrp_message(msg);
