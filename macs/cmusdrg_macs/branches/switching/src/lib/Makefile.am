@@ -56,7 +56,7 @@ gmsk_mbh.cc : gmsk.mbh
 	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/gmsk.mbh $(srcdir)/gmsk_mbh.cc
 
 switch_mbh.cc : switch.mbh
-	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/switch.mbh $(srcdir)/switch.mbh
+	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/switch.mbh $(srcdir)/switch_mbh.cc
 
 libcmusdrg_macs_la_SOURCES =		\
 	$(BUILT_SOURCES)		\
