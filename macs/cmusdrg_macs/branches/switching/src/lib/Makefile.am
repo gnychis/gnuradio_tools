@@ -28,8 +28,7 @@ INCLUDES = 	\
 EXTRA_DIST =				\
 	cmac.mbh			\
 	tmac.mbh			\
-	gmsk.mbh			\
-	gcp_switch.mbh
+	gmsk.mbh			
 
 lib_LTLIBRARIES = 			\
 	libcmusdrg_macs.la	
@@ -43,8 +42,7 @@ GUILE=/usr/bin/guile -e main -s $(top_srcdir)/src/scheme/mblock/gnuradio/compile
 BUILT_SOURCES =				\
 	cmac_mbh.cc		\
 	tmac_mbh.cc		\
-	gmsk_mbh.cc 	\
-	gcp_switch_mbh.cc
+	gmsk_mbh.cc 	
 
 cmac_mbh.cc : cmac.mbh
 	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/cmac.mbh $(srcdir)/cmac_mbh.cc
@@ -55,9 +53,6 @@ tmac_mbh.cc : tmac.mbh
 gmsk_mbh.cc : gmsk.mbh
 	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/gmsk.mbh $(srcdir)/gmsk_mbh.cc
 
-gcp_switch_mbh.cc : gcp_switch.mbh
-	$(GUILE_LOAD_PATH) $(GUILE) $(srcdir)/gcp_switch.mbh $(srcdir)/gcp_switch_mbh.cc
-
 libcmusdrg_macs_la_SOURCES =		\
 	$(BUILT_SOURCES)		\
 	mac.cc \
@@ -66,8 +61,7 @@ libcmusdrg_macs_la_SOURCES =		\
 	tmac.cc	\
 	tmac_framer.cc \
 	gmsk.cc	\
-	gcp.cc	\
-	gcp_switch.cc
+	gcp.cc	
 
 libcmusdrg_macs_la_LDFLAGS = $(NO_UNDEFINED) -version-info 0:0:0
 
@@ -85,15 +79,13 @@ include_HEADERS =			\
 	tmac.h	\
 	tmac_framer.h \
 	gmsk.h \
-	gcp.h	\
-	gcp_switch.h
+	gcp.h	
 
 
 noinst_HEADERS =      			\
 	gmsk_symbols.h	\
 	tmac_symbols.h	\
-	cmac_symbols.h	\
-	gcp_switch_symbols.h
+	cmac_symbols.h	
 
 
 MOSTLYCLEANFILES = \

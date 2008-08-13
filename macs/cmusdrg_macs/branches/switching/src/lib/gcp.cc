@@ -34,7 +34,7 @@ gcp::gcp(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   d_usrp_decim(32)
 {
   define_ports();  
-  connect_macs();
+  initialize_macs();
 }
 
 gcp::~gcp()
@@ -116,7 +116,7 @@ void gcp::handle_message(mb_message_sptr msg)
 
 // Function that sends a message to the 'switch' block that connects
 // the given list of MACs
-void gcp::connect_macs()
+void gcp::initialize_macs()
 {
   // Change the GCP state
   d_gcp_state = CONN_MACS;
@@ -125,9 +125,22 @@ void gcp::connect_macs()
   pmt_t invocation = PMT_NIL;
 
   // List of MACs to connect
-  pmt_t mac_list = pmt_list2(pmt_intern("cmac"), 
-                             pmt_intern("tmac"));
+  pmt_t macs = pmt_list2(pmt_intern("cmac"), 
+                         pmt_intern("tmac"));
+  
+  long nmacs = pmt_length(macs);
 
-  // Send the message to connect the MACs
-  d_switch->send(s_cmd_connect_macs, pmt_list2(invocation, mac_list));
+  for(int i=0; i<nmacs; i++) {
+    struct macs_t curr_mac;
+    curr_mac.name = pmt_nth(i, macs);
+
+    std::string sname = pmt_symbol_to_string(curr_mac.name);
+    std::string sport = sname+"-cs";
+
+    define_component(sname, sname, PMT_NIL);
+    curr_mac.port = define_port(sname, sport, false, mb_port::INTERNAL);
+    //connect("self", sname, sname, "switcher");
+
+    d_macs.push_back(curr_mac);
+  }
 }

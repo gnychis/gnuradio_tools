@@ -62,11 +62,24 @@ class gcp : public mb_mblock
     SWITCHING,
   };
   gcp_state_t d_gcp_state;
+  
+  // Used to keep MAC name/port pairs
+  struct macs_t {
+    pmt_t name;
+    mb_port_sptr port;
 
+    macs_t() {
+      name = PMT_NIL;
+      //port = PMT_NIL;
+    }
+  };
+  
   // GCP Ports
   mb_port_sptr d_phy;
   mb_port_sptr d_switch;
   mb_port_sptr d_control;
+  std::vector<struct macs_t> d_macs;
+  struct macs_t *d_active_mac;
 
   // USRP parameters
   long d_usrp_interp;
@@ -79,7 +92,7 @@ class gcp : public mb_mblock
 
  private:
   void define_ports();
-  void connect_macs();
+  void initialize_macs();
 };
 
 #endif
