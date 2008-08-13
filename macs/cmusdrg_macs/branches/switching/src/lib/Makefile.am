@@ -66,7 +66,8 @@ libcmusdrg_macs_la_SOURCES =		\
 	tmac.cc	\
 	tmac_framer.cc \
 	gmsk.cc	\
-	gcp.cc
+	gcp.cc	\
+	gcp_switch.cc
 
 libcmusdrg_macs_la_LDFLAGS = $(NO_UNDEFINED) -version-info 0:0:0
 
@@ -84,7 +85,8 @@ include_HEADERS =			\
 	tmac.h	\
 	tmac_framer.h \
 	gmsk.h \
-	gcp.h
+	gcp.h	\
+	gcp_switch.h
 
 
 noinst_HEADERS =      			\

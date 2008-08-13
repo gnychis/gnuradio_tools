@@ -19,8 +19,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#ifndef INCLUDED_GCP_H
-#define INCLUDED_GCP_H
+#ifndef INCLUDED_GCP_SWITCH_H
+#define INCLUDED_GCP_SWITCH_H
 
 // Common Includes
 #include <mb_mblock.h>
@@ -46,41 +46,43 @@
 
 #include <gcp_switch_symbols.h>
 
-class gcp;
+class gcp_switch;
 
-class gcp : public mb_mblock
+class gcp_switch : public mb_mblock
 {
-
  protected:
-
-  // List of states for GCP
-  enum gcp_state_t {
-    INIT_GCP,
-    CONN_MACS,
-    TRAINING,
+  
+  // List of states for switch
+  enum gcp_switch_state_t {
+    INIT_GCP_SWITCH,
     IDLE,
-    SWITCHING,
   };
-  gcp_state_t d_gcp_state;
+  gcp_switch_state_t d_gcp_switch_state;
+  
+  // Used to keep MAC name/port pairs
+  struct macs_t {
+    std::string name;
+    mb_port_sptr port;
 
-  // GCP Ports
-  mb_port_sptr d_phy;
+    macs_t() {
+      name = "";
+      //port = PMT_NIL;
+    }
+  };
+
+  // Switch ports
   mb_port_sptr d_switch;
-  mb_port_sptr d_control;
-
-  // USRP parameters
-  long d_usrp_interp;
-  long d_usrp_decim;
+  std::vector<struct macs_t> d_macs;
+  struct macs_t *d_active_mac;
 
  public:
-  gcp(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg);
-  ~gcp();
+  gcp_switch(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg);
+  ~gcp_switch();
   void handle_message(mb_message_sptr msg);
 
  private:
   void define_ports();
-  void connect_macs();
+  
 };
 
 #endif
-
