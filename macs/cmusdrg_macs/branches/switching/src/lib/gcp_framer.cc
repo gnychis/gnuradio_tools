@@ -173,6 +173,7 @@ if(verbose)
               << "\n        payload_len: " << d_cframe_hdr.payload_len
               << "\n        crc: " << d_cframe_hdr.crc
               << "\n        ack: " << d_cframe_hdr.ack
+              << "\n        power: " << d_cframe_hdr.power
               << std::endl;
   
   // Do some logic checks on the payload length, that it's greater than 0 and
@@ -224,6 +225,7 @@ void gcp::framer_have_frame(pmt_t uvec)
   pmt_dict_set(pkt_properties, pmt_intern("seq"), pmt_from_long(d_cframe_hdr.seq_num));
   pmt_dict_set(pkt_properties, pmt_intern("ack"), PMT_F);   // default value
   pmt_dict_set(pkt_properties, pmt_intern("crc"), PMT_F);   // default value
+  pmt_dict_set(pkt_properties, pmt_intern("power"), pmt_from_long(d_cframe_hdr.power));
 
   // If the frame is an ACK, we don't care about payload... lets just pass it up
   if(d_cframe_hdr.ack) {
