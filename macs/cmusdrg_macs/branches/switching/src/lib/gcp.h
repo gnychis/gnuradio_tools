@@ -44,8 +44,6 @@
 #include <symbols_usrp_tx.h>
 #include <symbols_usrp_rx.h>
 
-#include <gcp_switch_symbols.h>
-
 class gcp;
 
 class gcp : public mb_mblock
