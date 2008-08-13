@@ -61,11 +61,11 @@ class gcp_switch : public mb_mblock
   
   // Used to keep MAC name/port pairs
   struct macs_t {
-    std::string name;
+    pmt_t name;
     mb_port_sptr port;
 
     macs_t() {
-      name = "";
+      name = PMT_NIL;
       //port = PMT_NIL;
     }
   };
@@ -82,6 +82,7 @@ class gcp_switch : public mb_mblock
 
  private:
   void define_ports();
+  void connect_macs(pmt_t data);
   
 };
 
