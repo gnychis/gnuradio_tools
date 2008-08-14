@@ -152,6 +152,14 @@ void gcp::handle_message(mb_message_sptr msg)
         }
         return;
       }
+      //---- Port: GMSK CS -------------- State: IDLE -----------------------//
+      if(pmt_eq(d_phy_cs->port_symbol(), port_id)) {
+        
+        if(pmt_eq(event, s_response_mod)) {
+          transmit_pkt(data);                         // Data done being mod'ed
+          return;
+        }
+      }
       goto unhandled;
 
     case SWITCHING:
@@ -281,4 +289,78 @@ void gcp::incoming_data(pmt_t data)
   std::vector<unsigned char> bit_data = boost::any_cast<std::vector<unsigned char> >(pmt_any_ref(bits));
 
   framer(bit_data, demod_properties);
+}
+
+// Handles the transmission of a pkt from the application.  The invocation
+// handle is passed on but a response is not given back to the application until
+// the response is passed from usrp_server.  This ensures that the MAC passes
+// back the success or failure. 
+void gcp::transmit_pkt(pmt_t data)
+{
+  pmt_t invocation_handle = pmt_nth(0, data);
+  pmt_t samples = pmt_nth(1, data);
+  pmt_t pkt_properties = pmt_nth(2, data);
+  pmt_t timestamp;
+
+  pmt_t us_tx_properties = pmt_make_dict();
+
+  if(pmt_is_dict(pkt_properties)) {
+    if(pmt_t pkt_cs = pmt_dict_ref(pkt_properties,
+                                   pmt_intern("carrier-sense"),
+                                   PMT_NIL)) {
+      if(pmt_eqv(pkt_cs, PMT_T))                    // carrier sense the packet?
+        pmt_dict_set(us_tx_properties,              // set it in our dictionary
+                     pmt_intern("carrier-sense"),   // the 'hash'
+                     PMT_T);                        // true, but assumed false if no
+    }
+
+    if(timestamp = pmt_dict_ref(pkt_properties,
+                                pmt_intern("timestamp"),
+                                PMT_NIL)) {
+      if(pmt_eqv(timestamp, PMT_NIL)) {
+        std::cout << "[MAC] Error: MAC did not specify timestamp with transmission\n";
+        shutdown_all(PMT_F);
+      }
+    }
+  } else {
+    std::cout << "[MAC] Invalid packet properties on transmit frame\n";
+    shutdown_all(PMT_F);
+  }
+
+  pmt_t pdata = pmt_list5(invocation_handle,    // Invocation handle is passed back.
+		                      d_us_tx_chan,         // Destined for our TX channel.
+		                      samples,              // The modulated data (samples).
+                          timestamp,            // The time to send the packet.
+                          us_tx_properties);    // Our per-packet properties.
+
+  d_us_tx->send(s_cmd_xmit_raw_frame, pdata);   // Finally, send!
+
+  if(verbose)
+    std::cout << "[CMAC] Transmitted packet\n";
+}
+
+void gcp::build_and_send_beacon()
+{
+  size_t ignore;
+  char data;
+  long n_bytes=1;   // Negligable payload
+  
+  // Make the PMT data, get a writable pointer to it, then copy our data in
+  pmt_t uvec = pmt_make_u8vector(n_bytes, 0);
+  char *vdata = (char *) pmt_u8vector_writable_elements(uvec, ignore);
+  memcpy(vdata, &data, n_bytes);
+
+  // Per packet properties
+  pmt_t tx_properties = pmt_make_dict();
+  pmt_dict_set(tx_properties, pmt_intern("power"), pmt_from_long(128));  // it's an ACK!
+
+  pmt_t pdata = pmt_list4(PMT_NIL,                        // No invocation.
+                          pmt_from_long(0xffff),          // To broadcast.
+                          uvec,                           // With data.
+                          tx_properties);                 // It's an ACK!
+
+  build_frame(pdata);
+  
+  if(verbose)
+    std::cout << "[GCP] Transmitted beacon\n";
 }

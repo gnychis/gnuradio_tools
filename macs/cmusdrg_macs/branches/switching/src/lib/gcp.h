@@ -143,6 +143,8 @@ class gcp : public mb_mblock
   void connect_mac(struct macs_t *mac);
   void enable_rx();
   void incoming_data(pmt_t data);
+  void transmit_pkt(pmt_t data);
+  void build_and_send_beacon();
   
   // Framer
   void framer(const std::vector<unsigned char> input, pmt_t demod_properties);

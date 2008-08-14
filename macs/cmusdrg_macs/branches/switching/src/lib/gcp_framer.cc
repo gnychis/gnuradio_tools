@@ -287,21 +287,15 @@ void gcp::build_frame(pmt_t data)
   // Add a sequence number
   frame_hdr.seq_num = d_seq_num++;
 
-  // Set ACK if specified
+  // Set if power is specified
   if(pmt_is_dict(pkt_properties)) {
-    if(pmt_t ack = pmt_dict_ref(pkt_properties,
-                                pmt_intern("ack"),
-                                PMT_NIL)) {
-      if(pmt_eqv(ack, PMT_T))
-        frame_hdr.ack = true;
-      else
-        frame_hdr.ack = false;
+    if(pmt_t power = pmt_dict_ref(pkt_properties,
+                                  pmt_intern("power"),
+                                  PMT_NIL)) {
+      if(!pmt_eqv(power, PMT_NIL))
+        frame_hdr.power = pmt_to_long(power);
     }
   }
-
-  // Don't carrier sense ACKs at all
-  if(!frame_hdr.ack && d_carrier_sense)
-      pmt_dict_set(pkt_properties, pmt_intern("carrier-sense"), PMT_T);
 
   // Copy full data (header + payload)
   long total_bytes = sizeof(frame_hdr) + n_payload_bytes;
@@ -312,6 +306,8 @@ void gcp::build_frame(pmt_t data)
   memcpy(complete_data+sizeof(frame_hdr), payload, n_payload_bytes);
 
   pmt_t pdata = pmt_list3(invocation_handle, data_vec, pkt_properties);
+
+  // Send to the physical layer for modulation
   d_phy_cs->send(s_cmd_mod, pdata); 
 
   d_last_frame = data;
