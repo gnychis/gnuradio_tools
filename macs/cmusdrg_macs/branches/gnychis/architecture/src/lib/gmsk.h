@@ -77,6 +77,25 @@ class gmsk;
 
 class gmsk : public mb_mblock
 {
+  // The state is used to determine how to handle incoming messages and of
+  // course, the state of the MAC protocol.
+  enum usrp_state_t {
+    INIT,
+    ALLOCATING_CHANNELS,
+    READY,
+  };
+  usrp_state_t	d_state;
+  
+  enum channel_type {
+    RX_CHANNEL,
+    TX_CHANNEL,
+  };
+  
+  // Ports to connect to usrp_server (us)
+  mb_port_sptr      d_us_tx, d_us_rx, d_us_cs;
+  
+  // The channel numbers assigned for use
+  pmt_t d_us_rx_chan, d_us_tx_chan;
 
   // Ports used for applications to connect to this block
   mb_port_sptr		  d_cs;
@@ -152,6 +171,8 @@ class gmsk : public mb_mblock
   void convolve(float X[],float Y[], float Z[], int lenx, int leny);
   void demod(pmt_t data);
   void conv_to_binary(std::string code, std::vector<unsigned char> &output);
+  void allocate_channels();
+  void allocate_channels_response(pmt_t data, channel_type chan, bool success);
 };
 
 #endif // INCLUDED_GMSK_H

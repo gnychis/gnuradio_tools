@@ -40,6 +40,7 @@ long t_samples;
 
 gmsk::gmsk(mb_runtime *rt, const std::string &instance_name, pmt_t user_arg)
   : mb_mblock(rt, instance_name, user_arg),
+  d_state(INIT),
   d_samples_per_symbol(SAMPLES_PER_SYMBOL),
   d_bt(0.35),
   d_gain_mu(0.175),
@@ -209,16 +210,63 @@ void gmsk::handle_message(mb_message_sptr msg)
   pmt_t dict = PMT_NIL;
   std::string error_msg;
 
-  if(pmt_eq(event, s_cmd_mod)
-      && pmt_eq(d_cs->port_symbol(), port_id)) {
-      mod(data);
-  }
-  
-  if(pmt_eq(event, s_cmd_demod)
-      && pmt_eq(d_cs->port_symbol(), port_id)) {
-      demod(data);
-  }
+  switch(d_state) {
+    
+    case INIT:
+      break;
 
+    //------------------------ ALLOCATING CHANNELS --------------------------//
+    // When allocating channels, we need to wait for 2 responses from USRP
+    // server: one for TX and one for RX.  Both are initialized to NIL so we
+    // know to continue to the next state once both are set.
+    case ALLOCATING_CHANNELS:
+
+      //---- Port: USRP TX -------------- State: ALLOCATING_CHANNELS --------//
+      if(pmt_eq(port_id, d_us_tx->port_symbol())) {
+        
+        if(pmt_eq(event, s_response_allocate_channel)) {
+          pmt_t status = pmt_nth(1, data);
+          bool success;
+          if(pmt_eq(status, PMT_T))
+            success=true;
+          else
+            success=false;
+          allocate_channels_response(data, TX_CHANNEL, success);
+        }
+        return;
+      }
+
+      //---- Port: USRP RX -------------- State: ALLOCATING_CHANNELS --------//
+      if(pmt_eq(port_id, d_us_rx->port_symbol())) {
+
+        if(pmt_eq(event, s_response_allocate_channel)) {
+          pmt_t status = pmt_nth(1, data);
+          bool success;
+          if(pmt_eq(status, PMT_T))
+            success=true;
+          else
+            success=false;
+          allocate_channels_response(data, RX_CHANNEL, success);
+        }
+        return;
+      }
+      break;
+
+    case READY:
+      if(pmt_eq(event, s_cmd_mod)
+          && pmt_eq(d_cs->port_symbol(), port_id)) {
+          mod(data);
+      }
+      
+      if(pmt_eq(event, s_cmd_demod)
+          && pmt_eq(d_cs->port_symbol(), port_id)) {
+          demod(data);
+      }
+      break;
+
+    default:
+      break;
+  }
 }
 
 void gmsk::mod(pmt_t data) {
@@ -582,6 +630,10 @@ void gmsk::define_ports()
 {
   // Ports applications used to connect to us
   d_cs = define_port("cs0", "gmsk-cs", true, mb_port::EXTERNAL);
+
+  // Ports we use to connect to usrp_server, which handles the USRP
+  d_us_tx = define_port("us-tx", "usrp-tx", false, mb_port::INTERNAL);
+  d_us_rx = define_port("us-rx", "usrp-rx", false, mb_port::INTERNAL);
 }
 
 // GR uses the numpy convolve function, heres a C++ replacement
@@ -618,5 +670,49 @@ void gmsk::conv_to_binary(std::string code, std::vector<unsigned char> &output)
     output[i] = (unsigned char)std::bitset<std::numeric_limits<unsigned char>::digits>(curr).to_ulong();
   }
 }
+
+// RX and TX channels must be allocated so that the USRP server can
+// properly share bandwidth across multiple USRPs.  No commands will be
+// successful to the USRP through the USRP server on the TX or RX channels until
+// a bandwidth allocation has been received.
+void gmsk::allocate_channels()
+{
+  d_state = ALLOCATING_CHANNELS;
+  
+  if(verbose)
+    std::cout << "[GMSK] Sending channel allocation requests\n";
+
+  long capacity = (long) 16e6;
+  d_us_tx->send(s_cmd_allocate_channel, pmt_list2(PMT_T, pmt_from_long(capacity)));
+  d_us_rx->send(s_cmd_allocate_channel, pmt_list2(PMT_T, pmt_from_long(capacity)));
+}
+
+// If we were given a TX channel, and we have an RX channel set (allocated),
+// then we can continue in to the connected state and invoke the method which
+// the user will override for us to notify them that the USRP is connected.
+void gmsk::allocate_channels_response(pmt_t data, channel_type chan, bool success)
+{
+  if(!success) {
+    std::cerr << "[GMSK] Failed to allocate channel\n";
+    shutdown_all(PMT_F);
+    return;
+  }
+
+  // Save the channel given to us
+  pmt_t allocated_channel = pmt_nth(2, data);
+  if(chan==TX_CHANNEL) 
+    d_us_tx_chan = allocated_channel;
+  else
+    d_us_rx_chan = allocated_channel;
+
+  if(verbose)
+    std::cout << "[GMSK] Received allocation"
+              << " on channel " << d_us_tx_chan << std::endl;
+
+  if((chan==TX_CHANNEL && !pmt_eqv(d_us_rx_chan, PMT_NIL)) ||
+     (chan==RX_CHANNEL && !pmt_eqv(d_us_tx_chan, PMT_NIL))) {
+    d_state=READY;
+  } 
+}     
 
 REGISTER_MBLOCK_CLASS(gmsk);
