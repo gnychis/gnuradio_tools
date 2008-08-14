@@ -58,6 +58,7 @@ class gcp : public mb_mblock
   enum gcp_state_t {
     INIT_GCP,
     CONN_MACS,
+    ALLOCATING_CHANNELS,
     TRAINING,
     IDLE,
     SWITCHING,
@@ -72,6 +73,11 @@ class gcp : public mb_mblock
     HAVE_PAYLOAD
   };
   state_t	d_framer_state;
+  
+  enum channel_type {
+    RX_CHANNEL,
+    TX_CHANNEL,
+  };
   
   // Used to keep MAC name/port pairs
   struct macs_t {
@@ -96,6 +102,12 @@ class gcp : public mb_mblock
   // USRP parameters
   long d_usrp_interp;
   long d_usrp_decim;
+  
+  // Ports to connect to usrp_server (us)
+  mb_port_sptr      d_us_tx, d_us_rx, d_us_cs;
+  
+  // The channel numbers assigned for use
+  pmt_t d_us_rx_chan, d_us_tx_chan;
   
   // Local control address
   long d_local_address;
@@ -126,7 +138,11 @@ class gcp : public mb_mblock
  private:
   void define_ports();
   void initialize_macs();
+  void allocate_channels();
+  void allocate_channels_response(pmt_t data, channel_type chan, bool success);
   void connect_mac(struct macs_t *mac);
+  void enable_rx();
+  void incoming_data(pmt_t data);
   
   // Framer
   void framer(const std::vector<unsigned char> input, pmt_t demod_properties);
