@@ -266,29 +266,33 @@ void cmac::packet_transmitted(pmt_t data)
   pmt_t invocation_handle = pmt_nth(0, data);
   pmt_t status = pmt_nth(1, data);
 
-  enable_rx();  // Need to listen for ACKs
+  d_tx->send(s_response_tx_data,
+             pmt_list2(invocation_handle,
+                       PMT_T));
 
-  // If we are already in the SEND_ACK state, we were waiting for an ACK to be
-  // transmitted, once successful we assume it was received and go to IDLE
-  if(d_state == SEND_ACK) {
-    d_state = IDLE;
-    return;
-  }
-
-  // If we were in the ACK_WAIT state, we don't need to schedule another timeout
-  if(d_state == ACK_WAIT)
-    return;
-  
-  // Schedule an ACK timeout to fire every timeout period. This should be user
-  // settable.  The first timeout is now+TIMEOUT_PERIOD
-  const double TIMEOUT_PERIOD = 0.5;  // in seconds
-  mb_time now = mb_time::time();
-  d_ack_timeout = schedule_periodic_timeout(now + TIMEOUT_PERIOD, mb_time(TIMEOUT_PERIOD), PMT_T);
-  
-  d_state = ACK_WAIT;
-
-  if(verbose)
-    std::cout << "[CMAC] Packet transmitted, going to ACK wait\n";
+//  enable_rx();  // Need to listen for ACKs
+//
+//  // If we are already in the SEND_ACK state, we were waiting for an ACK to be
+//  // transmitted, once successful we assume it was received and go to IDLE
+//  if(d_state == SEND_ACK) {
+//    d_state = IDLE;
+//    return;
+//  }
+//
+//  // If we were in the ACK_WAIT state, we don't need to schedule another timeout
+//  if(d_state == ACK_WAIT)
+//    return;
+//  
+//  // Schedule an ACK timeout to fire every timeout period. This should be user
+//  // settable.  The first timeout is now+TIMEOUT_PERIOD
+//  const double TIMEOUT_PERIOD = 0.5;  // in seconds
+//  mb_time now = mb_time::time();
+//  d_ack_timeout = schedule_periodic_timeout(now + TIMEOUT_PERIOD, mb_time(TIMEOUT_PERIOD), PMT_T);
+//  
+//  d_state = ACK_WAIT;
+//
+//  if(verbose)
+//    std::cout << "[CMAC] Packet transmitted, going to ACK wait\n";
 }
 
 // An incoming frame from the physical layer for us!  We check the packet
@@ -350,9 +354,9 @@ void cmac::handle_ack(long src, long dst)
 
   // Now that we have an ACK, we can notify the application of a successfully TX
   pmt_t invocation_handle = pmt_nth(0, d_last_frame);
-  d_tx->send(s_response_tx_data,
-             pmt_list2(invocation_handle,
-                       PMT_T));
+//  d_tx->send(s_response_tx_data,
+//             pmt_list2(invocation_handle,
+//                       PMT_T));
 
   disable_rx();     // FIXME: spend more time thinking about this, I think its incorrect
 
