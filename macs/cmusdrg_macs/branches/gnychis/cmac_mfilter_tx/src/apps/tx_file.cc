@@ -259,15 +259,27 @@ tx_file::build_and_send_next_frame()
 
   // Make the PMT data, get a writable pointer to it, then copy our data in
   pmt_t uvec = pmt_make_u8vector(n_bytes, 0);
-  char *vdata = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
+  char *vdata = (char *) pmt_u8vector_writable_elements(uvec, ignore);
   memcpy(vdata, data, n_bytes);
+
+  pmt_t pkt_properties = PMT_NIL;
+
+  // Make a dictionary to use carrier sense and mfilter on everything but the first packet
+  if(d_nframes_xmitted!=0) {
+    pkt_properties = pmt_make_dict();
+    pmt_dict_set(pkt_properties, pmt_intern("carrier-sense"), PMT_T);
+    pmt_dict_set(pkt_properties, pmt_intern("mf-set"), PMT_T);
+    std::cout << "[TX_FILE]  pkt " << d_nframes_xmitted << ": yes\n";
+  } else {
+    std::cout << "[TX_FILE]  pkt " << d_nframes_xmitted << ": no\n";
+  }
 
   //  Transmit the data
   d_tx->send(s_cmd_tx_data,
 	     pmt_list4(pmt_from_long(d_nframes_xmitted),   // invocation-handle
            pmt_from_long(d_dst_addr),// destination
 		       uvec,				    // the samples
-           PMT_NIL)); // per pkt properties
+           pkt_properties)); // per pkt properties
 
   d_nframes_xmitted++;
 

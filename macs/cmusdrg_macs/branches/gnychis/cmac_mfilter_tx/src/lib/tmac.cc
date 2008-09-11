@@ -305,8 +305,8 @@ void tmac::transmit_sync()
   
   // Make the PMT data, get a writable pointer to it, then copy our data in
   pmt_t uvec = pmt_make_u8vector(max_frame_payload(), 0);
-  d_sync_frame_data *sframe = (d_sync_frame_data *) pmt_u8vector_writeable_elements(uvec, ignore);
-  char *pay = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
+  d_sync_frame_data *sframe = (d_sync_frame_data *) pmt_u8vector_writable_elements(uvec, ignore);
+  char *pay = (char *) pmt_u8vector_writable_elements(uvec, ignore);
   
   for(int i=sizeof(d_sync_frame_data); i<max_frame_payload(); i++)
     pay[i] = 'a';
@@ -380,7 +380,7 @@ void tmac::incoming_sync(pmt_t data)
 
   // Cast the incoming payload into SYNC frame data
   size_t ignore;
-  d_sync_frame_data *sframe = (d_sync_frame_data *) pmt_u8vector_writeable_elements(payload, ignore);
+  d_sync_frame_data *sframe = (d_sync_frame_data *) pmt_u8vector_writable_elements(payload, ignore);
 
   // Calculate the parameters at the local node
   d_guard_time = sframe->guard_time;

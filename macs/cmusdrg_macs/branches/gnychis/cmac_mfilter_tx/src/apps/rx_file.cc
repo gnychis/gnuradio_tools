@@ -201,7 +201,7 @@ rx_file::handle_response_rx_pkt(pmt_t data)
 
   // Data was destined for us, let's dump it to the output file
   size_t nbytes;
-  char *payload_data = (char *)pmt_u8vector_writeable_elements(payload, nbytes);
+  char *payload_data = (char *)pmt_u8vector_writable_elements(payload, nbytes);
   d_ofile.write((const char *)payload_data, nbytes);
   d_ofile.flush();
 }

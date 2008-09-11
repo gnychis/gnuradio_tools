@@ -193,7 +193,7 @@ void tmac::framer_have_payload()
 
   // Create a PMT vector to store data
   uvec = pmt_make_u8vector(d_cframe_hdr.payload_len, 0);
-  vdata = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
+  vdata = (char *) pmt_u8vector_writable_elements(uvec, ignore);
   
   // Pack the bits from a bit-per-char representation into a buffer
   for(int hdr_byte=0; hdr_byte < (int)d_cframe_hdr.payload_len; hdr_byte++) 
@@ -209,7 +209,7 @@ void tmac::framer_have_frame(pmt_t uvec)
   pmt_t pkt_properties;
   pkt_properties = pmt_make_dict();
   size_t ignore;
-  char *vdata = (char *) pmt_u8vector_writeable_elements(uvec, ignore);
+  char *vdata = (char *) pmt_u8vector_writable_elements(uvec, ignore);
   
   // Create a dictionary (hash like structure) with frame header information,
   // you can put as much as you want in here
@@ -256,7 +256,7 @@ void tmac::build_frame(pmt_t data)
   // Copy full data (header + payload)
   long total_bytes = sizeof(frame_hdr) + n_payload_bytes;
   pmt_t data_vec = pmt_make_u8vector(total_bytes, 0);
-  char *complete_data = (char *) pmt_u8vector_writeable_elements(data_vec, ignore);
+  char *complete_data = (char *) pmt_u8vector_writable_elements(data_vec, ignore);
 
   memcpy(complete_data, &frame_hdr, sizeof(frame_hdr));
   memcpy(complete_data+sizeof(frame_hdr), payload, n_payload_bytes);

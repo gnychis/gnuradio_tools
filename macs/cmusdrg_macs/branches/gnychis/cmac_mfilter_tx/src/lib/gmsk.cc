@@ -315,7 +315,7 @@ void gmsk::mod(pmt_t data) {
   // Convert from 64 bit I/Q to 32 bit I/Q and fill in vector
   size_t ignore;
   pmt_t v_mod_data = pmt_make_s16vector(fm_output.size()*2, 0);   // 16-bits for each I and Q 
-  int16_t *mod_data = pmt_s16vector_writeable_elements(v_mod_data, ignore);
+  int16_t *mod_data = pmt_s16vector_writable_elements(v_mod_data, ignore);
   for(int i=0; i < (int)fm_output.size(); i++) {
     mod_data[2*i] =   (int16_t) (fm_output[i].real() * d_amplitude);
     mod_data[2*i+1] = (int16_t) (fm_output[i].imag() * d_amplitude);
