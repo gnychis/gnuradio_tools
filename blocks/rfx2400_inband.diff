@@ -2,7 +2,7 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.cc
 ===================================================================
 --- usrp/host/lib/inband/db_flexrf_mimo.cc	(revision 0)
 +++ usrp/host/lib/inband/db_flexrf_mimo.cc	(revision 0)
-@@ -0,0 +1,313 @@
+@@ -0,0 +1,314 @@
 +
 +
 +#include "db_flexrf_mimo.h"
@@ -11,6 +11,7 @@ Index: usrp/host/lib/inband/db_flexrf_mimo.cc
 +#include <assert.h>
 +#include <fpga_regs_common.h>
 +#include <math.h>
++#include <stdlib.h>
 +
 +using namespace std;
 +
