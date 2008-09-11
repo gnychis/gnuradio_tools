@@ -114,6 +114,8 @@ void cmac::initialize_cmac()
 
   enable_rx();
 
+  build_and_send_ack(1);
+
   std::cout << "[CMAC] Initialized, and idle\n";
 }
 
@@ -272,6 +274,7 @@ void cmac::packet_transmitted(pmt_t data)
   // transmitted, once successful we assume it was received and go to IDLE
   if(d_state == SEND_ACK) {
     d_state = IDLE;
+    build_and_send_ack(1);
     return;
   }
 
@@ -381,6 +384,8 @@ void cmac::build_and_send_ack(long dst)
   // Per packet properties
   pmt_t tx_properties = pmt_make_dict();
   pmt_dict_set(tx_properties, pmt_intern("ack"), PMT_T);  // it's an ACK!
+  pmt_dict_set(tx_properties, pmt_intern("mf-set"), PMT_T);
+  pmt_dict_set(tx_properties, pmt_intern("carrier-sense"), PMT_T);
 
   pmt_t pdata = pmt_list4(PMT_NIL,                        // No invocation.
                           pmt_from_long(dst),             // To them.
@@ -391,10 +396,11 @@ void cmac::build_and_send_ack(long dst)
   
   d_state = SEND_ACK;                   // Switch MAC states
   
-  if(verbose)
+//  if(verbose)
     std::cout << "[CMAC] Transmitted ACK from " << d_local_address
               << " to " << dst
               << std::endl;
+    fflush(stdout);
 }
 
 // Entrance of new incoming data
