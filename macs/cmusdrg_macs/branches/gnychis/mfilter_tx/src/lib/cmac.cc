@@ -24,6 +24,12 @@
 #endif
 
 #include <cmac.h>
+#include <sstream>
+#include <iterator>
+#include <iostream>
+#include <vector>
+#include <map>
+#include <fstream>
 
 static bool verbose = false;
 
@@ -74,6 +80,37 @@ void cmac::initialize_cmac()
   
   d_cs->send(s_response_mac_initialized,   // Notify the application that MAC 
              pmt_list3(PMT_NIL, PMT_T,mac_properties)); // hs been initialized
+
+  // Read coeffs
+  pmt_t coeffs;
+  std::vector<gr_complex> vcoeffs;
+  std::ifstream coeff_file ("coeffs");
+  if(!coeff_file.is_open()) {
+    std::cout << "Error opening coeff file\n";
+    shutdown_all(PMT_F);
+  }
+  std::string line;
+  while(!coeff_file.eof()) {
+    getline(coeff_file, line);
+    std::istringstream in(line);
+    std::vector<std::string> tokens;
+    if(tokens.size()==0)
+      continue;
+    for(std::string each; std::getline(in,each,' '); tokens.push_back(each));
+    double real, imag;
+    std::istringstream sreal(tokens[0]), simag(tokens[1]);
+    sreal >> real;
+    simag >> imag;
+    vcoeffs.push_back(gr_complex(real,imag));
+  }
+  coeffs=pmt_make_any(vcoeffs);
+  d_us_tx->send(s_cmd_to_control_channel, 
+             pmt_list2(PMT_NIL, 
+                       pmt_list1(
+                            pmt_list2(s_op_mf_set, 
+                                      pmt_list2(
+                                      pmt_from_long(50), 
+                                      coeffs)))));
 
   enable_rx();
 
