@@ -75,6 +75,10 @@ void mac::handle_message(mb_message_sptr msg)
     if(pmt_eq(d_us_rx->port_symbol(), port_id)) {
 
       if(pmt_eq(event, s_response_recv_raw_samples)) {
+        pmt_t pkt_properties = pmt_nth(5, data);
+        long rssi = pmt_to_long(pmt_dict_ref(pkt_properties, pmt_intern("rssi"), PMT_NIL));
+        //std::cout << "RSSI: " << (rssi<<5) << std::endl;
+
         d_phy_cs->send(s_cmd_demod, data);         // Demod incoming samples
       }
       return;
