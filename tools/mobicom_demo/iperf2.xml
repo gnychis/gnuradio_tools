@@ -1,0 +1,135 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Config>
+	<NodeDef>
+		<node name="nodew1" color="darkRed">
+			<nic>
+				<antenna>
+					<type>isotropic </type>
+					<txAmpGain>0</txAmpGain>
+				</antenna>
+			</nic>
+		</node>
+		<node name="nodew2" color="darkGreen">
+			<nic>
+				<antenna>
+					<type>isotropic </type>
+					<txAmpGain>0</txAmpGain>
+				</antenna>
+			</nic>
+		</node>
+	</NodeDef>
+	
+    <UserClassDef>
+        <class>
+            <name>IperfThroughput</name>
+            <args>nodew1 nodew2 10</args>
+            <url>http://localhost/</url>
+        </class>
+    </UserClassDef>
+
+
+	<VisDef>
+        <map>
+            <name>Blank400x400.jpg</name>
+                <pixelsPerMeterX>1</pixelsPerMeterX>
+                <pixelsPerMeterY>1</pixelsPerMeterY>
+                <originPixelX>200</originPixelX>
+                <originPixelY>200</originPixelY>
+            </map>
+    </VisDef>
+
+	<EventDef>
+    	<EventGroup time="20" concurrent="true">
+            <Add>
+                  <node>nodew1</node>
+                  <pos>-100 -100 0</pos>
+            </Add>
+            <Add>
+                  <node>nodew2</node>
+                  <pos>-50 -100 0</pos>
+            </Add>
+	</EventGroup>
+	<EventGroup time="9999999.0" concurrent="false">
+			<EventThreadExit/>
+	</EventGroup>
+	</EventDef>
+	
+	<DSPConfigDef type="PathBased">
+		<maxMFBits>7</maxMFBits>
+		<maxShift>10</maxShift>
+		<ipAddress>10.0.0.1</ipAddress>
+
+		<ChannelDef>
+       			    <name>default</name>
+				<Channel>
+					<ChannelModel type="PathBased">
+					    <Path>
+							<LossModel type="Manual">
+								<loss>70.0</loss>
+							</LossModel>
+							<FadingModel type="Null">
+							</FadingModel>
+							<DelayModel type="Fixed">
+								<delay>0</delay>
+							</DelayModel>
+							<ExtraLoss>0</ExtraLoss>
+						</Path>
+					</ChannelModel>
+				</Channel>
+		</ChannelDef>	
+		<ChannelDef>
+    	    		<name>multipath010</name>
+			<Channel>
+				<ChannelModel type="PathBased">
+					<Path>
+						<LossModel type="Manual">
+							<loss>Infinity</loss>
+						</LossModel>
+						<FadingModel type="Null">
+						</FadingModel>
+						<DelayModel type="Manual">
+							<delay>0</delay>
+							<minDelay>0</minDelay>
+							<maxDelay>36</maxDelay>
+						</DelayModel>
+						<ExtraLoss>0</ExtraLoss>
+					</Path>
+					<Path>
+						<LossModel type="Manual">
+							<loss>70</loss>
+						</LossModel>
+						<FadingModel type="Null">
+						</FadingModel>
+						<DelayModel type="Manual">
+							<delay>0</delay>
+							<minDelay>0</minDelay>
+							<maxDelay>36</maxDelay>
+						</DelayModel>
+						<ExtraLoss>0</ExtraLoss>
+					</Path>
+					<Path>
+						<LossModel type="Manual">
+							<loss>Infinity</loss>
+						</LossModel>
+						<FadingModel type="Null">
+						</FadingModel>
+						<DelayModel type="Manual">
+							<delay>0</delay>
+							<minDelay>0</minDelay>
+							<maxDelay>36</maxDelay>
+						</DelayModel>
+						<ExtraLoss>0</ExtraLoss>
+					</Path>
+				</ChannelModel>
+			</Channel>
+		</ChannelDef>	
+		
+		<Channel src="0" dest="1" useDef='multipath010'>	</Channel>
+		<Channel src="1" dest="0" useDef='multipath010'>	</Channel>
+		<Channel src="0" dest="2" useDef='multipath010'>	</Channel>
+		<Channel src="2" dest="0" useDef='multipath010'>	</Channel>
+		<Channel src="1" dest="2" useDef='multipath010'>	</Channel>
+		<Channel src="2" dest="1" useDef='multipath010'>	</Channel>
+</DSPConfigDef>
+
+</Config>
