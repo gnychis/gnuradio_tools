@@ -110,7 +110,7 @@ module packet_builder #(parameter NUM_CHAN = 2)(
             
             `HEADER2: begin
                 fifodata[`CHAN] <= #1 true_channel;
-                fifodata[`RSSI] <= #1 true_rssi[15:10];
+                fifodata[`RSSI] <= #1 true_rssi[10:5];
                 fifodata[`BURST] <= #1 0;
                 fifodata[`DROPPED] <= #1 0;
                 fifodata[`UNDERRUN] <= #1 (check_next == 0) ? 1'b0 : underrun[true_channel];
