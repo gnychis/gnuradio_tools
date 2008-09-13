@@ -131,6 +131,15 @@ void mac::transmit_pkt(pmt_t data)
                      pmt_intern("carrier-sense"),   // the 'hash'
                      PMT_T);                        // true, but assumed false if no
     }
+    
+    if(pmt_t pkt_mf = pmt_dict_ref(pkt_properties,
+                                   pmt_intern("mf-wait"),
+                                   PMT_NIL)) {
+      if(pmt_eqv(pkt_mf, PMT_T))                    // carrier sense the packet?
+        pmt_dict_set(us_tx_properties,              // set it in our dictionary
+                     pmt_intern("mf-wait"),         // the 'hash'
+                     PMT_T);                        // true, but assumed false if no
+    }
 
     if(timestamp = pmt_dict_ref(pkt_properties,
                                 pmt_intern("timestamp"),
