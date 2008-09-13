@@ -232,9 +232,9 @@ void db_flexrf_mimo::set_tx_auto_tr(bool on)
 void db_flexrf_mimo::set_rx_auto_tr(bool on)
 {
   if(on) {
-    set_rx_atr_mask (RX_TXN | ENABLE);
-    set_rx_atr_txval(0      | ENABLE);
-    set_rx_atr_rxval(RX_TXN | 0);
+    set_rx_atr_mask (ENABLE);
+    set_rx_atr_txval(0);
+    set_rx_atr_rxval(ENABLE);
   } else {
     set_rx_atr_mask (0);
     set_rx_atr_txval(0);
