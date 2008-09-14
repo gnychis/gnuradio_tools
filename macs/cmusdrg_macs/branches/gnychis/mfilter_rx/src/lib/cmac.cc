@@ -67,7 +67,7 @@ void cmac::usrp_initialized()
 
 void cmac::initialize_cmac()
 {
-  set_carrier_sense(false, 25, 0, PMT_NIL);   // Initial carrier sense setting
+  set_carrier_sense(false, 50, 0, PMT_NIL);   // Initial carrier sense setting
 
   d_state = IDLE;   // State where we wait for messages to do something
 
@@ -114,6 +114,7 @@ void cmac::initialize_cmac()
 
   enable_rx();
 
+  sleep(1);
   build_and_send_ack(1);
 
   std::cout << "[CMAC] Initialized, and idle\n";
@@ -384,7 +385,7 @@ void cmac::build_and_send_ack(long dst)
   // Per packet properties
   pmt_t tx_properties = pmt_make_dict();
   pmt_dict_set(tx_properties, pmt_intern("ack"), PMT_T);  // it's an ACK!
-  pmt_dict_set(tx_properties, pmt_intern("mf-set"), PMT_T);
+  pmt_dict_set(tx_properties, pmt_intern("mf-wait"), PMT_T);
   pmt_dict_set(tx_properties, pmt_intern("carrier-sense"), PMT_T);
 
   pmt_t pdata = pmt_list4(PMT_NIL,                        // No invocation.

@@ -128,6 +128,15 @@ void mac::transmit_pkt(pmt_t data)
                      PMT_T);                        // true, but assumed false if no
     }
 
+    if(pmt_t pkt_mf = pmt_dict_ref(pkt_properties,
+                                   pmt_intern("mf-wait"),
+                                   PMT_NIL)) {
+      if(pmt_eqv(pkt_mf, PMT_T))                    // carrier sense the packet?
+        pmt_dict_set(us_tx_properties,              // set it in our dictionary
+                     pmt_intern("mf-wait"),         // the 'hash'
+                     PMT_T);                        // true, but assumed false if no
+    }
+
     if(timestamp = pmt_dict_ref(pkt_properties,
                                 pmt_intern("timestamp"),
                                 PMT_NIL)) {
@@ -277,7 +286,7 @@ void mac::initialize_usrp()
 
   // Specify important parameters like the RBF and frequency
   pmt_dict_set(usrp_dict, pmt_intern("rbf"), pmt_intern("cmusdrg_1rxhb_1tx.rbf"));
-  pmt_dict_set(usrp_dict, pmt_intern("rf-freq"), pmt_from_long(2450000000));
+  pmt_dict_set(usrp_dict, pmt_intern("rf-freq"), pmt_from_long(10000000));
   pmt_dict_set(usrp_dict, pmt_intern("interp-tx"), pmt_from_long(d_usrp_interp));
   pmt_dict_set(usrp_dict, pmt_intern("decim-rx"), pmt_from_long(d_usrp_decim));
   pmt_dict_set(usrp_dict, pmt_intern("fake-usrp"), PMT_F);
