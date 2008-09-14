@@ -317,8 +317,13 @@ void gmsk::mod(pmt_t data) {
   pmt_t v_mod_data = pmt_make_s16vector(fm_output.size()*2, 0);   // 16-bits for each I and Q 
   int16_t *mod_data = pmt_s16vector_writable_elements(v_mod_data, ignore);
   for(int i=0; i < (int)fm_output.size(); i++) {
+    if(i!=(int)fm_output.size()-1) {
     mod_data[2*i] =   (int16_t) (fm_output[i].real() * d_amplitude);
     mod_data[2*i+1] = (int16_t) (fm_output[i].imag() * d_amplitude);
+    } else {
+    mod_data[2*i] = (int16_t) 0;
+    mod_data[2*i+1] = (int16_t) 0;
+    }
   }
 
   //demod(pmt_list3(PMT_NIL, PMT_NIL, v_mod_data));
