@@ -1,7 +1,7 @@
 module chan_fifo_reader 
    (reset, tx_clock, tx_strobe, timestamp_clock, samples_format,
     fifodata, pkt_waiting, rdreq, skip, tx_q, tx_i,
-    underrun, tx_empty, debug, rssi, threshhold, rssi_wait, mf_match) ;
+    underrun, tx_empty, debug, rssi, threshhold, rssi_wait, mf_match, burst) ;
 
    input   wire                     reset ;
    input   wire                     tx_clock ;
@@ -20,6 +20,7 @@ module chan_fifo_reader
    input   wire		     [31:0] threshhold;
    input   wire		     [31:0] rssi_wait;
    input   wire                     mf_match;
+   output  reg          burst;
 
    output wire [14:0] debug;
    assign debug = {7'd0, rdreq, skip, reader_state, pkt_waiting, tx_strobe, tx_clock};
@@ -51,7 +52,6 @@ module chan_fifo_reader
    reg                        [6:0] payload_len;
    reg                        [6:0] read_len;
    reg                       [31:0] timestamp;
-   reg                              burst;
    reg                              trash;
    reg                              rssi_flag;
    reg                              mf_flag;

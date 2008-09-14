@@ -8,7 +8,7 @@ module tx_buffer_inband
     output wire [15:0] tx_i_2, output wire [15:0] tx_q_2, 
     output wire [15:0] tx_i_3, output wire [15:0] tx_q_3, 
     input wire txclk, input wire txstrobe, input wire WR,
-    input wire clear_status, output wire tx_empty, output wire [15:0] debugbus, 
+    input wire clear_status, output wire tx_empty, output wire burst, output wire [15:0] debugbus, 
     //command reader io
     output wire [15:0] rx_databus, output wire rx_WR, output wire rx_WR_done, 
     input wire rx_WR_enabled,
@@ -127,7 +127,7 @@ module tx_buffer_inband
         .skip(chan_skip[i]), .rdreq(chan_rdreq[i]),
         .fifodata(chan_fifodata[i]), .pkt_waiting(chan_pkt_waiting[i]),
         .tx_empty(chan_txempty[i]), .rssi(rssi[i]), .debug(debug[i]),
-        .threshhold(threshhold), .rssi_wait(rssi_wait), .mf_match(mf_match));	         
+        .threshhold(threshhold), .rssi_wait(rssi_wait), .mf_match(mf_match), .burst(burst));	         
     end
     endgenerate
 

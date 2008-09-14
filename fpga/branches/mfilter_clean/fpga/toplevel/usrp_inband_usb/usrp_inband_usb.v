@@ -106,6 +106,7 @@ module usrp_inband_usb
    
    wire        strobe_interp, tx_sample_strobe;
    wire        tx_empty;
+   wire        burst;
    
    wire        serial_strobe;
    wire [6:0]  serial_addr;
@@ -145,6 +146,7 @@ wire mf_match;
        .txclk(clk64),.txstrobe(strobe_interp),
        .clear_status(clear_status),
        .tx_empty(tx_empty),
+       .burst(burst),
        .rx_WR(rx_WR),
        .rx_databus(rx_databus), 
        .rx_WR_done(rx_WR_done),
@@ -410,7 +412,7 @@ wire mf_match;
        .interp_rate(interp_rate),.decim_rate(decim_rate),
        .tx_sample_strobe(tx_sample_strobe),.strobe_interp(strobe_interp),
        .rx_sample_strobe(rx_sample_strobe),.strobe_decim(strobe_decim),
-       .tx_empty(tx_empty),
+       .tx_empty(burst),
        //.debug_0(rx_a_a),.debug_1(ddc0_in_i),
        .debug_0(tx_debugbus),.debug_1(rx_debugbus),
        .debug_2({rx_sample_strobe,strobe_decim,serial_strobe,serial_addr}),.debug_3({rx_dsp_reset,tx_dsp_reset,rx_bus_reset,tx_bus_reset,enable_rx,tx_underrun,rx_overrun,decim_rate}),
