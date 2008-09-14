@@ -68,7 +68,7 @@ void cmac::usrp_initialized()
 void cmac::initialize_cmac()
 {
 
-  set_carrier_sense(false, 2000, 0, PMT_NIL);   // Initial carrier sense setting
+  set_carrier_sense(false, 50, 0, PMT_NIL);   // Initial carrier sense setting
 
   d_state = IDLE;   // State where we wait for messages to do something
 

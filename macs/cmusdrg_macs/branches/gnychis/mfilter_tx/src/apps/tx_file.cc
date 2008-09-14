@@ -267,11 +267,11 @@ tx_file::build_and_send_next_frame()
   pmt_t pkt_properties = PMT_NIL;
 
   // Make a dictionary to use carrier sense and mfilter on everything but the first packet
-//  if(d_nframes_xmitted!=0) {
+  if(d_nframes_xmitted!=0) {
     pkt_properties = pmt_make_dict();
-    //pmt_dict_set(pkt_properties, pmt_intern("carrier-sense"), PMT_T);
+    pmt_dict_set(pkt_properties, pmt_intern("carrier-sense"), PMT_T);
     pmt_dict_set(pkt_properties, pmt_intern("mf-wait"), PMT_T);
-//  }
+  }
 
   //  Transmit the data
   d_tx->send(s_cmd_tx_data,
