@@ -85,6 +85,8 @@ module chan_fifo_reader
 		* is a short hand fifo meaning that the header to the next packet
 		* is already available to this fifo_reader when pkt_waiting is on
 		*/
+                 tx_i <=0;
+                 tx_q <=0;
                  skip <=0;
                  time_wait <= 0;
                  if (pkt_waiting == 1)
@@ -177,13 +179,7 @@ module chan_fifo_reader
                MF_WAIT:
                  begin
                  //reader_state <= (mf_match) ? WAIT : MF_WAIT;
-                  if(rssi > threshhold)
-                    begin
-                      trash <= 0;
-                      reader_state <= WAIT;
-                    end
-                  else
-                    reader_state <= MF_WAIT;
+                 reader_state <= (rssi > threshhold) ? WAIT : MF_WAIT;
                  end
                  
                // Wait for the transmit chain to be ready
