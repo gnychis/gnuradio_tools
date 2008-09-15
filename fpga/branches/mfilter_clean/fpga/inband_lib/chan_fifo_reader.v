@@ -37,6 +37,7 @@ module chan_fifo_reader
    parameter MF_WAIT        =     3'd4;
    parameter WAITSTROBE     =     3'd5;
    parameter SEND           =     3'd6;
+   parameter RSSI_WAIT      =     3'd7;
 
    // Header format
    `define PAYLOAD                  8:2
@@ -138,7 +139,14 @@ module chan_fifo_reader
                TIMESTAMP: 
                  begin
                    timestamp <= fifodata;
-                   reader_state <= (mf_flag) ? MF_WAIT : WAIT;
+
+                   if(mf_flag)
+                    reader_state <= MF_WAIT;
+                   else if(rssi_flag)
+                    reader_state <= RSSI_WAIT;
+                   else
+                    reader_state <= WAIT;
+
                    if (tx_strobe == 1)
                        tx_empty <= 1 ;
                    rdreq <= 0;
@@ -152,8 +160,7 @@ module chan_fifo_reader
                     
                    time_wait <= time_wait + 32'd1;
                    // Outdated
-                   if ((timestamp < timestamp_clock) ||
-                      (time_wait >= rssi_wait && rssi_wait != 0 && rssi_flag))
+                   if (timestamp < timestamp_clock)
                      begin
                        trash <= 1;
                        reader_state <= IDLE;
@@ -163,23 +170,32 @@ module chan_fifo_reader
                    else if (timestamp == timestamp_clock 
                              || timestamp == 32'hFFFFFFFF)
                      begin
-                       if (rssi <= threshhold || rssi_flag == 0)
                          begin
                            trash <= 0;
                            reader_state <= WAITSTROBE; 
                          end
-                       else
-                         reader_state <= WAIT;
                      end
                    else
                        reader_state <= WAIT;
                  end
+
+               RSSI_WAIT:
+                begin
+                  if(rssi <= threshhold)
+                    reader_state <= WAIT;
+                  else
+                    reader_state <= RSSI_WAIT;
+                end
  
                // Need to wait for match to be found
                MF_WAIT:
                  begin
-                 //reader_state <= (mf_match) ? WAIT : MF_WAIT;
-                 reader_state <= (rssi > threshhold) ? WAIT : MF_WAIT;
+                  if(rssi > threshhold && rssi_flag)
+                    reader_state <= RSSI_WAIT;
+                  else if(rssi > threshhold)
+                    reader_state <= WAIT;
+                  else
+                    reader_state <= MF_WAIT;
                  end
                  
                // Wait for the transmit chain to be ready
