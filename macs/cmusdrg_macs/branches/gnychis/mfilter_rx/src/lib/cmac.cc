@@ -67,7 +67,7 @@ void cmac::usrp_initialized()
 
 void cmac::initialize_cmac()
 {
-  set_carrier_sense(false, 50, 0, PMT_NIL);   // Initial carrier sense setting
+  set_carrier_sense(false, 40, 0, PMT_NIL);   // Initial carrier sense setting
 
   d_state = IDLE;   // State where we wait for messages to do something
 
@@ -358,7 +358,7 @@ void cmac::handle_ack(long src, long dst)
              pmt_list2(invocation_handle,
                        PMT_T));
 
-  disable_rx();     // FIXME: spend more time thinking about this, I think its incorrect
+//  disable_rx();     // FIXME: spend more time thinking about this, I think its incorrect
 
   d_state = IDLE;   // Back to the idle state!
 
@@ -374,7 +374,7 @@ void cmac::build_and_send_ack(long dst)
   char data;
   long n_bytes=1;   // Negligable payload
   
-  disable_rx();     // No need to receive while transmitting, not required,
+  //disable_rx();     // No need to receive while transmitting, not required,
                     // only saves processing power.
 
   // Make the PMT data, get a writable pointer to it, then copy our data in
