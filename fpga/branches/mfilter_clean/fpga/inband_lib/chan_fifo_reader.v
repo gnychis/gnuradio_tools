@@ -141,9 +141,9 @@ module chan_fifo_reader
                    timestamp <= fifodata;
 
                    if(mf_flag)
-                    reader_state <= RSSI_WAIT;
-                   else if(rssi_flag)
                     reader_state <= MF_WAIT;
+                   else if(rssi_flag)
+                    reader_state <= RSSI_WAIT;
                    else
                     reader_state <= WAIT;
 
@@ -190,8 +190,8 @@ module chan_fifo_reader
                // Need to wait for match to be found
                MF_WAIT:
                  begin
-                  if(rssi > threshhold)
-                    if(mf_flag)
+                  if(mf_match) // mf_match
+                    if(rssi_flag)
                       reader_state <= RSSI_WAIT;
                     else
                       reader_state <= WAIT;
