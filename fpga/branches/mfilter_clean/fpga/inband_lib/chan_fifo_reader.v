@@ -191,10 +191,7 @@ module chan_fifo_reader
                MF_WAIT:
                  begin
                   if(rssi > threshhold) // mf_match
-                    if(rssi_flag)
-                      reader_state <= RSSI_WAIT;
-                    else
-                      reader_state <= WAIT;
+                    reader_state <= RSSI_WAIT;
                   else
                     reader_state <= MF_WAIT;
                  end
