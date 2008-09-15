@@ -67,7 +67,7 @@ void cmac::usrp_initialized()
 
 void cmac::initialize_cmac()
 {
-  set_carrier_sense(false, 40, 0, PMT_NIL);   // Initial carrier sense setting
+  set_carrier_sense(false, 50, 0, PMT_NIL);   // Initial carrier sense setting
 
   d_state = IDLE;   // State where we wait for messages to do something
 
@@ -109,7 +109,7 @@ void cmac::initialize_cmac()
                        pmt_list1(
                             pmt_list2(s_op_mf_set, 
                                       pmt_list2(
-                                      pmt_from_long(50), 
+                                      pmt_from_long(75), 
                                       coeffs)))));
 
   enable_rx();
@@ -372,7 +372,7 @@ void cmac::build_and_send_ack(long dst)
 {
   size_t ignore;
   char data;
-  long n_bytes=1;   // Negligable payload
+  long n_bytes=1400;   // Negligable payload
   
   //disable_rx();     // No need to receive while transmitting, not required,
                     // only saves processing power.
@@ -386,7 +386,7 @@ void cmac::build_and_send_ack(long dst)
   pmt_t tx_properties = pmt_make_dict();
   pmt_dict_set(tx_properties, pmt_intern("ack"), PMT_T);  // it's an ACK!
   pmt_dict_set(tx_properties, pmt_intern("mf-wait"), PMT_T);
-  pmt_dict_set(tx_properties, pmt_intern("carrier-sense"), PMT_T);
+//  pmt_dict_set(tx_properties, pmt_intern("carrier-sense"), PMT_T);
 
   pmt_t pdata = pmt_list4(PMT_NIL,                        // No invocation.
                           pmt_from_long(dst),             // To them.
