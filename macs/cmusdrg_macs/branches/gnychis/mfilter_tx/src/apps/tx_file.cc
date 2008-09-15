@@ -179,6 +179,7 @@ tx_file::handle_message(mb_message_sptr msg)
         
         // Set start time to keep track of performance
         gettimeofday(&d_start, NULL);
+	usleep(200000);
 
         if(pmt_eq(status, PMT_T)) {
           enter_transmitting();
@@ -269,7 +270,7 @@ tx_file::build_and_send_next_frame()
   // Make a dictionary to use carrier sense and mfilter on everything but the first packet
   if(d_nframes_xmitted!=0) {
     pkt_properties = pmt_make_dict();
-    pmt_dict_set(pkt_properties, pmt_intern("carrier-sense"), PMT_T);
+//    pmt_dict_set(pkt_properties, pmt_intern("carrier-sense"), PMT_T);
     pmt_dict_set(pkt_properties, pmt_intern("mf-wait"), PMT_T);
   }
 

@@ -79,7 +79,7 @@ void mac::handle_message(mb_message_sptr msg)
         long rssi = pmt_to_long(pmt_dict_ref(pkt_properties, pmt_intern("rssi"), PMT_NIL));
         //std::cout << "RSSI: " << (rssi<<5) << std::endl;
 
-        d_phy_cs->send(s_cmd_demod, data);         // Demod incoming samples
+        //d_phy_cs->send(s_cmd_demod, data);         // Demod incoming samples
       }
       return;
     }
