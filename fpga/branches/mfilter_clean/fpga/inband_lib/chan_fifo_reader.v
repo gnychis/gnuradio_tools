@@ -109,8 +109,7 @@ module chan_fifo_reader
                        tx_empty <= 1 ;
                    
                    rssi_flag <= fifodata[`RSSI_FLAG]&fifodata[`STARTOFBURST];
-                   if (fifodata[`STARTOFBURST])
-                       mf_flag <= fifodata[`MF_FLAG];
+                   mf_flag   <= fifodata[`MF_FLAG]&fifodata[`STARTOFBURST];
 
                    //Check Start/End burst flag
                    if  (fifodata[`STARTOFBURST] == 1 
@@ -190,7 +189,7 @@ module chan_fifo_reader
                // Need to wait for match to be found
                MF_WAIT:
                  begin
-                  if(rssi > threshhold) // mf_match
+                  if(~(rssi <= threshhold)) // mf_match
                     reader_state <= RSSI_WAIT;
                   else
                     reader_state <= MF_WAIT;
