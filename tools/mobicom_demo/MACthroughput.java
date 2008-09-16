@@ -1,4 +1,4 @@
-// IperfThroughput.java
+// MACthroughput.java
 
 //package emuExample;
 
@@ -15,7 +15,7 @@ import java.io.IOException;
 import java.util.*;
 
 
-public class IperfThroughput extends SimpleUserClass {
+public class MACthroughput extends SimpleUserClass {
 	protected RemoteProcess		serverProcess;
 	protected EmuNode[]			nodes;
 	protected ThroughputView	thrptView;
