@@ -51,10 +51,10 @@ public class MACthroughput extends SimpleUserClass {
     }
     
     /////////// CONTINUOUSLY READ VALUES ////////////
-    while(1) {
+    while(true) {
       try {
         
-        sleep(3000);  // Sleep while waiting for new values
+        Thread.sleep(3000);  // Sleep while waiting for new values
 
         // Two processes, one to grab each new throughput value
         Process p1 = Runtime.getRuntime().exec("tail -n 1 /home/gnychis/client1");
