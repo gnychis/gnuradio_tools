@@ -28,13 +28,13 @@ public class MACthroughput extends SimpleUserClass {
 		colors = new Color[2];
 		colors[0] = ColorParser.parseColor("red");
 		colors[1] = ColorParser.parseColor("blue");
+    double[] throughput = new double[2];  // Two throughput values
+    int currTime = 0;
 
+    /////////// CREATE THROUGHPUT VIEW ///////////
     try {
-      double[] throughput = new double[2];  // Two throughput values
-
       System.out.println("Starting graph...\n");
 
-      // Create the ThroughputView
       try{
           BasicStroke     stroke;
           stroke = new BasicStroke((float)3.0);
@@ -49,8 +49,37 @@ public class MACthroughput extends SimpleUserClass {
     } finally {
 
     }
+    
+    /////////// CONTINUOUSLY READ VALUES ////////////
+    while(1) {
+      try {
+        
+        sleep(3000);  // Sleep while waiting for new values
+
+        // Two processes, one to grab each new throughput value
+        Process p1 = Runtime.getRuntime().exec("tail -n 1 /home/gnychis/client1");
+        Process p2 = Runtime.getRuntime().exec("tail -n 1 /home/gnychis/client2");
+        
+        // Our input stream
+        BufferedReader stdInput1 = new BufferedReader(new InputStreamReader(p1.getInputStream()));
+        BufferedReader stdInput2 = new BufferedReader(new InputStreamReader(p2.getInputStream()));
+
+        // Read the two throughput values from the input stream
+        throughput[0] = Double.valueOf(stdInput1.readLine());
+        throughput[1] = Double.valueOf(stdInput2.readLine());
+
+        // Plot the values
+        thrptView.addValues(currTime, throughput); 
+
+        // Increment a logical time
+        currTime++;
+      }
+      catch (Exception e) {
+        e.printStackTrace();
+        System.exit(-1);
+      }
+    }
 		
-    System.out.println("Sweet\n");
 	}
 
 }
