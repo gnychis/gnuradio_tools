@@ -9,6 +9,7 @@
 #include "gnuradio_swig_bug_workaround.h"	// mandatory bug fix
 #include "cmusdrg_acquisition_filter_ccc.h"
 #include "cmusdrg_mf_sync_ccf.h"
+#include "cmusdrg_print_samples_cc.h"
 #include <stdexcept>
 %}
 
@@ -35,3 +36,16 @@ class cmusdrg_mf_sync_ccf : public gr_block
 private:
   cmusdrg_mf_sync_ccf (const std::vector<gr_complex> &coeffs);
 };
+
+// ----------------------------------------------------------------
+
+GR_SWIG_BLOCK_MAGIC(cmusdrg,print_samples_cc);
+
+cmusdrg_print_samples_cc_sptr cmusdrg_make_print_samples_cc ();
+
+class cmusdrg_print_samples_cc : public gr_block
+{
+private:
+  cmusdrg_print_samples_cc ();
+};
+

@@ -62,7 +62,8 @@ ourlib_LTLIBRARIES = _cmusdrg.la
 _cmusdrg_la_SOURCES = 			\
 	cmusdrg.cc			\
 	cmusdrg_acquisition_filter_ccc.cc	\
-	cmusdrg_mf_sync_ccf.cc
+	cmusdrg_mf_sync_ccf.cc \
+	cmusdrg_print_samples_cc.cc
 
 # magic flags
 _cmusdrg_la_LDFLAGS = $(NO_UNDEFINED) -module -avoid-version
