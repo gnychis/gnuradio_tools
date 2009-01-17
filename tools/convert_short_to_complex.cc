@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
   infile.open(argv[1], std::ios::binary|std::ios::in);
   ofile.open(argv[2], std::ios::binary|std::ios::out);
   if(!infile.is_open() || !ofile.is_open())
-    exit(-1);
+    return -1;
     
   data_t real, imag;
   data2_t comp;

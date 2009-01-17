@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
 
   infile.open(argv[1], std::ios::binary|std::ios::in);
   if(!infile.is_open())
-    exit(-1);
+    return -1;
     
   data_t real, imag;
 
