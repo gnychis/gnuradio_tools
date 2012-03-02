@@ -22,7 +22,7 @@ class my_top_block(gr.top_block):
         fft_demod = gr.fft_vcc(self._fft_length, True, win2, True)
         
         # Some output data files
-        trans_output = gr.file_sink(gr.sizeof_gr_complex, "trans_output.dat")
+        trans_output = gr.file_sink(gr.sizeof_gr_complex*self._fft_length, "trans_output.dat")
         ##reg_output = gr.file_sink(gr.sizeof_gr_complex, "reg_output.dat")
 
         # Connect the blocks
