@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <complex>
+#include <stdint.h>
 
 typedef int16_t data_t;
 typedef std::complex<float> data2_t;
