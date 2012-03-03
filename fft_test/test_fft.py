@@ -12,8 +12,8 @@ class my_top_block(gr.top_block):
 
         self._fft_length=96
         
-        #win = [] 
-        win = [1 for i in range(self._fft_length)]
+        win = [] 
+        #win = [1 for i in range(self._fft_length)]
         win2 = [1 for i in range(self._fft_length)]
 
         # Constructing a sine source and the fft blocks
