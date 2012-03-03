@@ -19,8 +19,8 @@ class my_top_block(gr.top_block):
         # Constructing a sine source and the fft blocks
         src0 = gr.sig_source_c (sample_rate, gr.GR_SIN_WAVE, 350, ampl)
         ss2v = gr.stream_to_vector(gr.sizeof_gr_complex, self._fft_length)
-        fft_demod = gr.fft_vcc(self._fft_length, True, win2, True)
-        fft_demod2 = gr.fft_vcc(self._fft_length, True, win2, True)
+        fft_demod = gr.fft_vcc(self._fft_length, True, win2, False)
+        fft_demod2 = gr.fft_vcc(self._fft_length, True, win2, False)
         ifft = gr.fft_vcc(self._fft_length, False, win, True)
         
         # Some output data files
